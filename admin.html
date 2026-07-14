@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Administrativo — Trilhar Contabilidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+      <div>
+        <div class="brand-name">TRILHAR CONTABILIDADE</div>
+        <div class="brand-sub">PAINEL ADMINISTRATIVO</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="dropdown-wrap">
+        <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
+          <div class="avatar">TI</div>
+          <span>Tinaysa</span>
+        </div>
+        <div class="dropdown-panel" id="user-panel">
+          <div class="dropdown-header">Conta</div>
+          <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-header">Simular nível de acesso <span class="role-demo-tag">demo</span></div>
+          <div class="dropdown-item role-option" data-role="proprietario"><span class="role-check"></span>Proprietário</div>
+          <div class="dropdown-item role-option" data-role="administrador"><span class="role-check"></span>Administrador</div>
+          <div class="dropdown-item role-option" data-role="usuario"><span class="role-check"></span>Usuário comum</div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" onclick="window.location.href='admin-login.html'" id="logout-item"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header page-header-flex">
+      <div>
+        <p class="eyebrow" id="today-eyebrow">Administração</p>
+        <h1 class="page-title">Visão geral</h1>
+        <p class="page-subtitle">Acompanhe a operação do escritório antes de entrar nos detalhes de cada cliente.</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" onclick="openCliente()" id="btn-novo-cliente"></button>
+        <button class="btn btn-primary" onclick="openUpload()" id="btn-upload"></button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-top"><p class="stat-label">Clientes ativos</p><div class="stat-icon" id="kpi-icon-clients"></div></div>
+        <p class="stat-value">6</p>
+        <p class="stat-trend">Nenhum novo este mês</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><p class="stat-label">Documentos enviados (mês)</p><div class="stat-icon" id="kpi-icon-docs"></div></div>
+        <p class="stat-value">18</p>
+        <p class="stat-trend">+5 em relação a maio</p>
+      </div>
+      <div class="stat-card attention clickable" id="kpi-card-warning" title="Ver detalhes em Precisa de atenção">
+        <div class="stat-top"><p class="stat-label">Boletos vencendo em 7 dias</p><div class="stat-icon warn" id="kpi-icon-warning"></div></div>
+        <p class="stat-value">1</p>
+        <p class="stat-trend" style="color:var(--semantic-warning)">Mais próximo: 4 dias</p>
+      </div>
+      <div class="stat-card attention clickable" id="kpi-card-pending" title="Ver detalhes em Precisa de atenção">
+        <div class="stat-top"><p class="stat-label">Clientes com pendências</p><div class="stat-icon warn" id="kpi-icon-pending"></div></div>
+        <p class="stat-value">2</p>
+        <p class="stat-trend" style="color:var(--semantic-warning)" id="kpi-pending-trend">— categorias pendentes</p>
+      </div>
+    </div>
+
+    <div class="dashboard-layout">
+      <div class="dashboard-main">
+        <div class="tabs">
+          <div class="tab active" data-tab="clientes" onclick="switchTab('clientes')">Clientes</div>
+          <div class="tab" data-tab="documentos" onclick="switchTab('documentos')">Documentos enviados</div>
+          <div class="tab" data-tab="categorias" onclick="switchTab('categorias')">Categorias</div>
+          <div class="tab" data-tab="admins" onclick="switchTab('admins')">Administradores</div>
+        </div>
+
+        <!-- Aba: Clientes -->
+        <div id="tab-clientes">
+          <div style="position:relative; max-width:360px; margin-bottom:16px;">
+            <span id="search-icon" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-secondary); display:flex;"></span>
+            <input id="client-search" type="text" placeholder="Buscar por nome, e-mail ou CPF/CNPJ" style="width:100%; padding:11px 14px 11px 38px; border-radius:8px; border:1px solid var(--border-default); background:var(--bg-surface-elevated); color:var(--text-primary); font-size:14px; font-family:inherit;">
+          </div>
+          <div class="table-card">
+            <table class="table-clients">
+              <thead>
+                <tr><th>Cliente</th><th>E-mail</th><th>Status</th><th>Último documento enviado</th><th>Pendências</th><th></th></tr>
+              </thead>
+              <tbody id="clients-tbody"></tbody>
+            </table>
+            <p class="hint" id="no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum cliente encontrado.</p>
+          </div>
+        </div>
+
+        <!-- Aba: Documentos enviados -->
+        <div id="tab-documentos" style="display:none;">
+          <div class="docs-toolbar">
+            <div class="docs-search">
+              <span id="docs-search-icon"></span>
+              <input type="text" id="docs-search-input" placeholder="Buscar por cliente ou nome do documento">
+            </div>
+            <button class="btn btn-secondary" id="docs-download-all">Baixar tudo</button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-bar-row">
+              <div class="filter-field">
+                <label>Cliente</label>
+                <select class="select-like" id="docs-filter-cliente">
+                  <option value="">Todos os clientes</option>
+                </select>
+              </div>
+              <div class="filter-field">
+                <label>Tipo de documento</label>
+                <select class="select-like" id="docs-filter-cat">
+                  <option value="">Todos os tipos</option>
+                </select>
+              </div>
+              <div class="filter-field">
+                <label>Status</label>
+                <select class="select-like" id="docs-filter-status">
+                  <option value="">Todos os status</option>
+                  <option value="vencido">Vencido</option>
+                  <option value="vencendo">Vencendo</option>
+                  <option value="pendente">Pendente</option>
+                  <option value="pago">Pago</option>
+                </select>
+              </div>
+              <div class="filter-field">
+                <label>Período</label>
+                <div class="period-presets" id="period-presets">
+                  <button type="button" class="period-chip" data-preset="7">7 dias</button>
+                  <button type="button" class="period-chip" data-preset="30">30 dias</button>
+                  <button type="button" class="period-chip" data-preset="custom">Personalizado</button>
+                </div>
+              </div>
+              <label class="filter-toggle">
+                <input type="checkbox" id="docs-filter-novidades">
+                <span class="filter-toggle-track"></span>
+                Só novidades
+              </label>
+              <button class="btn btn-ghost" id="docs-filter-clear">Limpar filtros</button>
+            </div>
+            <div class="filter-date-range" id="custom-date-range" style="display:none; margin-top:12px;">
+              <input type="date" id="docs-filter-date-de">
+              <span>até</span>
+              <input type="date" id="docs-filter-date-ate">
+            </div>
+            <div class="filter-bar-summary" id="docs-filter-summary"></div>
+          </div>
+
+          <div class="table-card">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Cliente</th><th>Documento</th><th>Tipo</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody id="docs-tbody"></tbody>
+            </table>
+            <p class="hint" id="docs-no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum documento encontrado com esses filtros.</p>
+          </div>
+        </div>
+
+        <!-- Aba: Categorias -->
+        <div id="tab-categorias" style="display:none;">
+          <div class="table-toolbar page-header-flex" style="padding:0; margin-bottom:16px; border-bottom:none;">
+            <p class="page-subtitle" style="margin:0;">Categorias de documento disponíveis para todos os clientes. Crie quantas precisar.</p>
+            <span class="tooltip-wrap">
+              <button class="btn btn-secondary" id="btn-nova-categoria"></button>
+              <span class="tooltip-bubble" id="btn-nova-categoria-tip">Apenas administradores podem criar categorias</span>
+            </span>
+          </div>
+          <div class="readonly-banner" id="categorias-readonly-banner"></div>
+          <div class="card-grid" id="categories-grid"></div>
+        </div>
+
+        <!-- Aba: Administradores → Centro de Equipe e Acessos -->
+        <div id="tab-admins" style="display:none;">
+          <div class="page-header-flex" style="margin-bottom:18px;">
+            <div>
+              <p class="page-subtitle" style="margin:0;">Quem tem acesso ao painel administrativo, com que papel, e desde quando.</p>
+            </div>
+            <button class="btn btn-secondary" id="btn-novo-admin"></button>
+          </div>
+
+          <!-- KPIs da equipe -->
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-top"><p class="stat-label">Membros da equipe</p><div class="stat-icon" id="team-kpi-icon-members"></div></div>
+              <p class="stat-value" id="team-kpi-members">—</p>
+              <p class="stat-trend" id="team-kpi-members-trend">—</p>
+            </div>
+            <div class="stat-card" id="team-kpi-card-invites">
+              <div class="stat-top"><p class="stat-label">Convites pendentes</p><div class="stat-icon warn" id="team-kpi-icon-invites"></div></div>
+              <p class="stat-value" id="team-kpi-invites">—</p>
+              <p class="stat-trend" id="team-kpi-invites-trend">—</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-top"><p class="stat-label">Online agora</p><div class="stat-icon" id="team-kpi-icon-online"></div></div>
+              <p class="stat-value" id="team-kpi-online">—</p>
+              <p class="stat-trend" id="team-kpi-online-trend">—</p>
+            </div>
+            <div class="stat-card" id="team-kpi-card-2fa">
+              <div class="stat-top"><p class="stat-label">Proteção por 2FA</p><div class="stat-icon" id="team-kpi-icon-2fa"></div></div>
+              <p class="stat-value" id="team-kpi-2fa">—</p>
+              <p class="stat-trend" id="team-kpi-2fa-trend">—</p>
+            </div>
+          </div>
+
+          <!-- Busca + filtros -->
+          <div class="docs-toolbar">
+            <div class="docs-search">
+              <span id="team-search-icon"></span>
+              <input type="text" id="team-search-input" placeholder="Buscar por nome ou e-mail">
+            </div>
+          </div>
+          <div class="filter-bar">
+            <div class="filter-bar-row">
+              <div class="filter-field">
+                <label>Papel</label>
+                <select class="select-like" id="team-filter-papel">
+                  <option value="">Todos os papéis</option>
+                  <option value="Proprietário">Proprietário</option>
+                  <option value="Administrador">Administrador</option>
+                  <option value="Colaborador">Colaborador</option>
+                </select>
+              </div>
+              <div class="filter-field">
+                <label>Status</label>
+                <select class="select-like" id="team-filter-status">
+                  <option value="">Todos os status</option>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                  <option value="pendente">Convite pendente</option>
+                </select>
+              </div>
+              <label class="filter-toggle">
+                <input type="checkbox" id="team-filter-2fa">
+                <span class="filter-toggle-track"></span>
+                Só sem 2FA
+              </label>
+              <button class="btn btn-ghost" id="team-filter-clear">Limpar filtros</button>
+            </div>
+            <div class="filter-bar-summary" id="team-filter-summary"></div>
+          </div>
+
+          <!-- Convites pendentes -->
+          <div class="table-card" id="pending-invites-card" style="margin-bottom:20px; display:none;">
+            <div class="table-toolbar">
+              <p style="margin:0; font-size:13px; font-weight:700;">Convites pendentes</p>
+            </div>
+            <table>
+              <thead><tr><th>Pessoa</th><th>Papel</th><th>Convite enviado</th><th></th></tr></thead>
+              <tbody id="invites-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Equipe -->
+          <div class="table-card">
+            <table class="table-clients">
+              <thead>
+                <tr><th>Membro</th><th>Papel</th><th>Status</th><th>2FA</th><th>Atividade recente</th><th></th></tr>
+              </thead>
+              <tbody id="team-tbody"></tbody>
+            </table>
+            <p class="hint" id="team-no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum membro encontrado com esses filtros.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra lateral -->
+      <div class="dashboard-sidebar">
+        <div class="side-card">
+          <div class="side-card-head">
+            <h3>Próximos vencimentos</h3>
+          </div>
+          <div id="upcoming-list" class="due-list"></div>
+
+          <div class="calendar-mini">
+            <div class="calendar-mini-head">
+              <button class="icon-btn icon-btn-sm" id="cal-prev"></button>
+              <span id="cal-month-label">—</span>
+              <button class="icon-btn icon-btn-sm" id="cal-next"></button>
+            </div>
+            <div class="calendar-weekdays">
+              <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+          </div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-card-head">
+            <h3>Precisa de atenção</h3>
+          </div>
+          <div id="attention-list" class="attention-list"></div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-card-head">
+            <h3>Atividade recente</h3>
+          </div>
+          <div id="activity-feed" class="activity-feed"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Painel lateral: novo cliente -->
+<div class="panel-overlay" id="panel-cliente" onclick="if(event.target===this) closeCliente()">
+  <div class="side-panel">
+    <div class="side-panel-header">
+      <div>
+        <h3 class="panel-title">Cadastrar cliente</h3>
+        <p class="panel-subtitle">Crie o acesso do cliente ao portal em poucos passos.</p>
+      </div>
+      <button class="panel-close" onclick="closeCliente()" id="cliente-close-btn"></button>
+    </div>
+
+    <div class="side-panel-body">
+      <div class="avatar-field" id="avatar-upload-trigger">
+        <div class="avatar-thumb">
+          <div class="avatar-ring"><div class="avatar-ring-inner" id="novo-cliente-preview"></div></div>
+          <div class="avatar-upload-badge" id="avatar-upload-badge"></div>
+        </div>
+        <div class="avatar-field-info">
+          <p>Foto ou logo <span class="tag-optional">opcional</span></p>
+          <span>Ajuda a identificar o cliente na lista. PNG ou JPG.</span>
+        </div>
+      </div>
+      <input type="file" accept="image/*" id="novo-cliente-foto" style="display:none;">
+
+      <div class="form-section">
+        <p class="form-section-title">Identificação</p>
+        <div class="field"><label>Nome completo ou razão social</label><input placeholder="Ex: João Silva" id="novo-cliente-nome"></div>
+        <div class="field"><label>CPF ou CNPJ</label><input placeholder="000.000.000-00"></div>
+      </div>
+
+      <div class="form-section">
+        <p class="form-section-title">Acesso ao portal</p>
+        <div class="field"><label>E-mail</label><input placeholder="cliente@exemplo.com"></div>
+        <div class="field"><label>Telefone</label><input placeholder="(11) 90000-0000"></div>
+
+        <div class="alert-box alert-info">
+          <div class="alert-icon" id="cliente-note-icon"></div>
+          <div>
+            <p class="alert-title">O cliente recebe o acesso por e-mail</p>
+            <p class="alert-subtitle">Inclui um link para definir a própria senha no primeiro login.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel-footer">
+      <button class="btn btn-secondary" onclick="closeCliente()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-cliente">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel lateral: upload de documento -->
+<div class="panel-overlay" id="panel-upload" onclick="if(event.target===this) closeUpload()">
+  <div class="side-panel">
+    <div class="side-panel-header">
+      <div class="modal-icon-header">
+        <div class="modal-icon-badge" id="upload-header-icon"></div>
+        <div>
+          <h3 style="margin:0; font-size:16px;">Upload de documento</h3>
+          <p class="hint" style="margin:0;">Selecione o cliente e a categoria do documento.</p>
+        </div>
+      </div>
+      <button class="panel-close" onclick="closeUpload()" id="upload-close-btn"></button>
+    </div>
+
+    <div class="side-panel-body">
+      <div class="field">
+        <label>Cliente</label>
+        <select class="select-like"><option>João Silva</option><option>Maria Souza</option><option>Empresa Alfa Ltda</option><option>Carlos Pereira</option></select>
+      </div>
+      <div class="field">
+        <label>Categoria</label>
+        <select class="select-like" id="cat-select" onchange="toggleDueDate()"></select>
+      </div>
+      <div class="field" id="subcat-field" style="display:none;">
+        <label>Subcategoria</label>
+        <select class="select-like" id="subcat-select">
+          <option>Contrato Social</option>
+          <option>Alterações Contratuais</option>
+          <option>Alvará de Funcionamento</option>
+          <option>Inscrição Estadual</option>
+          <option>Inscrição Municipal</option>
+          <option>CCMEI</option>
+          <option>Procuração</option>
+          <option>Certificado Digital</option>
+          <option>Licença Sanitária</option>
+          <option>Licença Ambiental</option>
+          <option>Balanço Patrimonial</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="field" id="due-field">
+        <label>Data de vencimento</label>
+        <input type="date">
+      </div>
+      <div class="field">
+        <label>Arquivo(s) PDF</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" accept=".pdf" id="upload-file-input" multiple>
+          <div class="dropzone-icon" id="dropzone-icon"></div>
+          <p class="dropzone-title">Arraste arquivos aqui ou <span>clique para selecionar</span></p>
+          <p class="dropzone-hint">PDF · cada arquivo é salvo como um documento separado</p>
+        </div>
+        <div id="upload-file-list" class="upload-file-list"></div>
+      </div>
+
+      <div class="alert-box alert-info" id="email-note">
+        <div class="alert-icon" id="email-note-icon"></div>
+        <div>
+          <p class="alert-title">Um e-mail será enviado automaticamente ao cliente</p>
+          <p class="alert-subtitle">Isso acontece para documentos do tipo <strong>Boletos</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel-footer">
+      <button class="btn btn-secondary" onclick="closeUpload()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-upload">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pré-visualização de documento (Documentos enviados) -->
+<div class="modal-overlay" id="modal-doc-preview">
+  <div class="modal" style="width:460px;">
+    <div class="preview-card" id="doc-preview-icon"></div>
+    <h3 id="doc-preview-name">Documento</h3>
+    <p class="hint" id="doc-preview-meta">—</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-doc-preview').classList.remove('open')">Fechar</button>
+      <button class="btn btn-primary" id="doc-preview-download-btn">Baixar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar remoção de administrador -->
+<div class="modal-overlay" id="modal-confirm-remove">
+  <div class="modal" style="width:380px;">
+    <div class="modal-icon-header">
+      <div class="modal-icon-badge" style="background:var(--semantic-danger);" id="confirm-remove-icon"></div>
+      <div>
+        <h3 style="margin:0;">Remover administrador</h3>
+      </div>
+    </div>
+    <p class="hint" style="margin:14px 0 0;">Tem certeza que deseja remover <strong id="confirm-admin-nome">—</strong> do painel administrativo? Essa pessoa perde o acesso imediatamente.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-confirm-remove').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" style="background:var(--semantic-danger);" id="btn-confirmar-remocao">Remover</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel: configuração de categoria de documento (Geral / Aparência / Configurações / Validação / Automações / Permissões / Histórico) -->
+<div class="modal-overlay" id="modal-categoria">
+  <div class="config-panel">
+    <div class="config-panel-header">
+      <div class="modal-icon-header">
+        <div class="modal-icon-badge" id="config-header-icon"></div>
+        <div>
+          <h3 id="config-panel-title" style="margin:0;">Nova categoria</h3>
+          <p class="hint" id="config-panel-subtitle" style="margin:0;">Configure todos os aspectos desta categoria de documento.</p>
+        </div>
+      </div>
+      <button class="panel-close" id="config-close-btn"></button>
+    </div>
+
+    <div class="config-panel-body">
+      <nav class="config-tabs">
+        <button class="config-tab active" data-tab="geral"><span id="tab-icon-geral"></span> Geral</button>
+        <button class="config-tab" data-tab="aparencia">Aparência &amp; Organização</button>
+        <button class="config-tab" data-tab="config">Configurações</button>
+        <button class="config-tab" data-tab="validacao">Validação</button>
+        <button class="config-tab" data-tab="automacoes">Automações <span class="tab-badge">novo</span></button>
+        <button class="config-tab" data-tab="permissoes">Permissões</button>
+        <button class="config-tab" data-tab="historico">Histórico</button>
+      </nav>
+
+      <div class="config-content">
+        <!-- Geral -->
+        <div class="config-pane active" data-pane="geral">
+          <p class="form-section-title">Informações básicas</p>
+          <div class="field"><label>Nome da categoria</label><input placeholder="Ex: Procurações, Notas Fiscais..." id="cf-nome"></div>
+          <div class="field">
+            <label>Descrição <span class="field-optional">opcional</span></label>
+            <textarea id="cf-descricao" placeholder="Ex: Documentos utilizados para processos trabalhistas." rows="2"></textarea>
+            <p class="field-hint">Uma breve descrição ajuda administradores a entenderem a finalidade da categoria.</p>
+          </div>
+          <p class="form-section-title">Ícone</p>
+          <div class="icon-search">
+            <span id="icon-search-icon"></span>
+            <input type="text" id="cf-icon-search" placeholder="Buscar ícone...">
+          </div>
+          <div class="icon-picker" id="cf-icon-grid"></div>
+        </div>
+
+        <!-- Aparência & Organização -->
+        <div class="config-pane" data-pane="aparencia">
+          <p class="form-section-title">Cor da categoria</p>
+          <div class="color-row" id="cf-color-row"></div>
+          <p class="form-section-title">Organização</p>
+          <div class="field">
+            <label>Grupo</label>
+            <select class="select-like" id="cf-grupo">
+              <option value="">Sem grupo</option>
+            </select>
+            <p class="field-hint">Agrupar categorias facilita filtros futuros (ex: todas as categorias Fiscais de uma vez).</p>
+          </div>
+          <div class="field">
+            <label>Ordem de exibição</label>
+            <div style="display:flex; align-items:center; gap:14px;">
+              <input type="number" id="cf-ordem" min="1" style="width:90px; padding:11px 14px; border-radius:8px; border:1px solid var(--border-default); background:var(--bg-surface-elevated); color:var(--text-primary); font-family:inherit; font-size:14px;">
+              <label class="filter-toggle" style="margin-bottom:0;">
+                <input type="checkbox" id="cf-ordem-auto" checked>
+                <span class="filter-toggle-track"></span>
+                Ordenação automática
+              </label>
+            </div>
+          </div>
+          <p class="form-section-title">Proeminência</p>
+          <label class="filter-toggle" style="margin-bottom:0;">
+            <input type="checkbox" id="cf-destaque">
+            <span class="filter-toggle-track"></span>
+            Foco do sistema
+          </label>
+          <p class="field-hint">Categorias destacadas aparecem com maior proeminência na visão do cliente (ex: boletos).</p>
+        </div>
+
+        <!-- Configurações -->
+        <div class="config-pane" data-pane="config">
+          <p class="form-section-title">Comportamento</p>
+          <div class="switch-list" id="cf-config-list"></div>
+        </div>
+
+        <!-- Validação -->
+        <div class="config-pane" data-pane="validacao">
+          <p class="form-section-title">Tipos de arquivo aceitos</p>
+          <div class="filetype-chips" id="cf-filetype-chips"></div>
+          <p class="form-section-title" style="margin-top:22px;">Tamanho máximo por arquivo</p>
+          <div class="field" style="max-width:200px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="number" id="cf-maxsize" min="1" style="padding:11px 14px; border-radius:8px; border:1px solid var(--border-default); background:var(--bg-surface-elevated); color:var(--text-primary); font-family:inherit; font-size:14px; width:100px;">
+              <span style="color:var(--text-secondary); font-size:13px;">MB por arquivo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Automações -->
+        <div class="config-pane" data-pane="automacoes">
+          <div class="future-banner"><span id="future-banner-icon"></span> Em desenvolvimento — essas automações ainda não disparam ações reais, mas já mostram pra onde o sistema está indo.</div>
+          <p class="form-section-title">Quando um documento desta categoria for enviado</p>
+          <div class="switch-list" id="cf-automacoes-list"></div>
+        </div>
+
+        <!-- Permissões -->
+        <div class="config-pane" data-pane="permissoes">
+          <p class="form-section-title">Quem pode visualizar essa categoria</p>
+          <div class="switch-list" id="cf-permissoes-list"></div>
+        </div>
+
+        <!-- Histórico -->
+        <div class="config-pane" data-pane="historico">
+          <p class="form-section-title">Linha do tempo</p>
+          <div class="info-grid" id="cf-historico-meta" style="margin-bottom:24px;"></div>
+          <p class="form-section-title">Uso desta categoria</p>
+          <div class="info-grid" style="margin-bottom:16px;">
+            <div><p class="label">Documentos vinculados</p><p class="value" id="cf-historico-docs">—</p></div>
+            <div><p class="label">Clientes que possuem essa categoria</p><p class="value" id="cf-historico-clientes">—</p></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="config-preview">
+        <p class="panel-section-title">Pré-visualização</p>
+
+        <p class="preview-label">No painel do cliente / na lista</p>
+        <div class="card-grid" style="grid-template-columns:1fr; margin-bottom:18px;">
+          <div class="cat-card" id="cp-preview-card" style="cursor:default;">
+            <div class="cat-icon" id="cp-preview-icon"></div>
+            <p class="cat-title" id="cp-preview-title">Nome da categoria</p>
+            <p class="cat-meta" id="cp-preview-meta">0 arquivos</p>
+          </div>
+        </div>
+
+        <p class="preview-label">No seletor de upload</p>
+        <div class="select-like preview-select" id="cp-preview-select" style="margin-bottom:18px;"></div>
+
+        <p class="preview-label">Como filtro / tag</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <span class="filter-chip" id="cp-preview-chip" style="cursor:default;"></span>
+          <span class="status-badge neutral" id="cp-preview-tag"></span>
+        </div>
+      </aside>
+    </div>
+
+    <div class="config-panel-footer">
+      <button class="btn btn-secondary" id="config-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="config-save-btn">Salvar categoria</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar remoção de categoria -->
+<div class="modal-overlay" id="modal-confirm-categoria">
+  <div class="modal" style="width:400px;">
+    <div class="modal-icon-header">
+      <div class="modal-icon-badge" style="background:var(--semantic-danger);" id="confirm-cat-icon"></div>
+      <div><h3 style="margin:0;">Remover categoria</h3></div>
+    </div>
+    <p class="hint" id="confirm-cat-text" style="margin:14px 0 0;">—</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-confirm-categoria').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" style="background:var(--semantic-danger);" id="btn-confirmar-remocao-categoria">Remover</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: convidar pessoa para a equipe -->
+<div class="modal-overlay" id="modal-admin">
+  <div class="modal">
+    <div class="modal-icon-header">
+      <div class="modal-icon-badge" id="invite-header-icon"></div>
+      <div><h3 style="margin:0;">Convidar pessoa</h3><p class="hint" style="margin:0;">Ela recebe um e-mail com link de convite e define a própria senha.</p></div>
+    </div>
+    <div class="field" style="margin-top:18px;"><label>Nome completo</label><input placeholder="Ex: Ana Paula" id="admin-nome-input"></div>
+    <div class="field"><label>E-mail</label><input placeholder="pessoa@trilharcontabilidade.com" id="admin-email-input"></div>
+    <div class="field">
+      <label>Papel</label>
+      <select class="select-like" id="admin-nivel-select">
+        <option value="Administrador">Administrador — acesso completo</option>
+        <option value="Colaborador">Colaborador — sem gerenciar outros administradores</option>
+      </select>
+    </div>
+    <div class="alert-box alert-info">
+      <div class="alert-icon" id="invite-note-icon"></div>
+      <div>
+        <p class="alert-title">O convite expira em 7 dias</p>
+        <p class="alert-subtitle">Você pode reenviar ou cancelar enquanto ele estiver pendente.</p>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-admin').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-admin">Enviar convite</button>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer: detalhe do membro da equipe -->
+<div class="panel-overlay" id="panel-membro" onclick="if(event.target===this) closeMembro()">
+  <div class="side-panel">
+    <div class="side-panel-header">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div class="avatar-status-wrap">
+          <div class="avatar" id="membro-avatar" style="width:48px; height:48px; font-size:16px;"></div>
+          <span class="status-dot-ring" id="membro-status-dot"></span>
+        </div>
+        <div>
+          <h3 id="membro-nome" style="margin:0; font-size:16px;">Membro</h3>
+          <p class="hint" id="membro-email" style="margin:0;">email@exemplo.com</p>
+        </div>
+      </div>
+      <button class="panel-close" id="membro-close-btn"></button>
+    </div>
+
+    <div class="side-panel-body">
+      <p class="panel-section-title">Acesso</p>
+      <div class="field">
+        <label>Papel</label>
+        <select class="select-like" id="membro-papel-select">
+          <option value="Administrador">Administrador — acesso completo</option>
+          <option value="Colaborador">Colaborador — sem gerenciar outros administradores</option>
+        </select>
+      </div>
+      <div class="info-grid" style="margin-bottom:24px;">
+        <div><p class="label">Status</p><p class="value" id="membro-status-texto">—</p></div>
+        <div><p class="label">Último acesso</p><p class="value" id="membro-ultimo-acesso">—</p></div>
+        <div><p class="label">Membro desde</p><p class="value" id="membro-desde">—</p></div>
+        <div><p class="label">PDF de boas-vindas</p><p class="value"><a href="#" id="membro-gerar-pdf" style="color:var(--brand-navy); font-weight:700;">Gerar novamente</a></p></div>
+      </div>
+
+      <p class="panel-section-title">Segurança</p>
+      <div class="switch-item" style="border-bottom:none; padding:0 0 14px;">
+        <div class="switch-item-text"><p>Autenticação em duas etapas (2FA)</p><span>Exige um código adicional no login dessa pessoa.</span></div>
+        <label class="filter-toggle" style="margin-bottom:0;">
+          <input type="checkbox" id="membro-2fa-toggle">
+          <span class="filter-toggle-track"></span>
+        </label>
+      </div>
+      <button class="btn btn-secondary" id="membro-reset-senha-btn" style="width:100%; margin-bottom:18px;">Enviar link de redefinição de senha</button>
+
+      <p class="panel-section-title">Sessões ativas</p>
+      <div id="membro-sessoes-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px;"></div>
+
+      <p class="panel-section-title">Atividade recente</p>
+      <div id="membro-atividades-list" class="activity-feed" style="margin-bottom:24px;"></div>
+
+      <div class="danger-zone" id="membro-danger-zone">
+        <p class="panel-section-title" style="color:var(--semantic-danger);">Zona de risco</p>
+        <p class="field-hint" style="margin-bottom:12px;">Revogar o acesso encerra todas as sessões dessa pessoa imediatamente.</p>
+        <button class="btn btn-secondary" id="membro-revogar-btn" style="width:100%; color:var(--semantic-danger); border-color:var(--semantic-danger);">Revogar acesso desta pessoa</button>
+      </div>
+    </div>
+
+    <div class="side-panel-footer">
+      <button class="btn btn-secondary" id="membro-cancelar-btn">Cancelar</button>
+      <button class="btn btn-primary" id="membro-salvar-btn">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel lateral: detalhe do cliente -->
+<div class="panel-overlay" id="panel-detalhe" onclick="if(event.target===this) closeDetalhe()">
+  <div class="side-panel" id="side-panel-detalhe">
+    <div class="panel-resize-handle" id="panel-resize-handle"></div>
+    <div class="side-panel-header">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div class="avatar" id="detalhe-avatar" style="width:48px; height:48px; font-size:16px;"></div>
+        <div>
+          <h3 id="detalhe-nome" style="margin:0; font-size:16px;">Cliente</h3>
+          <p class="hint" id="detalhe-email" style="margin:0;">email@exemplo.com</p>
+        </div>
+      </div>
+      <button class="panel-close" onclick="closeDetalhe()" id="detalhe-close-btn"></button>
+    </div>
+
+    <div class="side-panel-body">
+      <p class="panel-section-title">Dados cadastrais</p>
+      <div class="info-grid">
+        <div><p class="label">Status</p><p class="value" id="detalhe-status">—</p></div>
+        <div><p class="label">CPF / CNPJ</p><p class="value" id="detalhe-doc">—</p></div>
+        <div><p class="label">Telefone</p><p class="value" id="detalhe-tel">—</p></div>
+        <div><p class="label">Data de cadastro</p><p class="value" id="detalhe-desde">—</p></div>
+        <div><p class="label">Último acesso ao portal</p><p class="value" id="detalhe-acesso">—</p></div>
+      </div>
+
+      <p class="panel-section-title">Documentos por categoria</p>
+      <div id="detalhe-categorias" style="display:flex; flex-direction:column; gap:20px;"></div>
+    </div>
+
+    <div class="side-panel-footer">
+      <button class="btn btn-secondary" onclick="closeDetalhe()">Fechar</button>
+      <button class="btn btn-primary" onclick="closeDetalhe(); openUpload();" id="detalhe-enviar-btn">Enviar documento</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  document.getElementById("btn-novo-cliente").innerHTML = ICONS.user + " Novo cliente";
+  document.getElementById("btn-upload").innerHTML = ICONS.download + " Upload de documento";
+  document.getElementById("kpi-icon-clients").innerHTML = ICONS.user;
+  document.getElementById("kpi-icon-docs").innerHTML = ICONS.doc;
+  document.getElementById("kpi-icon-warning").innerHTML = ICONS.bell;
+  document.getElementById("kpi-icon-pending").innerHTML = ICONS.contract;
+  document.getElementById("email-note-icon").innerHTML = ICONS.mail;
+  document.getElementById("detalhe-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("logout-item").innerHTML = ICONS.logout + " Sair";
+  document.getElementById("btn-novo-admin").innerHTML = ICONS.user + " Adicionar administrador";
+  document.getElementById("confirm-remove-icon").innerHTML = ICONS.x;
+  document.getElementById("doc-preview-icon").innerHTML = ICONS.doc;
+
+  function getCategoryNames() { return Categories.getAll().map(c => c.nome); }
+
+  const CLIENTS = [
+    {
+      nome: "João Silva", email: "joao@exemplo.com", doc: "123.456.789-00", tel: "(11) 98765-4321", ativo: true,
+      desde: "15/01/2026", acesso: "Hoje, 09:42", ultimoDoc: "Boleto - Junho 2026", ultimoEnvio: "Enviado hoje",
+      pendencias: [], completas: ["Boleto - Honorários", "Cartão CNPJ", "Documentos da Empresa", "Contrato", "Declarações"],
+      documentos: [
+        { nome: "Boleto - Junho 2026", categoria: "Boleto - Honorários", data: "22/06/2026" },
+        { nome: "Boleto - Maio 2026", categoria: "Boleto - Honorários", data: "20/05/2026" },
+        { nome: "Cartão CNPJ - Atualizado", categoria: "Cartão CNPJ", data: "10/03/2026" },
+        { nome: "Contrato Social", categoria: "Documentos da Empresa", data: "15/01/2026" },
+        { nome: "Contrato de Prestação de Serviços", categoria: "Contrato", data: "12/01/2026" },
+        { nome: "Declaração de Faturamento - 2025", categoria: "Declarações", data: "08/01/2026" }
+      ]
+    },
+    {
+      nome: "Maria Souza", email: "maria@exemplo.com", doc: "234.567.890-11", tel: "(11) 91234-5678", ativo: true,
+      desde: "20/02/2026", acesso: "Há 5 dias", ultimoDoc: "Cartão CNPJ - Atualizado", ultimoEnvio: "Enviado há 3 dias",
+      pendencias: ["Declarações"], completas: ["Boleto - Honorários", "Cartão CNPJ", "Documentos da Empresa", "Contrato"],
+      documentos: [
+        { nome: "Cartão CNPJ - Atualizado", categoria: "Cartão CNPJ", data: "19/06/2026" },
+        { nome: "Boleto - Junho 2026", categoria: "Boleto - Honorários", data: "05/06/2026" },
+        { nome: "Contrato Social", categoria: "Documentos da Empresa", data: "20/02/2026" },
+        { nome: "Contrato de Prestação de Serviços", categoria: "Contrato", data: "18/02/2026" }
+      ]
+    },
+    {
+      nome: "Empresa Alfa Ltda", email: "contato@alfa.com", doc: "12.345.678/0001-90", tel: "(11) 3344-5566", ativo: true,
+      desde: "10/03/2026", acesso: "Ontem", ultimoDoc: "Contrato Social", ultimoEnvio: "Enviado há 1 semana",
+      pendencias: [], completas: ["Boleto - Honorários", "Cartão CNPJ", "Documentos da Empresa", "Contrato", "Declarações"],
+      documentos: [
+        { nome: "Contrato Social", categoria: "Documentos da Empresa", data: "15/06/2026" },
+        { nome: "Boleto - Junho 2026", categoria: "Boleto - Honorários", data: "03/06/2026" },
+        { nome: "Cartão CNPJ - Atualizado", categoria: "Cartão CNPJ", data: "22/03/2026" },
+        { nome: "Contrato de Prestação de Serviços", categoria: "Contrato", data: "10/03/2026" },
+        { nome: "Declaração de Faturamento - 2025", categoria: "Declarações", data: "05/03/2026" }
+      ]
+    },
+    {
+      nome: "Carlos Pereira", email: "carlos@exemplo.com", doc: "345.678.901-22", tel: "(11) 99887-7665", ativo: false,
+      desde: "05/04/2026", acesso: "Há 3 semanas", ultimoDoc: "Boleto - Maio 2026", ultimoEnvio: "Enviado há 2 semanas",
+      pendencias: ["Contrato", "Declarações"], completas: ["Boleto - Honorários", "Cartão CNPJ", "Documentos da Empresa"],
+      documentos: [
+        { nome: "Boleto - Maio 2026", categoria: "Boleto - Honorários", data: "08/06/2026" },
+        { nome: "Cartão CNPJ - Atualizado", categoria: "Cartão CNPJ", data: "02/05/2026" },
+        { nome: "Contrato Social", categoria: "Documentos da Empresa", data: "20/04/2026" }
+      ]
+    }
+  ];
+
+  const DOC_LOG = [
+    { data: "22/06/2026", cliente: "João Silva", doc: "Boleto - Junho 2026", cat: "Boleto - Honorários", email: true, status: "vencendo", novo: true },
+    { data: "19/06/2026", cliente: "Maria Souza", doc: "Cartão CNPJ - Atualizado", cat: "Cartão CNPJ", email: false, status: "enviado", novo: true },
+    { data: "15/06/2026", cliente: "Empresa Alfa Ltda", doc: "Contrato Social", cat: "Documentos da Empresa", email: false, status: "enviado", novo: false },
+    { data: "08/06/2026", cliente: "Carlos Pereira", doc: "Boleto - Maio 2026", cat: "Boleto - Honorários", email: true, status: "vencido", novo: false },
+    { data: "20/05/2026", cliente: "João Silva", doc: "Boleto - Maio 2026", cat: "Boleto - Honorários", email: true, status: "pago", novo: false },
+    { data: "05/06/2026", cliente: "Maria Souza", doc: "Boleto - Junho 2026", cat: "Boleto - Honorários", email: true, status: "pendente", novo: false }
+  ];
+
+  const STATUS_LABELS = {
+    vencido: { label: "Vencido", cls: "danger" },
+    vencendo: { label: "Vencendo", cls: "warning" },
+    pendente: { label: "Pendente", cls: "neutral" },
+    pago: { label: "Pago", cls: "ok" },
+    enviado: { label: "Enviado", cls: "neutral" }
+  };
+
+  function initials(name) {
+    return name.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+
+  document.getElementById("search-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("cliente-note-icon").innerHTML = ICONS.mail;
+
+  // Preview de iniciais ao cadastrar cliente
+  const clientePreview = document.getElementById("novo-cliente-preview");
+  clientePreview.innerHTML = ICONS.user;
+  document.getElementById("novo-cliente-nome").addEventListener("input", function () {
+    if (clientePreview.dataset.hasPhoto) return;
+    const nome = this.value.trim();
+    clientePreview.innerHTML = nome ? initials(nome) : ICONS.user;
+    clientePreview.classList.toggle("has-initials", !!nome);
+  });
+
+  // Upload de foto/logo do cliente
+  document.getElementById("avatar-upload-badge").innerHTML = ICONS.camera;
+  const fotoInput = document.getElementById("novo-cliente-foto");
+  document.getElementById("avatar-upload-trigger").addEventListener("click", () => fotoInput.click());
+  fotoInput.addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      clientePreview.style.backgroundImage = `url(${e.target.result})`;
+      clientePreview.innerHTML = "";
+      clientePreview.dataset.hasPhoto = "1";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const tbody = document.getElementById("clients-tbody");
+  const noResults = document.getElementById("no-results");
+
+  function renderClients(filter) {
+    const term = (filter || "").trim().toLowerCase();
+    tbody.innerHTML = "";
+    let visible = 0;
+
+    CLIENTS.forEach((c, i) => {
+      const matches = !term ||
+        c.nome.toLowerCase().includes(term) ||
+        c.email.toLowerCase().includes(term) ||
+        c.doc.toLowerCase().includes(term);
+      if (!matches) return;
+      visible++;
+
+      const row = document.createElement("tr");
+      row.className = "row-clickable";
+      const pendTag = c.pendencias.length === 0
+        ? `<span class="pending-indicator ok" title="Todas as categorias enviadas">${ICONS.check}</span>`
+        : `<span class="pending-indicator warn" title="Pendente: ${c.pendencias.join(', ')}">${ICONS.bell}<strong>${c.pendencias.length}</strong></span>`;
+      const statusTag = c.ativo
+        ? `<span class="status-tag active"><span class="status-dot"></span>Ativo</span>`
+        : `<span class="status-tag inactive"><span class="status-dot"></span>Inativo</span>`;
+      row.innerHTML = `
+        <td>
+          <div class="client-cell">
+            <div class="avatar">${initials(c.nome)}</div>
+            <div>
+              <span class="client-link">${c.nome}</span>
+              <div class="client-doc">${c.doc}</div>
+            </div>
+          </div>
+        </td>
+        <td>${c.email}</td>
+        <td>${statusTag}</td>
+        <td><div class="last-doc"><strong>${c.ultimoDoc}</strong><span>${c.ultimoEnvio}</span></div></td>
+        <td>${pendTag}</td>
+        <td style="text-align:right;"><button class="icon-btn" type="button" title="Enviar documento"></button></td>
+      `;
+      const sendBtn = row.querySelector(".icon-btn");
+      sendBtn.innerHTML = ICONS.download;
+      sendBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openUpload();
+      });
+      row.addEventListener("click", () => openDetalhe(i));
+      tbody.appendChild(row);
+    });
+
+    noResults.style.display = visible === 0 ? "block" : "none";
+    tbody.parentElement.style.display = visible === 0 ? "none" : "table";
+  }
+  renderClients("");
+
+  document.getElementById("client-search").addEventListener("input", (e) => renderClients(e.target.value));
+
+  const docsTbody = document.getElementById("docs-tbody");
+  const docsNoResults = document.getElementById("docs-no-results");
+  const docsFilterCliente = document.getElementById("docs-filter-cliente");
+  const docsFilterCat = document.getElementById("docs-filter-cat");
+  const docsFilterStatus = document.getElementById("docs-filter-status");
+  const docsFilterDateDe = document.getElementById("docs-filter-date-de");
+  const docsFilterDateAte = document.getElementById("docs-filter-date-ate");
+  const docsFilterNovidades = document.getElementById("docs-filter-novidades");
+  const docsSearchInput = document.getElementById("docs-search-input");
+  const docsFilterSummary = document.getElementById("docs-filter-summary");
+  let periodPreset = "";
+  let docsVisiveisAtual = [];
+
+  function brDateToISO(br) {
+    const [d, m, y] = br.split("/");
+    return `${y}-${m}-${d}`;
+  }
+  function isoToBr(iso) {
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  function renderDocs() {
+    const clienteFiltro = docsFilterCliente.value;
+    const catFiltro = docsFilterCat.value;
+    const statusFiltro = docsFilterStatus.value;
+    const de = docsFilterDateDe.value;
+    const ate = docsFilterDateAte.value;
+    const termo = docsSearchInput.value.trim().toLowerCase();
+    const soNovidades = docsFilterNovidades.checked;
+    docsTbody.innerHTML = "";
+    let visible = 0;
+    const visiveis = [];
+
+    DOC_LOG.forEach(d => {
+      if (clienteFiltro && d.cliente !== clienteFiltro) return;
+      if (catFiltro && d.cat !== catFiltro) return;
+      if (statusFiltro && d.status !== statusFiltro) return;
+      if (soNovidades && !d.novo) return;
+      if (termo && !(d.cliente.toLowerCase().includes(termo) || d.doc.toLowerCase().includes(termo))) return;
+      const dataISO = brDateToISO(d.data);
+      if (de && dataISO < de) return;
+      if (ate && dataISO > ate) return;
+      visible++;
+      visiveis.push(d);
+
+      const st = STATUS_LABELS[d.status] || STATUS_LABELS.enviado;
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${d.data}${d.novo ? '<span class="unseen-tag" style="margin-left:6px;">novo</span>' : ""}</td>
+        <td>${d.cliente}</td>
+        <td>${d.doc}</td>
+        <td>${d.cat}</td>
+        <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+        <td style="text-align:right; position:relative;">
+          <button class="icon-btn doc-menu-btn" title="Mais ações"></button>
+          <div class="dropdown-panel doc-menu-panel">
+            <div class="dropdown-item doc-action-view">${ICONS.eye} Visualizar</div>
+            <div class="dropdown-item doc-action-download">${ICONS.download} Baixar novamente</div>
+            <div class="dropdown-item doc-action-resend">${ICONS.mail} Reenviar ao cliente</div>
+            ${d.status !== "pago" && d.status !== "enviado" ? `<div class="dropdown-divider"></div><div class="dropdown-item doc-action-paid">${ICONS.check} Marcar como pago</div>` : ""}
+          </div>
+        </td>
+      `;
+      const menuBtn = row.querySelector(".doc-menu-btn");
+      const menuPanel = row.querySelector(".doc-menu-panel");
+      menuBtn.innerHTML = ICONS.kebab;
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = menuPanel.classList.contains("open");
+        document.querySelectorAll(".doc-menu-panel.open").forEach(p => p.classList.remove("open"));
+        if (!isOpen) menuPanel.classList.add("open");
+      });
+      row.querySelector(".doc-action-view").addEventListener("click", () => { openDocPreview(d); menuPanel.classList.remove("open"); });
+      row.querySelector(".doc-action-download").addEventListener("click", (e) => { simulateDownload(menuBtn, d.doc); menuPanel.classList.remove("open"); });
+      row.querySelector(".doc-action-resend").addEventListener("click", () => {
+        menuPanel.classList.remove("open");
+        showToast("Documento reenviado por e-mail para " + d.cliente);
+      });
+      const paidAction = row.querySelector(".doc-action-paid");
+      if (paidAction) {
+        paidAction.addEventListener("click", () => {
+          d.status = "pago";
+          menuPanel.classList.remove("open");
+          renderDocs();
+          showToast(d.doc + " marcado como pago");
+        });
+      }
+      docsTbody.appendChild(row);
+    });
+
+    docsVisiveisAtual = visiveis;
+    docsNoResults.style.display = visible === 0 ? "block" : "none";
+    docsTbody.parentElement.style.display = visible === 0 ? "none" : "table";
+    renderFilterSummary(visible);
+  }
+
+  function renderFilterSummary(visible) {
+    docsFilterSummary.innerHTML = "";
+    const chips = [];
+    if (docsFilterCliente.value) {
+      chips.push({ label: "Cliente: " + docsFilterCliente.value, onClear: () => { docsFilterCliente.value = ""; renderDocs(); } });
+    }
+    if (docsFilterCat.value) {
+      chips.push({ label: "Tipo: " + docsFilterCat.value, onClear: () => { docsFilterCat.value = ""; renderDocs(); } });
+    }
+    if (docsFilterStatus.value) {
+      chips.push({ label: "Status: " + STATUS_LABELS[docsFilterStatus.value].label, onClear: () => { docsFilterStatus.value = ""; renderDocs(); } });
+    }
+    if (docsFilterNovidades.checked) {
+      chips.push({ label: "Só novidades", onClear: () => { docsFilterNovidades.checked = false; renderDocs(); } });
+    }
+    if (docsFilterDateDe.value || docsFilterDateAte.value) {
+      const de = docsFilterDateDe.value ? isoToBr(docsFilterDateDe.value) : "início";
+      const ate = docsFilterDateAte.value ? isoToBr(docsFilterDateAte.value) : "hoje";
+      chips.push({ label: "Período: " + de + " até " + ate, onClear: () => { docsFilterDateDe.value = ""; docsFilterDateAte.value = ""; clearPeriodPreset(); renderDocs(); } });
+    }
+    if (chips.length === 0) return;
+
+    chips.forEach(chip => {
+      const el = document.createElement("span");
+      el.className = "filter-chip";
+      el.innerHTML = `${chip.label}<button type="button">${ICONS.x}</button>`;
+      el.querySelector("button").addEventListener("click", chip.onClear);
+      docsFilterSummary.appendChild(el);
+    });
+    const count = document.createElement("span");
+    count.className = "filter-results-count";
+    count.textContent = visible + (visible === 1 ? " resultado" : " resultados");
+    docsFilterSummary.appendChild(count);
+  }
+
+  function populateDocsFilterCategories() {
+    const atual = docsFilterCat.value;
+    docsFilterCat.innerHTML = '<option value="">Todos os tipos</option>';
+    Categories.getAll().forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.nome;
+      opt.textContent = c.nome;
+      docsFilterCat.appendChild(opt);
+    });
+    docsFilterCat.value = atual;
+  }
+
+  function populateDocsFilterClientes() {
+    const atual = docsFilterCliente.value;
+    docsFilterCliente.innerHTML = '<option value="">Todos os clientes</option>';
+    CLIENTS.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.nome;
+      opt.textContent = c.nome;
+      docsFilterCliente.appendChild(opt);
+    });
+    docsFilterCliente.value = atual;
+  }
+
+  // Presets de período: clique aplica um intervalo, sem digitar duas datas à mão
+  function clearPeriodPreset() {
+    periodPreset = "";
+    document.querySelectorAll(".period-chip").forEach(c => c.classList.remove("active"));
+    document.getElementById("custom-date-range").style.display = "none";
+  }
+  document.querySelectorAll(".period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const preset = chip.dataset.preset;
+      document.querySelectorAll(".period-chip").forEach(c => c.classList.remove("active"));
+      if (periodPreset === preset) {
+        clearPeriodPreset();
+        docsFilterDateDe.value = "";
+        docsFilterDateAte.value = "";
+        renderDocs();
+        return;
+      }
+      periodPreset = preset;
+      chip.classList.add("active");
+      if (preset === "custom") {
+        document.getElementById("custom-date-range").style.display = "flex";
+        return;
+      }
+      document.getElementById("custom-date-range").style.display = "none";
+      const hoje = new Date(2026, 5, 22);
+      const inicio = new Date(hoje);
+      inicio.setDate(inicio.getDate() - parseInt(preset, 10));
+      docsFilterDateDe.value = inicio.toISOString().slice(0, 10);
+      docsFilterDateAte.value = hoje.toISOString().slice(0, 10);
+      renderDocs();
+    });
+  });
+
+  populateDocsFilterCategories();
+  populateDocsFilterClientes();
+  renderDocs();
+  docsFilterCliente.addEventListener("change", renderDocs);
+  docsFilterCat.addEventListener("change", renderDocs);
+  docsFilterStatus.addEventListener("change", renderDocs);
+  docsFilterNovidades.addEventListener("change", renderDocs);
+  docsSearchInput.addEventListener("input", renderDocs);
+  docsFilterDateDe.addEventListener("change", renderDocs);
+  docsFilterDateAte.addEventListener("change", renderDocs);
+  document.getElementById("docs-filter-clear").addEventListener("click", () => {
+    docsFilterCliente.value = "";
+    docsFilterCat.value = "";
+    docsFilterStatus.value = "";
+    docsFilterNovidades.checked = false;
+    docsSearchInput.value = "";
+    docsFilterDateDe.value = "";
+    docsFilterDateAte.value = "";
+    clearPeriodPreset();
+    renderDocs();
+  });
+  document.getElementById("docs-search-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("docs-download-all").addEventListener("click", function () {
+    const btn = this;
+    if (docsVisiveisAtual.length === 0) {
+      showToast("Nenhum documento para baixar com esses filtros");
+      return;
+    }
+    const original = btn.textContent;
+    const qtd = docsVisiveisAtual.length;
+    btn.disabled = true;
+    btn.innerHTML = ICONS.spinner + " Preparando " + qtd + "...";
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = original;
+      showToast(qtd + (qtd === 1 ? " documento baixado" : " documentos baixados") + (docsFilterCliente.value ? " de " + docsFilterCliente.value : ""));
+    }, 900);
+  });
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".doc-menu-panel.open, .team-menu-panel.open").forEach(p => p.classList.remove("open"));
+  });
+
+  // ---------- Categorias de documento (com permissões por papel) ----------
+  const ICON_LIBRARY = [
+    { key: "doc", label: "Documento" },
+    { key: "card", label: "Cartão" },
+    { key: "building", label: "Empresa / Prédio" },
+    { key: "contract", label: "Contrato" },
+    { key: "chart", label: "Gráfico / Relatório" },
+    { key: "bell", label: "Sino / Alerta" },
+    { key: "mail", label: "E-mail" },
+    { key: "user", label: "Pessoa" },
+    { key: "check", label: "Concluído" },
+    { key: "lock", label: "Cadeado" },
+    { key: "eye", label: "Visualizar" },
+    { key: "download", label: "Download" },
+    { key: "camera", label: "Câmera / Foto" },
+    { key: "phone", label: "Telefone" }
+  ];
+  const COLOR_HEX = { navy: "#1F2D6E", gold: "#B8860B", green: "#1E7A4C", red: "#B3261E", purple: "#6B3FA0", teal: "#137A6B", gray: "#5B6072" };
+  const CONFIG_SWITCHES = [
+    { key: "obrigatoria", label: "Categoria obrigatória", desc: "O cliente precisa ter ao menos 1 documento aqui." },
+    { key: "exibirUpload", label: "Exibir no upload do cliente", desc: "Aparece como opção quando você envia um documento." },
+    { key: "disponivelAdmin", label: "Disponível para administradores", desc: "" },
+    { key: "disponivelColaborador", label: "Disponível para colaboradores", desc: "" },
+    { key: "multiplosArquivos", label: "Aceita múltiplos arquivos", desc: "Permite mais de um arquivo nesta categoria." },
+    { key: "permiteSubstituicao", label: "Permite substituição de documentos", desc: "Um novo upload pode substituir o anterior." },
+    { key: "exigirVersaoRecente", label: "Exigir versão mais recente", desc: "O cliente só vê o último arquivo enviado." }
+  ];
+  const AUTOMATION_SWITCHES = [
+    { key: "notificarAdmin", label: "Notificar administrador", desc: "" },
+    { key: "notificarCliente", label: "Notificar cliente", desc: "" },
+    { key: "marcarTarefa", label: "Marcar tarefa como concluída", desc: "" },
+    { key: "atualizarStatus", label: "Atualizar status do cliente", desc: "" },
+    { key: "gerarHistorico", label: "Gerar atividade no histórico", desc: "" }
+  ];
+  const PERMISSION_SWITCHES = [
+    { key: "administrador", label: "Administrador", desc: "" },
+    { key: "colaborador", label: "Colaborador", desc: "" },
+    { key: "cliente", label: "Cliente (portal)", desc: "" }
+  ];
+
+  let selectedIcon = "doc";
+  let selectedColor = "navy";
+  let selectedFileTypes = ["PDF"];
+  let editingCategorySlug = null;
+
+  function populateUploadCategorySelect() {
+    const select = document.getElementById("cat-select");
+    const atual = select.value;
+    select.innerHTML = "";
+    Categories.getAll().forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.slug;
+      opt.textContent = c.nome;
+      select.appendChild(opt);
+    });
+    if (atual) select.value = atual;
+    toggleDueDate();
+  }
+
+  function countDocsForCategory(nome) {
+    let total = 0;
+    CLIENTS.forEach(c => (c.documentos || []).forEach(d => { if (d.categoria === nome) total++; }));
+    DOC_LOG.forEach(d => { if (d.cat === nome) total++; });
+    return total;
+  }
+
+  function applyRoleUI() {
+    const role = Role.get();
+    const info = Role.info();
+    document.querySelectorAll(".role-option").forEach(el => {
+      el.querySelector(".role-check").innerHTML = el.dataset.role === role ? ICONS.check : "";
+    });
+
+    const btnNova = document.getElementById("btn-nova-categoria");
+    const tip = document.getElementById("btn-nova-categoria-tip");
+    if (info.somenteLeitura) {
+      btnNova.disabled = true;
+      btnNova.innerHTML = ICONS.lock + " Nova categoria";
+      tip.style.display = "block";
+    } else {
+      btnNova.disabled = false;
+      btnNova.innerHTML = ICONS.doc + " Nova categoria";
+      tip.style.display = "none";
+    }
+
+    const banner = document.getElementById("categorias-readonly-banner");
+    if (info.somenteLeitura) {
+      banner.innerHTML = `${ICONS.lock} Você está vendo isso com acesso de <strong>Usuário comum</strong> — somente leitura. Fale com um administrador para criar ou editar categorias.`;
+      banner.style.display = "flex";
+    } else {
+      banner.style.display = "none";
+    }
+  }
+
+  document.querySelectorAll(".role-option").forEach(el => {
+    el.addEventListener("click", () => {
+      Role.set(el.dataset.role);
+      applyRoleUI();
+      renderCategoriesGrid();
+      showToast("Visualizando como: " + ROLES[el.dataset.role].label);
+    });
+  });
+
+  function renderCategoriesGrid() {
+    const grid = document.getElementById("categories-grid");
+    grid.innerHTML = "";
+    Categories.getAll().slice().sort((a, b) => (a.ordem || 999) - (b.ordem || 999)).forEach(c => {
+      const podeEditar = Role.podeEditarCategoria(c);
+      const qtdDocs = countDocsForCategory(c.nome);
+      const podeRemover = Role.podeRemoverCategoria(c, qtdDocs > 0);
+      const hex = COLOR_HEX[c.cor] || COLOR_HEX.navy;
+
+      const card = document.createElement("div");
+      card.className = "cat-card cat-admin-card" + (podeEditar || podeRemover ? " cat-editable" : " cat-locked");
+      card.style.cursor = "default";
+      card.innerHTML = `
+        <div class="cat-icon" style="color:${hex}; background:color-mix(in srgb, ${hex} 14%, var(--bg-surface-elevated));">${ICONS[c.icon] || ICONS.doc}</div>
+        <p class="cat-title" data-slug="${c.slug}">${c.nome}</p>
+        <p class="cat-meta">${c.grupo ? c.grupo + " · " : ""}${qtdDocs} ${qtdDocs === 1 ? "documento" : "documentos"}</p>
+        <div class="cat-admin-actions">
+          ${c.padrao ? '<span class="cat-admin-tag">Padrão</span>' : ""}
+          ${podeEditar ? `<button class="cat-action-btn cat-action-edit" title="Configurar categoria">${ICONS.edit}</button>` : ""}
+          ${podeRemover ? `<button class="cat-action-btn cat-action-remove" title="Remover">${ICONS.trash}</button>` : (!c.padrao ? `<span class="cat-lock-hint" title="${qtdDocs > 0 ? 'Há documentos usando essa categoria — só o proprietário pode forçar a remoção' : 'Seu nível de acesso não permite remover categorias'}">${ICONS.lock}</span>` : "")}
+        </div>
+      `;
+
+      // Edição passa inteira pelo painel de configuração — não mais inline,
+      // pra ter um único lugar consistente onde toda categoria é editada.
+      const editBtn = card.querySelector(".cat-action-edit");
+      if (editBtn) {
+        editBtn.addEventListener("click", () => openCategoryPanel(c));
+      }
+
+      const removeBtn = card.querySelector(".cat-action-remove");
+      if (removeBtn) {
+        removeBtn.addEventListener("click", () => confirmRemoveCategoria(c, qtdDocs));
+      }
+
+      grid.appendChild(card);
+    });
+  }
+  renderCategoriesGrid();
+  applyRoleUI();
+
+  function confirmRemoveCategoria(cat, qtdDocs) {
+    document.getElementById("confirm-cat-icon").innerHTML = ICONS.trash;
+    const textEl = document.getElementById("confirm-cat-text");
+    if (qtdDocs > 0) {
+      textEl.innerHTML = `<strong>${cat.nome}</strong> tem ${qtdDocs} documento(s) vinculado(s). Removê-la não exclui os arquivos, mas eles deixam de ter uma categoria visível. Como proprietário, você pode forçar a remoção mesmo assim.`;
+    } else {
+      textEl.innerHTML = `Tem certeza que deseja remover <strong>${cat.nome}</strong>? Ela deixa de aparecer no upload e no painel dos clientes imediatamente.`;
+    }
+    document.getElementById("modal-confirm-categoria").classList.add("open");
+    document.getElementById("btn-confirmar-remocao-categoria").onclick = () => {
+      Categories.remove(cat.slug);
+      renderCategoriesGrid();
+      populateUploadCategorySelect();
+      populateDocsFilterCategories();
+      document.getElementById("modal-confirm-categoria").classList.remove("open");
+      showToast("Categoria removida");
+    };
+  }
+
+  // ---------- Painel de configuração de categoria (Geral / Aparência / Configurações / Validação / Automações / Permissões / Histórico) ----------
+  function switchConfigTab(name) {
+    document.querySelectorAll(".config-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+    document.querySelectorAll(".config-pane").forEach(p => p.classList.toggle("active", p.dataset.pane === name));
+  }
+  document.querySelectorAll(".config-tab").forEach(tab => {
+    tab.addEventListener("click", () => switchConfigTab(tab.dataset.tab));
+  });
+
+  function renderIconGrid(filtro) {
+    const wrap = document.getElementById("cf-icon-grid");
+    wrap.innerHTML = "";
+    const termo = (filtro || "").trim().toLowerCase();
+    ICON_LIBRARY.filter(i => !termo || i.label.toLowerCase().includes(termo)).forEach(i => {
+      const opt = document.createElement("div");
+      opt.className = "icon-picker-option" + (i.key === selectedIcon ? " selected" : "");
+      opt.title = i.label;
+      opt.innerHTML = ICONS[i.key];
+      opt.addEventListener("click", () => {
+        selectedIcon = i.key;
+        wrap.querySelectorAll(".icon-picker-option").forEach(el => el.classList.remove("selected"));
+        opt.classList.add("selected");
+        updateConfigPreview();
+      });
+      wrap.appendChild(opt);
+    });
+  }
+  document.getElementById("icon-search-icon").innerHTML = '<svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("cf-icon-search").addEventListener("input", (e) => renderIconGrid(e.target.value));
+
+  function renderColorRow() {
+    const wrap = document.getElementById("cf-color-row");
+    wrap.innerHTML = "";
+    CATEGORY_COLORS.forEach(cor => {
+      const sw = document.createElement("div");
+      sw.className = "color-swatch" + (cor === selectedColor ? " selected" : "");
+      sw.dataset.color = cor;
+      sw.addEventListener("click", () => {
+        selectedColor = cor;
+        wrap.querySelectorAll(".color-swatch").forEach(el => el.classList.remove("selected"));
+        sw.classList.add("selected");
+        updateConfigPreview();
+      });
+      wrap.appendChild(sw);
+    });
+  }
+
+  function renderFiletypeChips() {
+    const wrap = document.getElementById("cf-filetype-chips");
+    wrap.innerHTML = "";
+    CATEGORY_FILE_TYPES.forEach(tipo => {
+      const chip = document.createElement("div");
+      chip.className = "filetype-chip" + (selectedFileTypes.includes(tipo) ? " selected" : "");
+      chip.textContent = tipo;
+      chip.addEventListener("click", () => {
+        if (selectedFileTypes.includes(tipo)) {
+          if (selectedFileTypes.length === 1) return; // sempre pelo menos 1 tipo aceito
+          selectedFileTypes = selectedFileTypes.filter(t => t !== tipo);
+        } else {
+          selectedFileTypes.push(tipo);
+        }
+        renderFiletypeChips();
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  function renderSwitchList(containerId, items, state, disabledAll) {
+    const wrap = document.getElementById(containerId);
+    wrap.innerHTML = "";
+    items.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "switch-item" + (disabledAll ? " disabled" : "");
+      const checked = state && state[item.key];
+      row.innerHTML = `
+        <div class="switch-item-text"><p>${item.label}</p>${item.desc ? `<span>${item.desc}</span>` : ""}</div>
+        <label class="filter-toggle" style="margin-bottom:0;">
+          <input type="checkbox" id="${containerId}-${item.key}" ${checked ? "checked" : ""} ${disabledAll ? "disabled" : ""}>
+          <span class="filter-toggle-track"></span>
+        </label>
+      `;
+      wrap.appendChild(row);
+    });
+  }
+  function collectSwitchState(containerId, items) {
+    const out = {};
+    items.forEach(item => {
+      const input = document.getElementById(containerId + "-" + item.key);
+      out[item.key] = input ? input.checked : false;
+    });
+    return out;
+  }
+
+  function updateConfigPreview() {
+    const nome = document.getElementById("cf-nome").value.trim() || "Nome da categoria";
+    const hex = COLOR_HEX[selectedColor] || COLOR_HEX.navy;
+    const iconHtml = ICONS[selectedIcon] || ICONS.doc;
+
+    const previewIcon = document.getElementById("cp-preview-icon");
+    previewIcon.innerHTML = iconHtml;
+    previewIcon.style.color = hex;
+    previewIcon.style.background = `color-mix(in srgb, ${hex} 14%, var(--bg-surface))`;
+
+    document.getElementById("cp-preview-title").textContent = nome;
+    document.getElementById("cp-preview-meta").textContent = "0 documentos";
+
+    document.getElementById("cp-preview-select").innerHTML = `<span style="color:${hex}; display:flex;">${iconHtml}</span> ${nome}`;
+    document.getElementById("cp-preview-chip").innerHTML = `Tipo: ${nome}`;
+
+    const tag = document.getElementById("cp-preview-tag");
+    tag.textContent = nome;
+    tag.style.color = hex;
+    tag.style.background = `color-mix(in srgb, ${hex} 14%, var(--bg-surface-elevated))`;
+  }
+  document.getElementById("cf-nome").addEventListener("input", updateConfigPreview);
+
+  document.getElementById("cf-ordem-auto").addEventListener("change", function () {
+    document.getElementById("cf-ordem").disabled = this.checked;
+  });
+
+  CATEGORY_GROUPS.forEach(g => {
+    const opt = document.createElement("option");
+    opt.value = g; opt.textContent = g;
+    document.getElementById("cf-grupo").appendChild(opt);
+  });
+
+  function openCategoryPanel(cat) {
+    if (Role.info().somenteLeitura) return;
+    editingCategorySlug = cat ? cat.slug : null;
+    const data = cat || Categories.blank();
+
+    document.getElementById("config-panel-title").textContent = cat ? "Configurar categoria" : "Nova categoria";
+    document.getElementById("config-panel-subtitle").textContent = cat ? "Altere qualquer aspecto desta categoria — as mudanças valem pra todos os clientes." : "Configure todos os aspectos desta categoria de documento.";
+    document.getElementById("config-save-btn").textContent = cat ? "Salvar alterações" : "Criar categoria";
+
+    selectedIcon = data.icon || "doc";
+    selectedColor = data.cor || "navy";
+    selectedFileTypes = (data.validacao && data.validacao.tipos && data.validacao.tipos.length) ? data.validacao.tipos.slice() : ["PDF"];
+
+    document.getElementById("cf-nome").value = data.nome || "";
+    document.getElementById("cf-descricao").value = data.descricao || "";
+    document.getElementById("cf-icon-search").value = "";
+    renderIconGrid("");
+    renderColorRow();
+    document.getElementById("cf-grupo").value = data.grupo || "";
+    document.getElementById("cf-ordem-auto").checked = !cat;
+    document.getElementById("cf-ordem").value = data.ordem || 999;
+    document.getElementById("cf-ordem").disabled = !cat;
+    document.getElementById("cf-destaque").checked = data.destaque || false;
+    document.getElementById("cf-maxsize").value = (data.validacao && data.validacao.tamanhoMaximoMb) || 10;
+    renderFiletypeChips();
+
+    renderSwitchList("cf-config-list", CONFIG_SWITCHES, data.config, false);
+    renderSwitchList("cf-automacoes-list", AUTOMATION_SWITCHES, data.automacoes, true);
+    renderSwitchList("cf-permissoes-list", PERMISSION_SWITCHES, data.permissoes, false);
+
+    const clientesComCategoria = cat ? CLIENTS.filter(c => (c.documentos || []).some(d => d.categoria === cat.nome)).map(c => c.nome) : [];
+    document.getElementById("cf-historico-meta").innerHTML = `
+      <div><p class="label">Criada por</p><p class="value">${data.meta.criadaPor}</p></div>
+      <div><p class="label">Criada em</p><p class="value">${data.meta.criadaEm}</p></div>
+      <div><p class="label">Última alteração</p><p class="value">${data.meta.atualizadaEm}</p></div>
+    `;
+    const qtdDocsHist = cat ? countDocsForCategory(cat.nome) : 0;
+    document.getElementById("cf-historico-docs").textContent = qtdDocsHist + (qtdDocsHist === 1 ? " documento" : " documentos");
+    document.getElementById("cf-historico-clientes").textContent = clientesComCategoria.length ? clientesComCategoria.join(", ") : "Nenhum cliente ainda";
+
+    switchConfigTab("geral");
+    updateConfigPreview();
+    document.getElementById("modal-categoria").classList.add("open");
+  }
+  function closeCategoryPanel() {
+    document.getElementById("modal-categoria").classList.remove("open");
+  }
+  document.getElementById("config-close-btn").addEventListener("click", closeCategoryPanel);
+  document.getElementById("config-cancel-btn").addEventListener("click", closeCategoryPanel);
+  document.getElementById("config-header-icon").innerHTML = ICONS.doc;
+  document.getElementById("config-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("tab-icon-geral").innerHTML = "";
+  document.getElementById("future-banner-icon").innerHTML = ICONS.bell;
+
+  document.getElementById("btn-nova-categoria").addEventListener("click", () => openCategoryPanel(null));
+
+  document.getElementById("config-save-btn").addEventListener("click", function () {
+    const nomeInput = document.getElementById("cf-nome");
+    const nome = nomeInput.value.trim();
+    if (!nome) {
+      switchConfigTab("geral");
+      nomeInput.focus();
+      return;
+    }
+    const fields = {
+      nome,
+      descricao: document.getElementById("cf-descricao").value.trim(),
+      icon: selectedIcon,
+      cor: selectedColor,
+      grupo: document.getElementById("cf-grupo").value,
+      ordem: document.getElementById("cf-ordem-auto").checked ? 999 : (parseInt(document.getElementById("cf-ordem").value, 10) || 999),
+      destaque: document.getElementById("cf-destaque").checked,
+      config: collectSwitchState("cf-config-list", CONFIG_SWITCHES),
+      automacoes: collectSwitchState("cf-automacoes-list", AUTOMATION_SWITCHES),
+      permissoes: collectSwitchState("cf-permissoes-list", PERMISSION_SWITCHES),
+      validacao: { tipos: selectedFileTypes.slice(), tamanhoMaximoMb: parseInt(document.getElementById("cf-maxsize").value, 10) || 10 }
+    };
+
+    if (editingCategorySlug) {
+      Categories.update(editingCategorySlug, fields);
+      showToast('Categoria "' + nome + '" atualizada');
+    } else {
+      const criada = Categories.create(fields);
+      if (!criada) {
+        showToast("Já existe uma categoria com esse nome");
+        return;
+      }
+      showToast('Categoria "' + nome + '" criada — já disponível para todos os clientes');
+    }
+    renderCategoriesGrid();
+    populateUploadCategorySelect();
+    populateDocsFilterCategories();
+    closeCategoryPanel();
+  });
+
+  populateUploadCategorySelect();
+
+  function openDocPreview(d) {
+    document.getElementById("doc-preview-name").textContent = d.doc;
+    document.getElementById("doc-preview-meta").textContent = d.cliente + " · " + d.cat + " · Enviado em " + d.data;
+    const btn = document.getElementById("doc-preview-download-btn");
+    btn.innerHTML = ICONS.download + " Baixar";
+    btn.onclick = () => simulateDownload(btn, d.doc);
+    document.getElementById("modal-doc-preview").classList.add("open");
+  }
+
+  // Data de hoje no cabeçalho
+  const hoje = new Date(2026, 5, 22);
+  document.getElementById("today-eyebrow").textContent =
+    "Administração · " + hoje.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+  // ---------- Calendário de vencimentos ----------
+  const BOLETOS = [
+    { data: new Date(2026, 4, 28), cliente: "João Silva", doc: "Boleto - Maio 2026", pago: true },
+    { data: new Date(2026, 5, 26), cliente: "João Silva", doc: "Boleto - Junho 2026" },
+    { data: new Date(2026, 5, 30), cliente: "Empresa Alfa Ltda", doc: "Boleto - Junho 2026" },
+    { data: new Date(2026, 6, 5), cliente: "Maria Souza", doc: "Boleto - Julho 2026" },
+    { data: new Date(2026, 6, 10), cliente: "Carlos Pereira", doc: "Boleto - Julho 2026" },
+    { data: new Date(2026, 6, 22), cliente: "João Silva", doc: "Boleto - Julho 2026" }
+  ];
+
+  function sameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  let calYear = hoje.getFullYear();
+  let calMonth = hoje.getMonth();
+
+  function renderCalendar() {
+    const label = new Date(calYear, calMonth, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    document.getElementById("cal-month-label").textContent = label.charAt(0).toUpperCase() + label.slice(1);
+
+    const grid = document.getElementById("calendar-grid");
+    grid.innerHTML = "";
+    const firstWeekday = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+    for (let i = 0; i < firstWeekday; i++) {
+      const empty = document.createElement("div");
+      empty.className = "cal-cell empty";
+      grid.appendChild(empty);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(calYear, calMonth, d);
+      const cell = document.createElement("div");
+      cell.className = "cal-cell";
+      cell.innerHTML = `<span class="cal-daynum">${d}</span>`;
+
+      const boletosDoDia = BOLETOS.filter(b => !b.pago && sameDay(b.data, date));
+      if (sameDay(date, hoje)) cell.classList.add("today");
+      if (boletosDoDia.length > 0) {
+        cell.classList.add("due");
+        cell.title = boletosDoDia.map(b => b.cliente + " — " + b.doc).join("\n");
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  function renderUpcoming() {
+    const list = document.getElementById("upcoming-list");
+    list.innerHTML = "";
+    const futuros = BOLETOS
+      .filter(b => !b.pago && b.data >= hoje)
+      .sort((a, b) => a.data - b.data)
+      .slice(0, 5);
+
+    if (futuros.length === 0) {
+      list.innerHTML = '<p class="upcoming-empty">Nenhum boleto programado.</p>';
+      return;
+    }
+
+    futuros.forEach(b => {
+      const dias = Math.round((b.data - hoje) / 86400000);
+      const urgente = dias <= 7;
+      const quando = dias === 0 ? "Hoje" : "Em " + dias + " dias";
+      const dia = b.data.toLocaleDateString("pt-BR", { day: "2-digit" });
+      const mes = b.data.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+      const item = document.createElement("div");
+      item.className = "due-item" + (urgente ? " urgent" : "");
+      item.innerHTML = `
+        <div class="due-item-date"><strong>${dia}</strong><span>${mes}</span></div>
+        <div class="due-item-info"><p>${b.cliente}</p><span>${b.doc}</span></div>
+        <span class="due-item-badge">${quando}</span>
+      `;
+      item.addEventListener("click", () => switchTab("documentos"));
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById("cal-prev").innerHTML = ICONS.back;
+  document.getElementById("cal-next").innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
+  document.getElementById("cal-prev").addEventListener("click", () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  document.getElementById("cal-next").addEventListener("click", () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+
+  renderCalendar();
+  renderUpcoming();
+
+  // "Precisa de atenção" — clientes com pendências + boletos vencendo
+  const totalPendencias = CLIENTS.reduce((soma, c) => soma + c.pendencias.length, 0);
+  document.getElementById("kpi-pending-trend").textContent = totalPendencias + " categorias pendentes no total";
+
+  const attentionList = document.getElementById("attention-list");
+  const itensAtencao = [];
+  CLIENTS.forEach((c, i) => {
+    if (c.pendencias.length > 0) {
+      itensAtencao.push({
+        texto: c.nome + " está com " + c.pendencias.length + " categoria(s) pendente(s)",
+        meta: "Faltam: " + c.pendencias.join(", "),
+        idx: i
+      });
+    }
+  });
+  const boletoVencendo = CLIENTS.find(c => (c.documentos || []).some(d => d.nome === "Boleto - Junho 2026"));
+  if (boletoVencendo) {
+    itensAtencao.unshift({
+      texto: "Boleto de " + boletoVencendo.nome + " vence em 4 dias",
+      meta: "Acompanhar pagamento",
+      idx: CLIENTS.indexOf(boletoVencendo)
+    });
+  }
+  if (itensAtencao.length === 0) {
+    attentionList.innerHTML = '<p class="attention-empty">Nenhuma pendência no momento.</p>';
+  } else {
+    itensAtencao.forEach(item => {
+      const el = document.createElement("div");
+      el.className = "attention-item";
+      el.innerHTML = `
+        <div class="dot-icon">${ICONS.bell}</div>
+        <div><p>${item.texto}</p><span>${item.meta}</span></div>
+      `;
+      el.addEventListener("click", () => openDetalhe(item.idx));
+      attentionList.appendChild(el);
+    });
+  }
+
+  // KPIs de alerta apontam para o detalhamento (sem duplicar nomes no resumo)
+  function focusAttention() {
+    const card = attentionList.closest(".side-card");
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.remove("pulse");
+    requestAnimationFrame(() => card.classList.add("pulse"));
+  }
+  document.getElementById("kpi-card-warning").addEventListener("click", focusAttention);
+  document.getElementById("kpi-card-pending").addEventListener("click", focusAttention);
+
+  // Atividade recente — últimos envios e acessos
+  const ATIVIDADES = [
+    { icone: "doc", texto: "Você enviou <strong>Boleto - Junho 2026</strong> para João Silva", quando: "Hoje, 09:42" },
+    { icone: "user", texto: "<strong>João Silva</strong> acessou o portal", quando: "Hoje, 09:50" },
+    { icone: "doc", texto: "Você enviou <strong>Cartão CNPJ</strong> para Maria Souza", quando: "19/06, 14:10" },
+    { icone: "user", texto: "<strong>Empresa Alfa Ltda</strong> acessou o portal", quando: "Ontem" },
+    { icone: "doc", texto: "Você enviou <strong>Contrato Social</strong> para Empresa Alfa Ltda", quando: "15/06" }
+  ];
+  const activityFeed = document.getElementById("activity-feed");
+  ATIVIDADES.forEach(a => {
+    const el = document.createElement("div");
+    el.className = "activity-item";
+    el.innerHTML = `
+      <div class="dot-icon">${ICONS[a.icone]}</div>
+      <div><p>${a.texto}</p><span>${a.quando}</span></div>
+    `;
+    activityFeed.appendChild(el);
+  });
+
+  // ---------- Centro de Equipe e Acessos ----------
+  const ADMINS = [
+    {
+      id: 1, nome: "Tinaysa", email: "tinaysa@trilharcontabilidade.com", nivel: "Proprietário", fixo: true, pendente: false,
+      status: "online", ultimoAcesso: "Agora", desde: "15/01/2026", doisFatores: true,
+      sessoes: [{ dispositivo: "Chrome · Windows", local: "São Paulo, SP", quando: "Agora", atual: true }],
+      atividades: [
+        { texto: "Fez login no painel administrativo", quando: "Hoje, 09:10" },
+        { texto: "Enviou <strong>Boleto - Junho 2026</strong> para João Silva", quando: "Hoje, 09:42" },
+        { texto: "Criou a categoria <strong>Procurações</strong>", quando: "Ontem" }
+      ]
+    },
+    {
+      id: 2, nome: "Ana Paula", email: "ana@trilharcontabilidade.com", nivel: "Colaborador", fixo: false, pendente: false,
+      status: "offline", ultimoAcesso: "Há 2 dias", desde: "12/05/2026", doisFatores: false,
+      sessoes: [{ dispositivo: "Safari · iPhone", local: "Campinas, SP", quando: "Há 2 dias", atual: false }],
+      atividades: [{ texto: "Atualizou o <strong>Cartão CNPJ</strong> de Maria Souza", quando: "Há 2 dias" }]
+    },
+    {
+      id: 3, nome: "Carlos Mendes", email: "carlos.mendes@exemplo.com", nivel: "Colaborador", fixo: false, pendente: true,
+      convidadoEm: "Há 3 dias", sessoes: [], atividades: []
+    }
+  ];
+  let nextMemberId = 4;
+
+  function gerarPDF(a) {
+    const url = "boas-vindas.html?nome=" + encodeURIComponent(a.nome) +
+      "&email=" + encodeURIComponent(a.email) +
+      "&senha=" + encodeURIComponent("Definida pela própria pessoa no aceite do convite") +
+      "&nivel=" + encodeURIComponent(a.nivel);
+    window.open(url, "_blank");
+  }
+
+  function roleClass(nivel) {
+    return nivel === "Proprietário" ? "proprietario" : nivel === "Administrador" ? "administrador" : "colaborador";
+  }
+
+  function renderTeamKpis() {
+    const ativos = ADMINS.filter(a => !a.pendente);
+    const pendentes = ADMINS.filter(a => a.pendente);
+    const online = ativos.filter(a => a.status === "online");
+    const com2fa = ativos.filter(a => a.doisFatores);
+
+    document.getElementById("team-kpi-members").textContent = ativos.length;
+    document.getElementById("team-kpi-members-trend").textContent = ativos.length === 1 ? "1 pessoa com acesso" : ativos.length + " pessoas com acesso";
+
+    document.getElementById("team-kpi-invites").textContent = pendentes.length;
+    document.getElementById("team-kpi-card-invites").classList.toggle("attention", pendentes.length > 0);
+    document.getElementById("team-kpi-invites-trend").textContent = pendentes.length > 0 ? "Aguardando aceite" : "Nenhum convite em aberto";
+
+    document.getElementById("team-kpi-online").textContent = online.length;
+    document.getElementById("team-kpi-online-trend").textContent = online.length > 0 ? online.map(a => a.nome).join(", ") : "Ninguém no momento";
+
+    const pct = ativos.length ? Math.round((com2fa.length / ativos.length) * 100) : 0;
+    document.getElementById("team-kpi-2fa").textContent = pct + "%";
+    document.getElementById("team-kpi-card-2fa").classList.toggle("attention", pct < 100 && ativos.length > 0);
+    document.getElementById("team-kpi-2fa-trend").textContent = com2fa.length + " de " + ativos.length + " com 2FA ativado";
+  }
+
+  function renderPendingInvites() {
+    const card = document.getElementById("pending-invites-card");
+    const tbody = document.getElementById("invites-tbody");
+    const pendentes = ADMINS.filter(a => a.pendente);
+    card.style.display = pendentes.length ? "block" : "none";
+    tbody.innerHTML = "";
+    pendentes.forEach(a => {
+      const row = document.createElement("tr");
+      row.className = "invite-row";
+      row.innerHTML = `
+        <td><strong style="color:var(--text-primary);">${a.nome}</strong><div class="member-email">${a.email}</div></td>
+        <td><span class="role-badge ${roleClass(a.nivel)}">${a.nivel}</span></td>
+        <td>${a.convidadoEm}</td>
+        <td style="display:flex; gap:6px; justify-content:flex-end;">
+          <button class="btn btn-secondary invite-resend-btn">Reenviar</button>
+          <button class="icon-btn invite-cancel-btn" title="Cancelar convite"></button>
+        </td>
+      `;
+      row.querySelector(".invite-cancel-btn").innerHTML = ICONS.x;
+      row.querySelector(".invite-resend-btn").addEventListener("click", () => {
+        showToast("Convite reenviado para " + a.email);
+      });
+      row.querySelector(".invite-cancel-btn").addEventListener("click", () => {
+        const idx = ADMINS.findIndex(x => x.id === a.id);
+        ADMINS.splice(idx, 1);
+        renderTeam();
+        showToast("Convite cancelado");
+      });
+      tbody.appendChild(row);
+    });
+  }
+
+  const teamTbody = document.getElementById("team-tbody");
+  const teamFilterSearch = document.getElementById("team-search-input");
+  const teamFilterPapel = document.getElementById("team-filter-papel");
+  const teamFilterStatus = document.getElementById("team-filter-status");
+  const teamFilterSemDoisFatores = document.getElementById("team-filter-2fa");
+  const teamFilterSummary = document.getElementById("team-filter-summary");
+
+  function renderTeamFilterSummary(visible) {
+    teamFilterSummary.innerHTML = "";
+    const chips = [];
+    if (teamFilterPapel.value) chips.push({ label: "Papel: " + teamFilterPapel.value, onClear: () => { teamFilterPapel.value = ""; renderTeam(); } });
+    if (teamFilterStatus.value) {
+      const labels = { online: "Online", offline: "Offline", pendente: "Convite pendente" };
+      chips.push({ label: "Status: " + labels[teamFilterStatus.value], onClear: () => { teamFilterStatus.value = ""; renderTeam(); } });
+    }
+    if (teamFilterSemDoisFatores.checked) chips.push({ label: "Só sem 2FA", onClear: () => { teamFilterSemDoisFatores.checked = false; renderTeam(); } });
+    if (chips.length === 0) return;
+    chips.forEach(chip => {
+      const el = document.createElement("span");
+      el.className = "filter-chip";
+      el.innerHTML = `${chip.label}<button type="button">${ICONS.x}</button>`;
+      el.querySelector("button").addEventListener("click", chip.onClear);
+      teamFilterSummary.appendChild(el);
+    });
+    const count = document.createElement("span");
+    count.className = "filter-results-count";
+    count.textContent = visible + (visible === 1 ? " resultado" : " resultados");
+    teamFilterSummary.appendChild(count);
+  }
+
+  function renderTeam() {
+    renderTeamKpis();
+    renderPendingInvites();
+
+    const termo = teamFilterSearch.value.trim().toLowerCase();
+    const papel = teamFilterPapel.value;
+    const status = teamFilterStatus.value;
+    const semDoisFatores = teamFilterSemDoisFatores.checked;
+
+    teamTbody.innerHTML = "";
+    let visible = 0;
+    ADMINS.filter(a => !a.pendente).forEach(a => {
+      if (termo && !(a.nome.toLowerCase().includes(termo) || a.email.toLowerCase().includes(termo))) return;
+      if (papel && a.nivel !== papel) return;
+      if (status && status !== "pendente" && a.status !== status) return;
+      if (status === "pendente") return;
+      if (semDoisFatores && a.doisFatores) return;
+      visible++;
+
+      const row = document.createElement("tr");
+      row.className = "row-clickable";
+      const ultimaAtividade = a.atividades && a.atividades[0] ? a.atividades[0] : null;
+      row.innerHTML = `
+        <td>
+          <div class="member-cell">
+            <div class="avatar-status-wrap">
+              <div class="avatar">${initials(a.nome)}</div>
+              <span class="status-dot-ring ${a.status}"></span>
+            </div>
+            <div>
+              <div class="member-name-row"><strong>${a.nome}</strong></div>
+              <div class="member-email">${a.email}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="role-badge ${roleClass(a.nivel)}">${a.nivel}</span></td>
+        <td>
+          <div class="status-line">
+            <span class="status-line-top"><span class="dot" style="background:${a.status === "online" ? "var(--semantic-success)" : "var(--text-secondary)"};"></span>${a.status === "online" ? "Online" : "Offline"}</span>
+            <span class="muted">${a.ultimoAcesso}</span>
+          </div>
+        </td>
+        <td><span class="twofa-badge ${a.doisFatores ? "on" : "off"}">${a.doisFatores ? ICONS.check : ICONS.x} ${a.doisFatores ? "Ativado" : "Desativado"}</span></td>
+        <td><span style="font-size:12.5px;">${ultimaAtividade ? ultimaAtividade.texto : "—"}</span><div class="member-email">${ultimaAtividade ? ultimaAtividade.quando : ""}</div></td>
+        <td style="text-align:right;"><button class="icon-btn team-menu-btn" title="Mais ações"></button>
+          <div class="dropdown-panel team-menu-panel">
+            <div class="dropdown-item team-action-view">${ICONS.eye} Ver detalhes</div>
+            <div class="dropdown-item team-action-pdf">${ICONS.download} PDF de boas-vindas</div>
+            ${!a.fixo ? `<div class="dropdown-divider"></div><div class="dropdown-item team-action-revoke" style="color:var(--semantic-danger);">${ICONS.x} Revogar acesso</div>` : ""}
+          </div>
+        </td>
+      `;
+      const menuBtn = row.querySelector(".team-menu-btn");
+      const menuPanel = row.querySelector(".team-menu-panel");
+      menuBtn.innerHTML = ICONS.kebab;
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = menuPanel.classList.contains("open");
+        document.querySelectorAll(".team-menu-panel.open, .doc-menu-panel.open").forEach(p => p.classList.remove("open"));
+        if (!isOpen) menuPanel.classList.add("open");
+      });
+      row.querySelector(".team-action-view").addEventListener("click", () => openMembro(a.id));
+      row.querySelector(".team-action-pdf").addEventListener("click", () => gerarPDF(a));
+      const revokeBtn = row.querySelector(".team-action-revoke");
+      if (revokeBtn) revokeBtn.addEventListener("click", () => confirmRemoveAdmin(a.id));
+      row.addEventListener("click", () => openMembro(a.id));
+      teamTbody.appendChild(row);
+    });
+
+    document.getElementById("team-no-results").style.display = visible === 0 ? "block" : "none";
+    teamTbody.parentElement.style.display = visible === 0 ? "none" : "table";
+    renderTeamFilterSummary(visible);
+  }
+  renderTeam();
+  teamFilterSearch.addEventListener("input", renderTeam);
+  teamFilterPapel.addEventListener("change", renderTeam);
+  teamFilterStatus.addEventListener("change", renderTeam);
+  teamFilterSemDoisFatores.addEventListener("change", renderTeam);
+  document.getElementById("team-filter-clear").addEventListener("click", () => {
+    teamFilterSearch.value = ""; teamFilterPapel.value = ""; teamFilterStatus.value = ""; teamFilterSemDoisFatores.checked = false;
+    renderTeam();
+  });
+  document.getElementById("team-search-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("team-kpi-icon-members").innerHTML = ICONS.user;
+  document.getElementById("team-kpi-icon-invites").innerHTML = ICONS.mail;
+  document.getElementById("team-kpi-icon-online").innerHTML = ICONS.bell;
+  document.getElementById("team-kpi-icon-2fa").innerHTML = ICONS.lock;
+
+  function confirmRemoveAdmin(id) {
+    const a = ADMINS.find(x => x.id === id);
+    document.getElementById("confirm-admin-nome").textContent = a.nome;
+    document.getElementById("modal-confirm-remove").classList.add("open");
+    document.getElementById("btn-confirmar-remocao").onclick = () => {
+      const idx = ADMINS.findIndex(x => x.id === id);
+      ADMINS.splice(idx, 1);
+      closeMembro();
+      renderTeam();
+      document.getElementById("modal-confirm-remove").classList.remove("open");
+      showToast("Acesso revogado");
+    };
+  }
+
+  // ---------- Drawer de detalhe do membro ----------
+  let membroAtualId = null;
+  function openMembro(id) {
+    membroAtualId = id;
+    const a = ADMINS.find(x => x.id === id);
+    document.getElementById("membro-avatar").textContent = initials(a.nome);
+    document.getElementById("membro-status-dot").className = "status-dot-ring " + a.status;
+    document.getElementById("membro-nome").textContent = a.nome;
+    document.getElementById("membro-email").textContent = a.email;
+    document.getElementById("membro-papel-select").value = a.nivel === "Proprietário" ? "Administrador" : a.nivel;
+    document.getElementById("membro-papel-select").disabled = a.fixo;
+    document.getElementById("membro-status-texto").textContent = a.status === "online" ? "Online" : "Offline";
+    document.getElementById("membro-ultimo-acesso").textContent = a.ultimoAcesso;
+    document.getElementById("membro-desde").textContent = a.desde;
+    document.getElementById("membro-2fa-toggle").checked = !!a.doisFatores;
+
+    const sessoesWrap = document.getElementById("membro-sessoes-list");
+    sessoesWrap.innerHTML = "";
+    if (!a.sessoes || a.sessoes.length === 0) {
+      sessoesWrap.innerHTML = '<p class="hint" style="margin:0;">Nenhuma sessão ativa.</p>';
+    } else {
+      a.sessoes.forEach((s, i) => {
+        const el = document.createElement("div");
+        el.className = "session-item";
+        el.innerHTML = `
+          <div class="dot-icon">${ICONS.lock}</div>
+          <div class="session-item-info"><p>${s.dispositivo}</p><span>${s.local} · ${s.quando}</span></div>
+          ${s.atual ? '<span class="session-current-tag">Atual</span>' : `<button class="session-revoke-btn" title="Encerrar sessão">${ICONS.x}</button>`}
+        `;
+        if (!s.atual) {
+          el.querySelector(".session-revoke-btn").addEventListener("click", () => {
+            a.sessoes.splice(i, 1);
+            openMembro(id);
+            showToast("Sessão encerrada");
+          });
+        }
+        sessoesWrap.appendChild(el);
+      });
+    }
+
+    const atividadesWrap = document.getElementById("membro-atividades-list");
+    atividadesWrap.innerHTML = "";
+    if (!a.atividades || a.atividades.length === 0) {
+      atividadesWrap.innerHTML = '<p class="hint" style="margin:0;">Nenhuma atividade registrada ainda.</p>';
+    } else {
+      a.atividades.forEach(at => {
+        const el = document.createElement("div");
+        el.className = "activity-item";
+        el.innerHTML = `<div class="dot-icon">${ICONS.doc}</div><div><p>${at.texto}</p><span>${at.quando}</span></div>`;
+        atividadesWrap.appendChild(el);
+      });
+    }
+
+    document.getElementById("membro-danger-zone").style.display = a.fixo ? "none" : "block";
+    document.getElementById("panel-membro").classList.add("open");
+  }
+  function closeMembro() {
+    document.getElementById("panel-membro").classList.remove("open");
+    membroAtualId = null;
+  }
+  document.getElementById("membro-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("membro-close-btn").addEventListener("click", closeMembro);
+  document.getElementById("membro-cancelar-btn").addEventListener("click", closeMembro);
+  document.getElementById("membro-gerar-pdf").addEventListener("click", (e) => {
+    e.preventDefault();
+    const a = ADMINS.find(x => x.id === membroAtualId);
+    if (a) gerarPDF(a);
+  });
+  document.getElementById("membro-reset-senha-btn").addEventListener("click", () => {
+    const a = ADMINS.find(x => x.id === membroAtualId);
+    showToast("Link de redefinição de senha enviado para " + a.email);
+  });
+  document.getElementById("membro-revogar-btn").addEventListener("click", () => {
+    if (membroAtualId != null) confirmRemoveAdmin(membroAtualId);
+  });
+  document.getElementById("membro-salvar-btn").addEventListener("click", () => {
+    const a = ADMINS.find(x => x.id === membroAtualId);
+    if (!a) return;
+    if (!a.fixo) a.nivel = document.getElementById("membro-papel-select").value;
+    a.doisFatores = document.getElementById("membro-2fa-toggle").checked;
+    closeMembro();
+    renderTeam();
+    showToast("Alterações salvas para " + a.nome);
+  });
+
+  document.getElementById("btn-novo-admin").addEventListener("click", () => {
+    if (Role.info().somenteLeitura) return;
+    document.getElementById("admin-nome-input").value = "";
+    document.getElementById("admin-email-input").value = "";
+    document.getElementById("modal-admin").classList.add("open");
+  });
+  document.getElementById("invite-header-icon").innerHTML = ICONS.mail;
+  document.getElementById("invite-note-icon").innerHTML = ICONS.mail;
+
+  document.getElementById("btn-confirmar-admin").addEventListener("click", function () {
+    const btn = this;
+    const nomeInput = document.getElementById("admin-nome-input");
+    const emailInput = document.getElementById("admin-email-input");
+    const nome = nomeInput.value.trim();
+    const email = emailInput.value.trim();
+    if (!nome || !email) {
+      (nome ? emailInput : nomeInput).focus();
+      return;
+    }
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = ICONS.spinner + " Enviando convite...";
+    btn.classList.add("btn-loading");
+    setTimeout(() => {
+      btn.classList.remove("btn-loading");
+      btn.textContent = original;
+      btn.disabled = false;
+      ADMINS.push({
+        id: nextMemberId++,
+        nome, email,
+        nivel: document.getElementById("admin-nivel-select").value,
+        fixo: false, pendente: true, convidadoEm: "Agora",
+        sessoes: [], atividades: []
+      });
+      renderTeam();
+      document.getElementById("modal-admin").classList.remove("open");
+      showToast("Convite enviado para " + email);
+      nomeInput.value = "";
+      emailInput.value = "";
+    }, 900);
+  });
+
+  function switchTab(name) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+    document.getElementById("tab-clientes").style.display = name === "clientes" ? "block" : "none";
+    document.getElementById("tab-documentos").style.display = name === "documentos" ? "block" : "none";
+    document.getElementById("tab-categorias").style.display = name === "categorias" ? "block" : "none";
+    document.getElementById("tab-admins").style.display = name === "admins" ? "block" : "none";
+  }
+
+  function openDetalhe(idx) {
+    const c = CLIENTS[idx];
+    document.getElementById("detalhe-avatar").textContent = initials(c.nome);
+    document.getElementById("detalhe-nome").textContent = c.nome;
+    document.getElementById("detalhe-email").textContent = c.email;
+    document.getElementById("detalhe-doc").textContent = c.doc;
+    document.getElementById("detalhe-tel").textContent = c.tel;
+    document.getElementById("detalhe-desde").textContent = c.desde;
+    document.getElementById("detalhe-acesso").textContent = c.acesso;
+    document.getElementById("detalhe-status").innerHTML = c.ativo
+      ? '<span class="status-tag active"><span class="status-dot"></span>Ativo</span>'
+      : '<span class="status-tag inactive"><span class="status-dot"></span>Inativo</span>';
+
+    const wrap = document.getElementById("detalhe-categorias");
+    wrap.innerHTML = "";
+    getCategoryNames().forEach(cat => {
+      const ok = c.completas.includes(cat);
+      const docsDaCategoria = (c.documentos || []).filter(d => d.categoria === cat);
+
+      const group = document.createElement("div");
+      group.className = "cat-group" + (ok ? " sent" : " pending");
+
+      const head = document.createElement("div");
+      head.className = "cat-group-head";
+      head.innerHTML = `
+        <div class="cat-status-icon">${ok ? ICONS.check : ICONS.dot}</div>
+        <span class="cat-group-name">${cat}</span>
+        <span class="cat-group-count">${docsDaCategoria.length}</span>
+      `;
+      group.appendChild(head);
+
+      if (docsDaCategoria.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "cat-empty-row";
+        empty.innerHTML = `${ICONS.empty} Nenhum documento enviado ainda`;
+        group.appendChild(empty);
+      } else {
+        const list = document.createElement("div");
+        list.className = "doc-chip-list";
+        docsDaCategoria.forEach(doc => {
+          const chip = document.createElement("div");
+          chip.className = "doc-chip";
+          chip.innerHTML = `
+            ${ICONS.doc}
+            <div><p>${doc.nome}</p><span>${doc.data}</span></div>
+          `;
+          list.appendChild(chip);
+        });
+        group.appendChild(list);
+      }
+
+      wrap.appendChild(group);
+    });
+
+    document.getElementById("panel-detalhe").classList.add("open");
+  }
+
+  function closeDetalhe() {
+    document.getElementById("panel-detalhe").classList.remove("open");
+  }
+
+  function openCliente() { document.getElementById("panel-cliente").classList.add("open"); }
+  function closeCliente() { document.getElementById("panel-cliente").classList.remove("open"); }
+  function openUpload() { document.getElementById("panel-upload").classList.add("open"); }
+  function closeUpload() { document.getElementById("panel-upload").classList.remove("open"); }
+
+  document.getElementById("upload-header-icon").innerHTML = ICONS.download;
+  const closeIconSvg = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("cliente-close-btn").innerHTML = closeIconSvg;
+  document.getElementById("upload-close-btn").innerHTML = closeIconSvg;
+
+  // Painel lateral ajustável (arrastar para redimensionar)
+  (function setupPanelResize() {
+    const panel = document.getElementById("side-panel-detalhe");
+    const handle = document.getElementById("panel-resize-handle");
+    const MIN_WIDTH = 360;
+    const MAX_WIDTH = 760;
+
+    const savedWidth = safeStorage.getItem("trilhar-panel-width");
+    if (savedWidth) panel.style.width = savedWidth + "px";
+
+    let dragging = false;
+
+    handle.addEventListener("mousedown", (e) => {
+      dragging = true;
+      panel.classList.add("resizing");
+      e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - e.clientX));
+      panel.style.width = newWidth + "px";
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (!dragging) return;
+      dragging = false;
+      panel.classList.remove("resizing");
+      safeStorage.setItem("trilhar-panel-width", parseInt(panel.style.width, 10));
+    });
+  })();
+
+  function toggleDueDate() {
+    const cat = document.getElementById('cat-select').value;
+    const dueField = document.getElementById('due-field');
+    const note = document.getElementById('email-note');
+    const subcatField = document.getElementById('subcat-field');
+    const isBoleto = cat.startsWith('boleto-');
+    if (isBoleto) {
+      dueField.style.display = 'block';
+      note.style.display = 'flex';
+    } else {
+      dueField.style.display = 'none';
+      note.style.display = 'none';
+    }
+    subcatField.style.display = cat === 'empresa' ? 'block' : 'none';
+  }
+
+  document.getElementById("btn-confirmar-cliente").addEventListener("click", function () {
+    const btn = this;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = ICONS.spinner + " Cadastrando...";
+    btn.classList.add("btn-loading");
+    setTimeout(() => {
+      btn.classList.remove("btn-loading");
+      btn.textContent = original;
+      btn.disabled = false;
+      closeCliente();
+      document.getElementById("novo-cliente-nome").value = "";
+      clientePreview.innerHTML = ICONS.user;
+      clientePreview.style.backgroundImage = "";
+      delete clientePreview.dataset.hasPhoto;
+      fotoInput.value = "";
+      showToast("Cliente cadastrado com sucesso");
+    }, 900);
+  });
+
+  document.getElementById("dropzone-icon").innerHTML = ICONS.download;
+
+  const uploadFileInput = document.getElementById("upload-file-input");
+  const uploadFileList = document.getElementById("upload-file-list");
+  const dropzone = document.getElementById("dropzone");
+  let selectedFiles = [];
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function renderFileList() {
+    uploadFileList.innerHTML = "";
+    selectedFiles.forEach((file, idx) => {
+      const row = document.createElement("div");
+      row.className = "upload-file-item";
+      row.innerHTML = `
+        <div class="doc-icon">${ICONS.doc}</div>
+        <div class="upload-file-item-info"><p>${file.name}</p><span>${formatBytes(file.size)}</span></div>
+        <button type="button" class="upload-file-remove" title="Remover">${ICONS.x}</button>
+      `;
+      row.querySelector(".upload-file-remove").addEventListener("click", () => {
+        selectedFiles.splice(idx, 1);
+        renderFileList();
+      });
+      uploadFileList.appendChild(row);
+    });
+  }
+
+  function addFiles(fileList) {
+    Array.from(fileList).forEach(file => {
+      if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+        selectedFiles.push(file);
+      }
+    });
+    renderFileList();
+  }
+
+  uploadFileInput.addEventListener("change", function () {
+    addFiles(this.files);
+    this.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.add("drag-over");
+    });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("drag-over");
+    });
+  });
+  dropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+
+  document.getElementById("btn-confirmar-upload").addEventListener("click", function () {
+    const btn = this;
+    const isBoleto = document.getElementById("cat-select").value.startsWith("boleto-");
+    const qtdArquivos = selectedFiles.length || 1;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = ICONS.spinner + " Enviando...";
+    btn.classList.add("btn-loading");
+    setTimeout(() => {
+      btn.classList.remove("btn-loading");
+      btn.textContent = original;
+      btn.disabled = false;
+      closeUpload();
+      const plural = qtdArquivos > 1 ? `${qtdArquivos} documentos enviados` : "Documento enviado";
+      showToast(isBoleto ? plural + " e e-mail disparado ao cliente" : plural + " ao cliente");
+      selectedFiles = [];
+      renderFileList();
+    }, 900);
+  });
+</script>
+</body>
+</html>

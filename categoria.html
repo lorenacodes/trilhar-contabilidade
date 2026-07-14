@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Categoria — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+      <div>
+        <div class="brand-name">TRILHAR CONTABILIDADE</div>
+        <div class="brand-sub">SEU NEGÓCIO NO CAMINHO CERTO</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="dropdown-wrap">
+        <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
+          <div class="avatar">JS</div>
+          <span>João Silva</span>
+        </div>
+        <div class="dropdown-panel" id="user-panel">
+          <div class="dropdown-header">Conta</div>
+          <div class="dropdown-item" onclick="window.location.href='perfil.html'"></div>
+          <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" onclick="window.location.href='index.html'"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <span class="back-link" onclick="window.location.href='painel.html'" id="back-link"></span>
+
+    <div class="page-header">
+      <p class="eyebrow" id="cat-eyebrow">Categoria</p>
+      <h1 class="page-title" id="cat-title">Boleto</h1>
+      <p class="page-subtitle">Visualize e baixe seus arquivos. Vencimentos próximos aparecem em destaque.</p>
+    </div>
+
+    <div class="doc-list" id="doc-list"></div>
+    <div id="empty-state" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- Preview modal -->
+<div class="modal-overlay" id="modal-preview">
+  <div class="modal" style="width:460px;">
+    <div class="preview-card"></div>
+    <h3 id="preview-name">Documento</h3>
+    <p class="hint" id="preview-meta">PDF</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-preview').classList.remove('open')">Fechar</button>
+      <button class="btn btn-primary" id="preview-download-btn">Baixar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  document.getElementById("back-link").innerHTML = ICONS.back + " Voltar para o painel";
+  document.querySelector(".preview-card").innerHTML = ICONS.doc;
+  const userItems = document.querySelectorAll("#user-panel .dropdown-item");
+  userItems[0].innerHTML = ICONS.user + " Meu perfil";
+  userItems[2].innerHTML = ICONS.logout + " Sair";
+
+  const DATA = {
+    "boleto-honorarios": { title: "Boleto - Honorários", docs: [
+      { name: "Boleto - Junho 2026", meta: "PDF · 184 KB", enviado: "22/06/2026", due: "Vence em 4 dias", status: "warning" },
+      { name: "Boleto - Maio 2026", meta: "PDF · 180 KB", enviado: "20/05/2026", due: "Pago", status: "ok" },
+      { name: "Boleto - Abril 2026", meta: "PDF · 179 KB", enviado: "18/04/2026", due: "Pago", status: "ok" }
+    ]},
+    "boleto-imposto": { title: "Boleto - Imposto", docs: [
+      { name: "DARF - Junho 2026", meta: "PDF · 156 KB", enviado: "20/06/2026", due: "Vence em 6 dias", status: "warning" },
+      { name: "DARF - Maio 2026", meta: "PDF · 152 KB", enviado: "18/05/2026", due: "Pago", status: "ok" }
+    ]},
+    "notas-fiscais": { title: "Notas Fiscais", docs: [
+      { name: "NF-e 12345 - Junho 2026", meta: "XML · 124 KB", enviado: "21/06/2026" },
+      { name: "Planilha de NFs - Semestre 1", meta: "XLSM · 256 KB", enviado: "15/06/2026" },
+      { name: "NF-e 12340 - Maio 2026", meta: "XML · 118 KB", enviado: "28/05/2026" }
+    ]},
+    cartao: { title: "Cartão CNPJ", docs: [
+      { name: "Cartão CNPJ - Atualizado", meta: "PDF · 96 KB", enviado: "19/06/2026" },
+      { name: "Cartão CNPJ - Atualizado", meta: "PDF · 94 KB", enviado: "10/03/2026" }
+    ]},
+    empresa: { title: "Documentos da Empresa", docs: [
+      { name: "Contrato Social", meta: "PDF · 210 KB", enviado: "15/01/2026" },
+      { name: "Alvará de Funcionamento", meta: "PDF · 140 KB", enviado: "15/01/2026" },
+      { name: "Inscrição Estadual", meta: "PDF · 88 KB", enviado: "16/01/2026" },
+      { name: "Procuração", meta: "PDF · 75 KB", enviado: "02/02/2026" },
+      { name: "Certificado Digital", meta: "PDF · 60 KB", enviado: "20/02/2026" }
+    ]},
+    contrato: { title: "Contrato", docs: [
+      { name: "Contrato de Prestação de Serviços", meta: "PDF · 230 KB", enviado: "12/01/2026" }
+    ]},
+    declaracoes: { title: "Declarações", docs: [
+      { name: "Declaração de Faturamento - 2025", meta: "PDF · 110 KB", enviado: "08/01/2026" },
+      { name: "Declaração de Isenção", meta: "PDF · 95 KB", enviado: "05/03/2026" }
+    ]},
+    vazio: { title: "Procurações", docs: [] }
+  };
+
+  const params = new URLSearchParams(window.location.search);
+  const cat = params.get("cat") || "boleto";
+  const categoriaInfo = Categories.getAll().find(c => c.slug === cat);
+  const data = DATA[cat] || { title: categoriaInfo ? categoriaInfo.nome : "Categoria", docs: [] };
+
+  document.getElementById("cat-title").textContent = data.title;
+  document.getElementById("cat-eyebrow").textContent = "Categoria · " + data.title;
+
+  const list = document.getElementById("doc-list");
+  const emptyState = document.getElementById("empty-state");
+
+  if (data.docs.length === 0) {
+    list.style.display = "none";
+    emptyState.style.display = "block";
+    emptyState.innerHTML = `
+      <div class="empty-state">
+        ${ICONS.empty}
+        <h3>Nenhum documento aqui ainda</h3>
+        <p>Quando a Trilhar Contabilidade enviar um documento desta categoria, ele aparecerá aqui automaticamente.</p>
+      </div>`;
+  } else {
+    data.docs.forEach(doc => {
+      const row = document.createElement("div");
+      row.className = "doc-row";
+      row.style.cursor = "pointer";
+      row.innerHTML = `
+        <div class="doc-icon">${ICONS.doc}</div>
+        <div class="doc-info">
+          <p class="doc-name">${doc.name}</p>
+          <p class="doc-meta">${doc.meta} · Enviado em ${doc.enviado}</p>
+        </div>
+        ${doc.due ? `<span class="due-tag ${doc.status}">${doc.due}</span>` : ""}
+        <button class="btn btn-secondary preview-trigger">${ICONS.doc} Visualizar</button>
+      `;
+      row.querySelector(".preview-trigger").addEventListener("click", (e) => {
+        e.stopPropagation();
+        openPreview(doc);
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function openPreview(doc) {
+    document.getElementById("preview-name").textContent = doc.name;
+    document.getElementById("preview-meta").textContent = doc.meta + " · Enviado em " + doc.enviado;
+    const btn = document.getElementById("preview-download-btn");
+    btn.innerHTML = ICONS.download + " Baixar";
+    btn.onclick = () => simulateDownload(btn, doc.name);
+    document.getElementById("modal-preview").classList.add("open");
+  }
+
+  // Modo de foco: quem chegou aqui pelo "Resolver agora" do painel já cai
+  // direto na pré-visualização do documento certo — zero cliques extras.
+  const abrir = params.get("abrir");
+  if (abrir) {
+    const docAlvo = data.docs.find(d => d.name === abrir);
+    if (docAlvo) openPreview(docAlvo);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu Perfil — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+      <div>
+        <div class="brand-name">TRILHAR CONTABILIDADE</div>
+        <div class="brand-sub">SEU NEGÓCIO NO CAMINHO CERTO</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="dropdown-wrap">
+        <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
+          <div class="avatar">JS</div>
+          <span>João Silva</span>
+        </div>
+        <div class="dropdown-panel" id="user-panel">
+          <div class="dropdown-header">Conta</div>
+          <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" onclick="window.location.href='index.html'"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main" style="max-width:640px;">
+    <span class="back-link" onclick="window.location.href='painel.html'" id="back-link"></span>
+
+    <div class="page-header">
+      <p class="eyebrow">Conta</p>
+      <h1 class="page-title">Meu perfil</h1>
+      <p class="page-subtitle">Suas informações cadastrais. Para alterações, contate a Trilhar Contabilidade.</p>
+    </div>
+
+    <div class="table-card" style="padding:28px;">
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+        <div class="avatar" style="width:56px; height:56px; font-size:18px;" id="perfil-avatar"></div>
+        <div>
+          <p style="margin:0; font-weight:700; font-size:16px;" id="perfil-nome"></p>
+          <p style="margin:0; font-size:13px; color:var(--text-secondary);" id="perfil-desde"></p>
+        </div>
+      </div>
+
+      <div class="field"><label>Nome completo</label><input id="perfil-nome-input" disabled></div>
+      <div class="field"><label>E-mail</label><input id="perfil-email-input" disabled></div>
+      <div class="field"><label>Senha</label><input type="password" value="••••••••" disabled></div>
+
+      <button class="btn btn-secondary" style="width:100%;" onclick="showToast('Solicitação enviada à Trilhar Contabilidade')">Solicitar alteração de dados</button>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth-guard.js"></script>
+<script>
+  document.getElementById("back-link").innerHTML = ICONS.back + " Voltar para o painel";
+  const userItems = document.querySelectorAll("#user-panel .dropdown-item");
+  userItems[1].innerHTML = ICONS.logout + " Sair";
+  userItems[1].onclick = () => logoutCliente();
+
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+
+    document.querySelector(".user-chip span").textContent = cliente.nome;
+    document.querySelector(".user-chip .avatar").textContent = initials(cliente.nome);
+    document.getElementById("perfil-avatar").textContent = initials(cliente.nome);
+    document.getElementById("perfil-nome").textContent = cliente.nome;
+    document.getElementById("perfil-nome-input").value = cliente.nome;
+    document.getElementById("perfil-email-input").value = cliente.email;
+    const desde = new Date(cliente.created_at).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    document.getElementById("perfil-desde").textContent = "Cliente desde " + desde;
+
+    hideAuthOverlay();
+  })();
+</script>
+</body>
+</html>

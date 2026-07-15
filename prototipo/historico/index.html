@@ -128,6 +128,11 @@
       pasta: "v17-2026-07-15",
       data: "15/07/2026",
       descricao: "Redesign premium do lado do cliente + separação estrutural boleto vs documento. painel.html e categoria.html aposentados — substituídos por 5 páginas dedicadas: dashboard.html (só indicadores: em aberto, valor total, vencendo, vencidos, alertas, próximos vencimentos, resumo financeiro), boletos.html (tela principal — lista financeira nova, sem ser tabela, filtros por chip em vez de select), documentos.html (drive-like: categorias, busca, ordenação, preview — nenhuma coluna de vencimento/status), enviar-documento.html (cliente agora pode enviar documento próprio, não-boleto — nova migração de banco com policies de INSERT e coluna 'origem'), e perfil.html com retoque leve. Navegação nova (sidebar desktop / barra inferior mobile) via renderNav() compartilhado. Sistema de design novo em styles.css: escala tipográfica e de espaçamento, disciplina de cor (navy/gold restritos), sombra só em elevação real, radii consolidados, badge único, KPI tile sem ícone com número herói, dropzone com borda sólida. admin.html não foi tocado nesta rodada — fica pra uma etapa seguinte."
+    },
+    {
+      pasta: "v18-2026-07-15",
+      data: "15/07/2026",
+      descricao: "Autenticação real e RBAC de produção. Nova tabela 'users' vira a única fonte de identidade/permissão (nome, e-mail, tipo administrador/cliente, status, primeiro_acesso) — 'clientes'/'administradores' encolhem pra tabelas de detalhe (CPF/CNPJ, nível), referenciando users.id. RLS reescrita com funções security definer (is_admin(), current_cliente_id()) com search_path fixado, evitando recursão infinita. admin.html ganha login/guarda de sessão real pela primeira vez (guardAdministrador()), sem mexer nas telas internas mock. Fluxo de primeiro acesso obrigatório (primeiro-acesso.html) com medidor de força de senha em tempo real (Fraca/Regular/Boa/Forte + checklist de critérios). Recuperação de senha via fluxo oficial do Supabase (esqueci-senha.html + redefinir-senha.html, com onAuthStateChange ouvindo PASSWORD_RECOVERY). Login (index.html/admin-login.html) passa a checar a tabela users e mostra mensagem amigável quando o usuário existe no Auth mas não tem permissão cadastrada."
     }
   ];
 

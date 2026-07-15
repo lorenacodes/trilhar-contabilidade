@@ -349,3 +349,220 @@ create policy "storage_cliente_envia_para_propria_pasta" on storage.objects
       select id::text from clientes where auth_user_id = auth.uid()
     )
   );
+
+-- ============================================================================
+-- Migração: users como fonte única de identidade/permissão (RBAC real)
+-- ============================================================================
+-- Contexto: antes desta migração, "clientes" e "administradores" eram cada
+-- uma sua própria fonte de identidade (auth_user_id, nome, email, ativo
+-- direto na tabela). Passamos a ter uma tabela "users" única — é nela que o
+-- login e o RLS se baseiam — e "clientes"/"administradores" encolhem pra
+-- guardar só dado de perfil (CPF/CNPJ, nível), referenciando users.id.
+-- clientes/administradores estavam vazias em produção — é DDL puro, sem
+-- necessidade de backfill de dado real.
+--
+-- Regra de negócio inegociável: um usuário só acessa o sistema se existir
+-- TANTO no Supabase Auth QUANTO em "users" — não basta um dos dois.
+-- ============================================================================
+
+-- ---------- Tabela nova: users ----------
+create table if not exists users (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null unique references auth.users(id),
+  nome text not null,
+  email text not null,
+  tipo text not null check (tipo in ('administrador', 'cliente')),
+  status text not null default 'ativo' check (status in ('ativo', 'inativo')),
+  primeiro_acesso boolean not null default true, -- força troca de senha temporária no primeiro login
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- IMPORTANTE: enable, nunca "force". "force row level security" quebraria a
+-- isenção de dono da qual is_admin()/current_cliente_id() dependem (ver abaixo).
+alter table users enable row level security;
+
+-- Derruba as policies antigas que referenciam auth_user_id ANTES de remover
+-- a coluna (dependência de coluna impede o drop enquanto elas existirem).
+drop policy if exists "categorias_escrita_admin" on categorias;
+drop policy if exists "clientes_ve_proprio_cadastro" on clientes;
+drop policy if exists "clientes_admin_gerencia_tudo" on clientes;
+drop policy if exists "administradores_visivel_para_admin" on administradores;
+drop policy if exists "documentos_cliente_ve_os_seus" on documentos;
+drop policy if exists "documentos_admin_gerencia_tudo" on documentos;
+drop policy if exists "documentos_cliente_insere_nao_boleto" on documentos;
+drop policy if exists "arquivos_cliente_ve_os_seus" on documento_arquivos;
+drop policy if exists "arquivos_admin_gerencia_tudo" on documento_arquivos;
+drop policy if exists "arquivos_cliente_insere_nos_seus_documentos" on documento_arquivos;
+drop policy if exists "storage_cliente_ve_os_seus" on storage.objects;
+drop policy if exists "storage_admin_gerencia_tudo" on storage.objects;
+drop policy if exists "storage_cliente_envia_para_propria_pasta" on storage.objects;
+
+-- ---------- Encolhe clientes/administradores pra tabelas de detalhe ----------
+-- Todo FK que aponta PARA clientes.id/administradores.id (documentos.cliente_id,
+-- documentos.criado_por) fica intocado — só as colunas de identidade saem daqui.
+alter table clientes
+  drop column if exists auth_user_id,
+  drop column if exists nome,
+  drop column if exists email,
+  drop column if exists ativo,
+  add column if not exists user_id uuid references users(id);
+alter table clientes alter column user_id set not null;
+alter table clientes add constraint clientes_user_id_key unique (user_id);
+
+alter table administradores
+  drop column if exists auth_user_id,
+  drop column if exists nome,
+  drop column if exists email,
+  drop column if exists ativo,
+  add column if not exists user_id uuid references users(id);
+alter table administradores alter column user_id set not null;
+alter table administradores add constraint administradores_user_id_key unique (user_id);
+
+-- ---------- Funções auxiliares ----------
+-- security definer é OBRIGATÓRIO aqui, não estilístico: sem ele, a consulta
+-- interna a users/clientes rodaria com o papel de quem chamou a função,
+-- reaplicando o RLS dessas mesmas tabelas e recursando infinitamente na
+-- própria policy que chamou a função (stack depth limit exceeded). Com
+-- security definer, a função roda como o DONO da função — que também é dono
+-- de users/clientes aqui — e donos são isentos de RLS automaticamente
+-- (contanto que ninguém rode "force row level security" nessas tabelas —
+-- NUNCA adicionar isso "por segurança extra", quebraria a isenção).
+-- set search_path = '' evita a classe de vulnerabilidade mais comum desse
+-- tipo de função (alguém criar um objeto que resolve antes do pretendido na
+-- busca de schema, rodando código arbitrário com o privilégio elevado).
+create or replace function is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.users
+    where auth_user_id = auth.uid()
+      and tipo = 'administrador'
+      and status = 'ativo'
+  );
+$$;
+revoke all on function is_admin() from public;
+grant execute on function is_admin() to authenticated;
+
+-- Inclui "and u.tipo = 'cliente'" — sem esse filtro, se um user
+-- tipo='administrador' algum dia também tivesse uma linha em clientes
+-- vinculada, esta função devolveria o id dela mesmo sendo um admin, furando
+-- o isolamento cliente-scoped em toda policy que usa current_cliente_id().
+create or replace function current_cliente_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select c.id from public.clientes c
+  join public.users u on u.id = c.user_id
+  where u.auth_user_id = auth.uid()
+    and u.status = 'ativo'
+    and u.tipo = 'cliente'
+$$;
+revoke all on function current_cliente_id() from public;
+grant execute on function current_cliente_id() to authenticated;
+
+-- ---------- RPC: marcar_primeiro_acesso_concluido ----------
+-- Única forma de gravar em "users" pelo app — chamada pela tela de
+-- primeiro acesso depois que o usuário troca a senha temporária.
+create or replace function marcar_primeiro_acesso_concluido()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.users
+     set primeiro_acesso = false,
+         updated_at = now()
+   where auth_user_id = auth.uid();
+end;
+$$;
+revoke all on function marcar_primeiro_acesso_concluido() from public;
+grant execute on function marcar_primeiro_acesso_concluido() to authenticated;
+
+-- ---------- RLS em users ----------
+create policy "usuarios_ve_proprio_registro" on users
+  for select
+  using (auth_user_id = auth.uid());
+
+create policy "usuarios_admin_ve_tudo" on users
+  for select
+  using (is_admin());
+
+-- Sem policy de INSERT/UPDATE geral/DELETE: criação de usuário é fora de
+-- banda (Dashboard do Supabase), de propósito, e a única escrita permitida é
+-- via marcar_primeiro_acesso_concluido() acima. Um PATCH direto em /users
+-- vindo de um frontend comprometido não casa com nenhuma policy e afeta 0
+-- linhas. Se um dia precisar de admin ativar/desativar usuário pelo app, NÃO
+-- criar uma policy ampla "for all using (is_admin())" aqui — isso deixaria
+-- reescrever "tipo" de qualquer usuário via PATCH. Preferir uma RPC estreita
+-- dedicada (ex: admin_definir_status_usuario(target_user_id, novo_status)
+-- com security definer, validando o valor e checando is_admin() por dentro).
+
+-- ---------- Policies recriadas ----------
+create policy "categorias_escrita_admin" on categorias
+  for all using (is_admin()) with check (is_admin());
+
+create policy "clientes_ve_proprio_cadastro" on clientes
+  for select using (id = current_cliente_id());
+
+create policy "clientes_admin_gerencia_tudo" on clientes
+  for all using (is_admin()) with check (is_admin());
+
+create policy "administradores_visivel_para_admin" on administradores
+  for select using (is_admin());
+
+create policy "documentos_cliente_ve_os_seus" on documentos
+  for select using (cliente_id = current_cliente_id());
+
+create policy "documentos_admin_gerencia_tudo" on documentos
+  for all using (is_admin()) with check (is_admin());
+
+create policy "documentos_cliente_insere_nao_boleto" on documentos
+  for insert
+  with check (
+    cliente_id = current_cliente_id()
+    and categoria_id not in (
+      select id from categorias where slug in ('boleto-honorarios', 'boleto-imposto')
+    )
+    and criado_por is null
+  );
+
+create policy "arquivos_cliente_ve_os_seus" on documento_arquivos
+  for select
+  using (documento_id in (select id from documentos where cliente_id = current_cliente_id()));
+
+create policy "arquivos_admin_gerencia_tudo" on documento_arquivos
+  for all using (is_admin()) with check (is_admin());
+
+create policy "arquivos_cliente_insere_nos_seus_documentos" on documento_arquivos
+  for insert
+  with check (
+    documento_id in (
+      select d.id from documentos d
+      where d.cliente_id = current_cliente_id()
+        and d.categoria_id not in (
+          select id from categorias where slug in ('boleto-honorarios', 'boleto-imposto')
+        )
+    )
+  );
+
+create policy "storage_cliente_ve_os_seus" on storage.objects
+  for select
+  using (bucket_id = 'documentos' and (storage.foldername(name))[1] = current_cliente_id()::text);
+
+create policy "storage_admin_gerencia_tudo" on storage.objects
+  for all
+  using (bucket_id = 'documentos' and is_admin())
+  with check (bucket_id = 'documentos' and is_admin());
+
+create policy "storage_cliente_envia_para_propria_pasta" on storage.objects
+  for insert
+  with check (bucket_id = 'documentos' and (storage.foldername(name))[1] = current_cliente_id()::text);

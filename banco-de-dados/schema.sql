@@ -83,9 +83,13 @@ create table if not exists documentos (
   nome text not null, -- ex: "Boleto - Julho 2026" ou "NF 001 - Junho 2026"
 
   -- Campos específicos de boleto (null para os demais tipos de documento).
+  -- Regra de negócio: só boleto tem vencimento e status de pagamento. status é
+  -- binário de propósito — é exatamente o Select "Pago" / "Não Pago" que o admin
+  -- preenche. "Vencendo"/"Vencido" NÃO são guardados aqui: são calculados na tela
+  -- a partir de data_vencimento vs a data de hoje, pra não duplicar informação.
   valor numeric(12, 2),
   data_vencimento date,
-  status text not null default 'enviado' check (status in ('enviado', 'pendente', 'vencendo', 'vencido', 'pago')),
+  status text check (status is null or status in ('pago', 'nao_pago')),
   pago_em timestamptz,
 
   created_at timestamptz not null default now(),
@@ -96,19 +100,36 @@ create index if not exists idx_documentos_cliente on documentos(cliente_id);
 create index if not exists idx_documentos_categoria on documentos(categoria_id);
 create index if not exists idx_documentos_vencimento on documentos(data_vencimento) where data_vencimento is not null;
 
--- Regra "boleto precisa ter vencimento" não dá pra ser um simples check
+-- Regra "só boleto tem vencimento e status" não dá pra ser um simples check
 -- constraint (checks não podem consultar outra tabela), então vira um
--- trigger: antes de gravar, olha a categoria do documento e recusa se for
--- boleto sem data_vencimento.
+-- trigger: antes de gravar, olha a categoria do documento e aplica a regra
+-- nos dois sentidos — boleto EXIGE vencimento+status, documento comum PROÍBE
+-- os dois (nunca deve parecer que tem vencimento ou pagamento se não for boleto).
 create or replace function enforce_boleto_vencimento()
 returns trigger as $$
 declare
   categoria_slug text;
+  eh_boleto boolean;
 begin
   select slug into categoria_slug from categorias where id = new.categoria_id;
-  if categoria_slug in ('boleto-honorarios', 'boleto-imposto') and new.data_vencimento is null then
-    raise exception 'Documentos da categoria % precisam de data_vencimento', categoria_slug;
+  eh_boleto := categoria_slug in ('boleto-honorarios', 'boleto-imposto');
+
+  if eh_boleto then
+    if new.data_vencimento is null then
+      raise exception 'Boletos (categoria %) precisam de data_vencimento', categoria_slug;
+    end if;
+    if new.status is null or new.status not in ('pago', 'nao_pago') then
+      raise exception 'Boletos (categoria %) precisam de status "pago" ou "nao_pago"', categoria_slug;
+    end if;
+  else
+    if new.data_vencimento is not null then
+      raise exception 'Documentos da categoria % não podem ter data_vencimento (só boletos têm vencimento)', categoria_slug;
+    end if;
+    if new.status is not null then
+      raise exception 'Documentos da categoria % não podem ter status de pagamento (só boletos têm)', categoria_slug;
+    end if;
   end if;
+
   return new;
 end;
 $$ language plpgsql;

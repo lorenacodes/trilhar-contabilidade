@@ -113,6 +113,11 @@
       pasta: "v14-2026-07-14",
       data: "14/07/2026",
       descricao: "Integração Supabase (Fase A): login do cliente passou a autenticar de verdade (Supabase Auth) com checagem de cadastro ativo em 'clientes', guarda de sessão nas páginas do cliente (painel, categoria, perfil) com overlay anti-flash, painel e categoria agora consultam categorias/documentos reais do banco (RLS garante isolamento por cliente), notas fiscais e demais documentos suportam múltiplos arquivos anexados (ex.: PDF + XML), download via URL assinada do Supabase Storage, logout real. admin.html permanece 100% mock — fica pra uma Fase B separada. Removido admin_inline.js (código morto)."
+    },
+    {
+      pasta: "v15-2026-07-15",
+      data: "15/07/2026",
+      descricao: "Regra de negócio: só boleto tem data de vencimento e status de pagamento — status virou binário (Pago/Não Pago) no banco, em vez do enum de 5 estados anterior. 'Vencendo'/'Vencido' deixaram de ser guardados e passaram a ser calculados na tela (statusBoleto em app.js) a partir do vencimento vs hoje. Trigger no banco agora também proíbe vencimento/status em documentos que não são boleto. Painel e categoria atualizados pra refletir essa regra."
     }
   ];
 

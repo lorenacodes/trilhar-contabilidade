@@ -123,6 +123,11 @@
       pasta: "v16-2026-07-15",
       data: "15/07/2026",
       descricao: "Responsividade mobile-first em todo o sistema, incluindo admin.html (que ainda não tinha recebido nenhum ajuste): corrigido bug real onde modais com largura fixa via style inline (460/380/400px) nunca respeitavam a media query mobile; dropdown de notificações/conta e filtros do admin agora cabem e empilham corretamente em telas pequenas; as 3 tabelas do admin (Clientes, Documentos enviados, Administradores + Convites pendentes) viram cartões empilhados no celular em vez de forçar scroll horizontal; calendário mini ganhou escala reduzida em telas bem estreitas; removido bloco de CSS morto (@container dashmain referenciando classes inexistentes); alvos de toque dos botões-ícone aumentados para 40px no mobile. Também aplicada em admin.html a mesma regra de status binário de boleto (v15): Select Pago/Não Pago substitui a ação 'Marcar como pago', 'Vencendo'/'Vencido' calculados a partir do vencimento, documentos comuns sem nenhum status."
+    },
+    {
+      pasta: "v17-2026-07-15",
+      data: "15/07/2026",
+      descricao: "Redesign premium do lado do cliente + separação estrutural boleto vs documento. painel.html e categoria.html aposentados — substituídos por 5 páginas dedicadas: dashboard.html (só indicadores: em aberto, valor total, vencendo, vencidos, alertas, próximos vencimentos, resumo financeiro), boletos.html (tela principal — lista financeira nova, sem ser tabela, filtros por chip em vez de select), documentos.html (drive-like: categorias, busca, ordenação, preview — nenhuma coluna de vencimento/status), enviar-documento.html (cliente agora pode enviar documento próprio, não-boleto — nova migração de banco com policies de INSERT e coluna 'origem'), e perfil.html com retoque leve. Navegação nova (sidebar desktop / barra inferior mobile) via renderNav() compartilhado. Sistema de design novo em styles.css: escala tipográfica e de espaçamento, disciplina de cor (navy/gold restritos), sombra só em elevação real, radii consolidados, badge único, KPI tile sem ícone com número herói, dropzone com borda sólida. admin.html não foi tocado nesta rodada — fica pra uma etapa seguinte."
     }
   ];
 

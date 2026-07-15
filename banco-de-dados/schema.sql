@@ -252,3 +252,100 @@ create policy "storage_admin_gerencia_tudo" on storage.objects
     bucket_id = 'documentos'
     and exists (select 1 from administradores a where a.auth_user_id = auth.uid())
   );
+
+-- ============================================================================
+-- Migração: clientes podem enviar seus próprios documentos (não-boleto)
+-- ============================================================================
+-- Contexto: até aqui só administradores inseriam em "documentos" e
+-- "documento_arquivos" (RLS "for all" restrita a admin). Esta migração ADICIONA
+-- policies novas de INSERT para clientes — não altera nem remove nenhuma
+-- policy existente, então o fluxo administrativo continua idêntico (policies
+-- permissivas do mesmo comando são combinadas com OR, então isso é puramente
+-- aditivo).
+--
+-- Regra de negócio inegociável: "apenas o administrativo gerencia boletos".
+-- Cliente nunca pode criar (ou anexar arquivo a) um documento de categoria
+-- 'boleto-honorarios' ou 'boleto-imposto'. Essa exclusão é feita via RLS
+-- (barreira de autorização) — o trigger enforce_boleto_vencimento sozinho NÃO
+-- bloqueia isso: ele só exige que os campos existam quando a categoria é
+-- boleto, não valida QUEM pode usar aquela categoria.
+-- ============================================================================
+
+-- ---------- Coluna "origem": quem originou o documento ----------
+-- Por que uma coluna nova em vez de só inferir de criado_por is null: uma
+-- coluna explícita é auto-documentada e não quebra se um fluxo futuro
+-- (ex: admin cadastrando em nome do cliente) mexer na nulidade de criado_por
+-- por outro motivo.
+alter table documentos
+  add column if not exists origem text;
+
+update documentos
+  set origem = case when criado_por is not null then 'admin' else 'cliente' end
+  where origem is null;
+
+alter table documentos
+  alter column origem set default 'cliente',
+  alter column origem set not null;
+
+alter table documentos
+  add constraint documentos_origem_valida check (origem in ('admin', 'cliente'));
+
+alter table documentos
+  add constraint documentos_origem_consistente check (
+    (criado_por is not null and origem = 'admin')
+    or (criado_por is null and origem = 'cliente')
+  );
+
+-- Deriva origem a partir de criado_por (nunca confia no que o chamador manda) —
+-- assim o app do cliente nem precisa enviar essa coluna, e ninguém consegue
+-- mandar origem='admin' junto do insert pra se passar por administrador.
+create or replace function definir_origem_documento()
+returns trigger as $$
+begin
+  new.origem := case when new.criado_por is not null then 'admin' else 'cliente' end;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_definir_origem_documento on documentos;
+create trigger trg_definir_origem_documento
+  before insert or update on documentos
+  for each row execute function definir_origem_documento();
+
+-- ---------- RLS: cliente pode INSERIR documento próprio, não-boleto ----------
+create policy "documentos_cliente_insere_nao_boleto" on documentos
+  for insert
+  with check (
+    cliente_id in (select id from clientes where auth_user_id = auth.uid())
+    and categoria_id not in (
+      select id from categorias where slug in ('boleto-honorarios', 'boleto-imposto')
+    )
+    and criado_por is null
+  );
+
+-- ---------- RLS: cliente pode INSERIR arquivo só no seu próprio documento
+--                 não-boleto (proteção extra: sem isso, cliente poderia
+--                 anexar arquivo a um boleto que o admin já criou pra ele) ----------
+create policy "arquivos_cliente_insere_nos_seus_documentos" on documento_arquivos
+  for insert
+  with check (
+    documento_id in (
+      select d.id
+      from documentos d
+      join clientes c on c.id = d.cliente_id
+      where c.auth_user_id = auth.uid()
+        and d.categoria_id not in (
+          select id from categorias where slug in ('boleto-honorarios', 'boleto-imposto')
+        )
+    )
+  );
+
+-- ---------- Storage: cliente pode SUBIR arquivo só na própria pasta ----------
+create policy "storage_cliente_envia_para_propria_pasta" on storage.objects
+  for insert
+  with check (
+    bucket_id = 'documentos'
+    and (storage.foldername(name))[1] = (
+      select id::text from clientes where auth_user_id = auth.uid()
+    )
+  );

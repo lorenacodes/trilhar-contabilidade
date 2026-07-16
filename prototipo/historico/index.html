@@ -148,6 +148,11 @@
       pasta: "v21-2026-07-16",
       data: "16/07/2026",
       descricao: "Redesign da tela de login (index.html e demais telas de autenticação, que compartilham os mesmos componentes): trocados os blobs desfocados genéricos por uma textura sutil (grade de pontos + véu de navy, esmaecendo via mask) — mais 'Linear/Vercel', menos 'template com blob'. Card com sombra mais presente (shadow-lg) e espaçamento pela escala nova. Logo com leve elevação, tagline em dourado com tracking largo. Removidos do rodapé do login do cliente os links de desenvolvimento ('[Demo] Entrar como administradora' e '[Histórico de versões]') — não fazem sentido numa tela de login de produção; continuam acessíveis direto pela URL para uso interno."
+    },
+    {
+      pasta: "v22-2026-07-16",
+      data: "16/07/2026",
+      descricao: "Correção de clareza visual no Dashboard: os widgets 'Alertas' e 'Próximos vencimentos' tratavam boleto vencido e boleto vencendo em breve com a mesma cor (laranja) — só a tela de Boletos já diferenciava direito. Passaram a reaproveitar statusBoleto() (app.js), a mesma função já usada em boletos.html, em vez de reimplementar a lógica de dias com menos nuance — vencido agora aparece em vermelho (nova variante .danger em .attention-item/.due-item), vencendo em breve continua laranja. Espaçamento entre o símbolo 'R$' e o valor nos KPIs ligeiramente aumentado (2px → 4px)."
     }
   ];
 

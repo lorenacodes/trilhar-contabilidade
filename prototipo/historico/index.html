@@ -158,6 +158,11 @@
       pasta: "v23-2026-07-16",
       data: "16/07/2026",
       descricao: "Quebra-cache no CSS: todas as páginas passaram a carregar 'css/styles.css?v=22' em vez de 'css/styles.css' sem parâmetro. Sem isso, navegadores guardavam a versão antiga do arquivo em cache e continuavam mostrando o visual velho mesmo depois de publicar uma mudança — precisava de refresh forçado (Ctrl+Shift+R) pra ver o CSS novo. A partir de agora, todo ajuste de estilo deve vir acompanhado de incrementar esse número em todas as páginas."
+    },
+    {
+      pasta: "v24-2026-07-16",
+      data: "16/07/2026",
+      descricao: "Correção de navegação no login: o redesign da tela de login (v21) removeu o link '[Demo] Entrar como administradora', mas isso tirou o único caminho de ida do login do cliente pro login da administração (só existia o caminho de volta, em admin-login.html). Repôs um link discreto 'Acesso da administração' no rodapé do index.html, no mesmo estilo do 'Esqueci minha senha' — agora os dois logins se conectam nos dois sentidos."
     }
   ];
 

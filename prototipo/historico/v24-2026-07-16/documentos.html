@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentos — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=22">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+      <div>
+        <div class="brand-name">TRILHAR CONTABILIDADE</div>
+        <div class="brand-sub">SEU NEGÓCIO NO CAMINHO CERTO</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="dropdown-wrap">
+        <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
+          <div class="avatar" id="user-avatar"></div>
+          <span id="user-nome"></span>
+        </div>
+        <div class="dropdown-panel" id="user-panel">
+          <div class="dropdown-header">Conta</div>
+          <div class="dropdown-item" onclick="window.location.href='perfil.html'"></div>
+          <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" id="logout-item"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <div class="main">
+      <div class="page-header page-header-flex">
+        <div>
+          <p class="eyebrow">Documentos</p>
+          <h1 class="page-title">Seus documentos</h1>
+          <p class="page-subtitle">Consulta e arquivo — sem vencimento, sem pagamento.</p>
+        </div>
+        <button class="btn btn-primary" onclick="window.location.href='enviar-documento.html'"></button>
+      </div>
+
+      <div class="docs-toolbar">
+        <div class="docs-search">
+          <span id="busca-icon"></span>
+          <input type="text" id="busca-input" placeholder="Buscar por nome do documento">
+        </div>
+      </div>
+      <div class="status-chip-row" id="ordenacao-chips">
+        <button type="button" class="period-chip active" data-ordenar="recentes">Recentes</button>
+        <button type="button" class="period-chip" data-ordenar="nome">Nome</button>
+        <button type="button" class="period-chip" data-ordenar="tamanho">Tamanho</button>
+      </div>
+
+      <div class="documentos-layout">
+        <div class="doc-categories" id="doc-categories"></div>
+        <div class="doc-main">
+          <div class="boleto-list" id="doc-list"></div>
+          <div id="empty-state" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pré-visualização -->
+<div class="modal-overlay" id="modal-preview">
+  <div class="modal modal-lg">
+    <div class="preview-card" id="preview-icon"></div>
+    <h3 id="preview-nome">Documento</h3>
+    <p class="hint" id="preview-meta">—</p>
+    <div class="modal-actions" id="preview-download-actions"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-preview').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth-guard.js"></script>
+<script>
+  const userItems = document.querySelectorAll("#user-panel .dropdown-item");
+  userItems[0].innerHTML = ICONS.user + " Meu perfil";
+  document.getElementById("logout-item").innerHTML = ICONS.logout + " Sair";
+  document.getElementById("logout-item").onclick = () => logoutCliente();
+  document.getElementById("busca-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.querySelector(".preview-card").innerHTML = ICONS.doc;
+  document.querySelector(".page-header-flex .btn-primary").innerHTML = ICONS.download + " Enviar documento";
+
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function formatBytes(bytes) {
+    if (!bytes) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+  function totalBytes(doc) {
+    return (doc.documento_arquivos || []).reduce((s, f) => s + (f.tamanho_bytes || 0), 0);
+  }
+  function metaTexto(arquivos) {
+    if (!arquivos || arquivos.length === 0) return "Sem arquivo anexado";
+    if (arquivos.length === 1) return arquivos[0].tipo_arquivo + (arquivos[0].tamanho_bytes ? " · " + formatBytes(arquivos[0].tamanho_bytes) : "");
+    return arquivos.map(f => f.tipo_arquivo).join(" + ");
+  }
+
+  let TODOS_DOCS = [];
+  let CATEGORIAS = [];
+  let categoriaAtiva = "";
+  let ordenacao = "recentes";
+  let busca = "";
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+
+    renderNav("documentos");
+    document.getElementById("user-nome").textContent = cliente.nome;
+    document.getElementById("user-avatar").textContent = initials(cliente.nome);
+
+    const { data: categorias } = await sb.from("categorias")
+      .select("id, slug, nome, icone, ordem")
+      .order("ordem", { ascending: true });
+    CATEGORIAS = (categorias || []).filter(c => !c.slug.startsWith("boleto-"));
+
+    const { data: docs } = await sb.from("documentos")
+      .select("id, nome, created_at, categoria_id, categorias(slug, nome), documento_arquivos(id, tipo_arquivo, nome_original, storage_path, tamanho_bytes)")
+      .eq("cliente_id", cliente.id)
+      .is("data_vencimento", null)
+      .order("created_at", { ascending: false });
+    TODOS_DOCS = docs || [];
+
+    hideAuthOverlay();
+    renderCategorias();
+    renderLista();
+  })();
+
+  function renderCategorias() {
+    const wrap = document.getElementById("doc-categories");
+    const total = TODOS_DOCS.length;
+    let html = `<div class="doc-cat-item${categoriaAtiva === "" ? " active" : ""}" data-cat="">Todos<span class="doc-cat-count">${total}</span></div>`;
+    CATEGORIAS.forEach(c => {
+      const qtd = TODOS_DOCS.filter(d => d.categoria_id === c.id).length;
+      html += `<div class="doc-cat-item${categoriaAtiva === c.id ? " active" : ""}" data-cat="${c.id}">${c.nome}<span class="doc-cat-count">${qtd}</span></div>`;
+    });
+    wrap.innerHTML = html;
+    wrap.querySelectorAll(".doc-cat-item").forEach(el => {
+      el.addEventListener("click", () => {
+        categoriaAtiva = el.dataset.cat;
+        renderCategorias();
+        renderLista();
+      });
+    });
+  }
+
+  function renderLista() {
+    let visiveis = TODOS_DOCS.filter(d => {
+      if (categoriaAtiva && d.categoria_id !== categoriaAtiva) return false;
+      if (busca && !d.nome.toLowerCase().includes(busca)) return false;
+      return true;
+    });
+
+    if (ordenacao === "nome") visiveis = visiveis.slice().sort((a, b) => a.nome.localeCompare(b.nome));
+    else if (ordenacao === "tamanho") visiveis = visiveis.slice().sort((a, b) => totalBytes(b) - totalBytes(a));
+    else visiveis = visiveis.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const list = document.getElementById("doc-list");
+    const empty = document.getElementById("empty-state");
+
+    if (visiveis.length === 0) {
+      list.style.display = "none";
+      empty.style.display = "block";
+      empty.innerHTML = `
+        <div class="empty-state">
+          ${ICONS.empty}
+          <h3>${TODOS_DOCS.length === 0 ? "Nenhum documento por aqui ainda" : "Nenhum documento encontrado"}</h3>
+          <p>${TODOS_DOCS.length === 0 ? "Documentos enviados pela Trilhar ou por você aparecem aqui." : "Tente ajustar a busca ou a categoria."}</p>
+        </div>`;
+      return;
+    }
+
+    list.style.display = "block";
+    empty.style.display = "none";
+    list.innerHTML = "";
+
+    visiveis.forEach(d => {
+      const row = document.createElement("div");
+      row.className = "drive-row";
+      row.style.cursor = "pointer";
+      row.innerHTML = `
+        <div class="drive-row-icon">${ICONS.doc}</div>
+        <div class="drive-row-main">
+          <p class="drive-row-nome">${d.nome}</p>
+          <div class="drive-row-meta">
+            <span class="drive-row-cat">${d.categorias ? d.categorias.nome : ""}</span>
+            <span class="drive-row-date">${metaTexto(d.documento_arquivos)} · ${new Date(d.created_at).toLocaleDateString("pt-BR")}</span>
+          </div>
+        </div>
+        <button class="icon-btn drive-row-kebab" title="Visualizar">${ICONS.eye}</button>
+      `;
+      row.addEventListener("click", () => abrirPreview(d));
+      list.appendChild(row);
+    });
+  }
+
+  function abrirPreview(d) {
+    document.getElementById("preview-nome").textContent = d.nome;
+    document.getElementById("preview-meta").textContent = (d.categorias ? d.categorias.nome : "") + " · " + metaTexto(d.documento_arquivos) + " · Enviado em " + new Date(d.created_at).toLocaleDateString("pt-BR");
+
+    const actions = document.getElementById("preview-download-actions");
+    actions.innerHTML = "";
+    const arquivos = d.documento_arquivos || [];
+    if (arquivos.length === 0) {
+      actions.innerHTML = '<p class="hint">Nenhum arquivo anexado a este documento.</p>';
+    } else {
+      arquivos.forEach(f => {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-primary";
+        btn.innerHTML = ICONS.download + " Baixar " + f.tipo_arquivo;
+        btn.onclick = () => downloadFile(btn, f.storage_path, f.nome_original);
+        actions.appendChild(btn);
+      });
+    }
+    document.getElementById("modal-preview").classList.add("open");
+  }
+
+  document.querySelectorAll("#ordenacao-chips .period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#ordenacao-chips .period-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      ordenacao = chip.dataset.ordenar;
+      renderLista();
+    });
+  });
+
+  document.getElementById("busca-input").addEventListener("input", (e) => {
+    busca = e.target.value.trim().toLowerCase();
+    renderLista();
+  });
+</script>
+</body>
+</html>

@@ -203,6 +203,11 @@
       pasta: "v32-2026-07-21",
       data: "21/07/2026",
       descricao: "Corrigido bug real no cadastro de cliente: toda falha da Edge Function aparecia como 'Edge Function returned a non-2xx status code' — a mensagem genérica do SDK do supabase-js, que não expõe o corpo JSON de erro quando a função responde status != 2xx. A mensagem verdadeira (ex: motivo exato pelo qual o convite falhou) ficava presa em error.context (a Response crua do fetch), nunca lida. admin.html agora lê error.context.json() pra mostrar e logar a causa real. Investigação nos logs de auditoria do Supabase mostrou que o convite estava de fato criando o usuário no Auth (5 tentativas, 5 contas novas), mas nenhuma permanecia e nenhum e-mail foi enviado — consistente com o limite de envio do mailer padrão do Supabase (já esgotado nesta sessão), não um bug de lógica. Adicionada também checagem de duplicidade de CPF/CNPJ/e-mail no front (contra os clientes já carregados), com feedback imediato antes mesmo de enviar — o banco (índice único parcial, desde a v30) continua sendo a garantia real."
+    },
+    {
+      pasta: "v33-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Nova aba 'Administradores' no painel: lista quem tem acesso (nome, e-mail, nível, status, desde) e um painel 'Convidar administrador' (nome + e-mail) que envia convite de verdade por e-mail — nova Edge Function admin-convidar-administrador, mesmo padrão já validado do convite de cliente (service_role só no servidor, is_admin() confere quem chama, rollback se qualquer etapa falhar). Sem níveis/permissões novas de propósito (decisão já tomada nesta rodada de correções): todo convidado entra como 'administrador' comum, a coluna 'Nível' só exibe o que já existe no banco. Validação de e-mail duplicado no front antes de enviar. As funções de log de erro estruturado e leitura da mensagem real da Edge Function (criadas pro cadastro de cliente) foram promovidas pra escopo compartilhado e reaproveitadas aqui, em vez de duplicadas."
     }
   ];
 

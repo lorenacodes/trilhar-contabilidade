@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boletos — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=22">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+      <div>
+        <div class="brand-name">TRILHAR CONTABILIDADE</div>
+        <div class="brand-sub">SEU NEGÓCIO NO CAMINHO CERTO</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="dropdown-wrap">
+        <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
+          <div class="avatar" id="user-avatar"></div>
+          <span id="user-nome"></span>
+        </div>
+        <div class="dropdown-panel" id="user-panel">
+          <div class="dropdown-header">Conta</div>
+          <div class="dropdown-item" onclick="window.location.href='perfil.html'"></div>
+          <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" id="logout-item"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <div class="main">
+      <div class="page-header">
+        <p class="eyebrow">Boletos</p>
+        <h1 class="page-title">Seus boletos</h1>
+        <p class="page-subtitle">Honorários e impostos — acompanhe, visualize e baixe.</p>
+      </div>
+
+      <div class="docs-toolbar">
+        <div class="docs-search">
+          <span id="busca-icon"></span>
+          <input type="text" id="busca-input" placeholder="Buscar por competência ou tipo">
+        </div>
+        <button class="btn btn-secondary" id="btn-mais-filtros">Mais filtros</button>
+      </div>
+
+      <div class="status-chip-row" id="status-chips">
+        <button type="button" class="period-chip active" data-status="">Todos</button>
+        <button type="button" class="period-chip" data-status="nao_pago">Não pago</button>
+        <button type="button" class="period-chip" data-status="vencido">Vencido</button>
+        <button type="button" class="period-chip" data-status="vencendo">Vencendo</button>
+        <button type="button" class="period-chip" data-status="pago">Pago</button>
+      </div>
+
+      <div class="filter-bar-summary" id="filtro-resumo"></div>
+
+      <div class="boleto-list" id="boleto-list"></div>
+      <div id="empty-state" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Painel: mais filtros -->
+<div class="panel-overlay" id="panel-filtros" onclick="if(event.target===this) closeFiltros()">
+  <div class="side-panel">
+    <div class="side-panel-header">
+      <div><h3 class="panel-title">Mais filtros</h3></div>
+      <button class="panel-close" onclick="closeFiltros()" id="filtros-close-btn"></button>
+    </div>
+    <div class="side-panel-body">
+      <div class="field">
+        <label>Tipo</label>
+        <div class="status-chip-row" id="tipo-chips">
+          <button type="button" class="period-chip active" data-tipo="">Todos</button>
+          <button type="button" class="period-chip" data-tipo="boleto-honorarios">Honorários</button>
+          <button type="button" class="period-chip" data-tipo="boleto-imposto">Imposto</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Período de vencimento</label>
+        <div class="filter-date-range">
+          <input type="date" id="filtro-data-de">
+          <span>até</span>
+          <input type="date" id="filtro-data-ate">
+        </div>
+      </div>
+    </div>
+    <div class="side-panel-footer">
+      <button class="btn btn-secondary" id="btn-limpar-filtros">Limpar</button>
+      <button class="btn btn-primary" onclick="closeFiltros()">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pré-visualização -->
+<div class="modal-overlay" id="modal-preview">
+  <div class="modal modal-lg">
+    <div class="preview-card" id="preview-icon"></div>
+    <h3 id="preview-nome">Boleto</h3>
+    <p class="hint" id="preview-meta">—</p>
+    <div class="modal-actions" id="preview-download-actions"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-preview').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth-guard.js"></script>
+<script>
+  const userItems = document.querySelectorAll("#user-panel .dropdown-item");
+  userItems[0].innerHTML = ICONS.user + " Meu perfil";
+  document.getElementById("logout-item").innerHTML = ICONS.logout + " Sair";
+  document.getElementById("logout-item").onclick = () => logoutCliente();
+  document.getElementById("busca-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.querySelector(".preview-card").innerHTML = ICONS.card;
+  document.getElementById("filtros-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function tipoBoleto(nomeCategoria) {
+    return (nomeCategoria || "").replace(/^Boleto\s*-\s*/i, "");
+  }
+  function competencia(iso) {
+    const label = new Date(iso).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  function formatMoeda(valor) {
+    return (valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  let TODOS_BOLETOS = [];
+  let filtroStatus = "";
+  let filtroTipo = "";
+  let filtroBusca = "";
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+
+    renderNav("boletos");
+    document.getElementById("user-nome").textContent = cliente.nome;
+    document.getElementById("user-avatar").textContent = initials(cliente.nome);
+
+    const { data } = await sb.from("documentos")
+      .select("id, nome, valor, data_vencimento, status, pago_em, created_at, categorias(slug, nome), documento_arquivos(id, tipo_arquivo, nome_original, storage_path, tamanho_bytes)")
+      .eq("cliente_id", cliente.id)
+      .not("data_vencimento", "is", null)
+      .order("data_vencimento", { ascending: true });
+
+    TODOS_BOLETOS = data || [];
+    hideAuthOverlay();
+    renderLista();
+  })();
+
+  function passaFiltro(b) {
+    if (filtroStatus) {
+      const st = statusBoleto(b);
+      if (filtroStatus === "pago" && b.status !== "pago") return false;
+      if (filtroStatus === "nao_pago" && b.status !== "nao_pago") return false;
+      if (filtroStatus === "vencido" && !(st && st.cls === "danger")) return false;
+      if (filtroStatus === "vencendo" && !(st && st.cls === "warning")) return false;
+    }
+    if (filtroTipo && b.categorias.slug !== filtroTipo) return false;
+    const de = document.getElementById("filtro-data-de").value;
+    const ate = document.getElementById("filtro-data-ate").value;
+    if (de && b.data_vencimento < de) return false;
+    if (ate && b.data_vencimento > ate) return false;
+    if (filtroBusca && !(competencia(b.data_vencimento).toLowerCase().includes(filtroBusca) || tipoBoleto(b.categorias.nome).toLowerCase().includes(filtroBusca))) return false;
+    return true;
+  }
+
+  function renderLista() {
+    const visiveis = TODOS_BOLETOS.filter(passaFiltro);
+    const list = document.getElementById("boleto-list");
+    const empty = document.getElementById("empty-state");
+
+    if (visiveis.length === 0) {
+      list.style.display = "none";
+      empty.style.display = "block";
+      empty.innerHTML = `
+        <div class="empty-state">
+          ${ICONS.empty}
+          <h3>${TODOS_BOLETOS.length === 0 ? "Nenhum boleto por aqui ainda" : "Nenhum boleto encontrado"}</h3>
+          <p>${TODOS_BOLETOS.length === 0 ? "Quando a Trilhar emitir um boleto pra você, ele aparece aqui automaticamente." : "Tente ajustar a busca ou os filtros."}</p>
+        </div>`;
+      return;
+    }
+
+    list.style.display = "block";
+    empty.style.display = "none";
+    list.innerHTML = "";
+
+    visiveis.forEach(b => {
+      const st = statusBoleto(b);
+      const row = document.createElement("div");
+      row.className = "boleto-row";
+      row.innerHTML = `
+        <div class="boleto-row-icon">${ICONS.card}</div>
+        <div class="boleto-row-main">
+          <p class="boleto-row-competencia">${competencia(b.data_vencimento)}</p>
+          <p class="boleto-row-tipo">${tipoBoleto(b.categorias.nome)}</p>
+        </div>
+        <div class="boleto-row-valor"><span class="moeda">R$</span>${formatMoeda(b.valor)}</div>
+        <div class="boleto-row-vencimento">${new Date(b.data_vencimento).toLocaleDateString("pt-BR")}</div>
+        <div class="boleto-row-status">${st ? `<span class="badge ${st.cls}">${st.label}</span>` : ""}</div>
+        <div class="boleto-row-actions">
+          <button class="icon-btn boleto-ver-btn" title="Visualizar">${ICONS.eye}</button>
+          <button class="icon-btn boleto-baixar-btn" title="Baixar">${ICONS.download}</button>
+        </div>
+      `;
+      row.querySelector(".boleto-ver-btn").addEventListener("click", () => abrirPreview(b));
+      row.querySelector(".boleto-baixar-btn").addEventListener("click", (e) => {
+        const arquivo = b.documento_arquivos && b.documento_arquivos[0];
+        if (arquivo) downloadFile(e.currentTarget, arquivo.storage_path, arquivo.nome_original);
+        else showToast("Nenhum arquivo anexado a este boleto.");
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function abrirPreview(b) {
+    const st = statusBoleto(b);
+    document.getElementById("preview-nome").textContent = competencia(b.data_vencimento) + " · " + tipoBoleto(b.categorias.nome);
+    document.getElementById("preview-meta").textContent = "R$ " + formatMoeda(b.valor) + " · Vencimento em " + new Date(b.data_vencimento).toLocaleDateString("pt-BR") + (st ? " · " + st.label : "");
+
+    const actions = document.getElementById("preview-download-actions");
+    actions.innerHTML = "";
+    const arquivos = b.documento_arquivos || [];
+    if (arquivos.length === 0) {
+      actions.innerHTML = '<p class="hint">Nenhum arquivo anexado a este boleto.</p>';
+    } else {
+      arquivos.forEach(f => {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-primary";
+        btn.innerHTML = ICONS.download + " Baixar " + f.tipo_arquivo;
+        btn.onclick = () => downloadFile(btn, f.storage_path, f.nome_original);
+        actions.appendChild(btn);
+      });
+    }
+    document.getElementById("modal-preview").classList.add("open");
+  }
+
+  document.querySelectorAll("#status-chips .period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#status-chips .period-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      filtroStatus = chip.dataset.status;
+      renderLista();
+    });
+  });
+
+  document.querySelectorAll("#tipo-chips .period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#tipo-chips .period-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      filtroTipo = chip.dataset.tipo;
+      renderLista();
+    });
+  });
+
+  document.getElementById("busca-input").addEventListener("input", (e) => {
+    filtroBusca = e.target.value.trim().toLowerCase();
+    renderLista();
+  });
+
+  document.getElementById("filtro-data-de").addEventListener("change", renderLista);
+  document.getElementById("filtro-data-ate").addEventListener("change", renderLista);
+
+  document.getElementById("btn-mais-filtros").addEventListener("click", () => {
+    document.getElementById("panel-filtros").classList.add("open");
+  });
+  function closeFiltros() {
+    document.getElementById("panel-filtros").classList.remove("open");
+  }
+
+  document.getElementById("btn-limpar-filtros").addEventListener("click", () => {
+    filtroTipo = "";
+    document.getElementById("filtro-data-de").value = "";
+    document.getElementById("filtro-data-ate").value = "";
+    document.querySelectorAll("#tipo-chips .period-chip").forEach(c => c.classList.remove("active"));
+    document.querySelector('#tipo-chips .period-chip[data-tipo=""]').classList.add("active");
+    renderLista();
+  });
+</script>
+</body>
+</html>

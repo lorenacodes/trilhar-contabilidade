@@ -193,6 +193,11 @@
       pasta: "v30-2026-07-21",
       data: "21/07/2026",
       descricao: "Cadastro de cliente virou Pessoa Física / Pessoa Jurídica de verdade, com validação real. Campo único 'CPF ou CNPJ' saiu — agora é um seletor Pessoa Física/Jurídica no topo do formulário que adapta os campos (PF: Nome, Sobrenome, CPF; PJ: Razão Social, Nome Fantasia opcional, CNPJ), com máscara ao digitar, validação de dígito verificador (módulo 11) em tempo real e no envio, e telefone com máscara + validação de DDD contra a lista real da ANATEL. Banco ganhou colunas próprias (tipo_pessoa, nome/sobrenome, razao_social/nome_fantasia, cpf, cnpj) substituindo o antigo 'documento' genérico, com constraints garantindo consistência entre tipo de pessoa e campos preenchidos, e índices únicos parciais impedindo CPF/CNPJ duplicado — validado que nenhuma página do lado do cliente dependia do campo antigo antes de migrar. Edge Function admin-criar-cliente e a RPC de edição revalidam CPF/CNPJ/telefone no servidor (nunca só confiar no front)."
+    },
+    {
+      pasta: "v31-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Ajuste visual no seletor Pessoa Física/Jurídica: os dois botões soltos (bordas retas, sem hierarquia clara de qual estava ativo) viraram um controle segmentado de verdade — trilho cinza com padding, e a opção ativa vira um 'pill' branco elevado (sombra) com o texto na cor da marca, no padrão de Linear/iOS. Só CSS (?v=24), nenhuma mudança de comportamento."
     }
   ];
 

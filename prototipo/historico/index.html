@@ -208,6 +208,11 @@
       pasta: "v33-2026-07-21",
       data: "21/07/2026",
       descricao: "Nova aba 'Administradores' no painel: lista quem tem acesso (nome, e-mail, nível, status, desde) e um painel 'Convidar administrador' (nome + e-mail) que envia convite de verdade por e-mail — nova Edge Function admin-convidar-administrador, mesmo padrão já validado do convite de cliente (service_role só no servidor, is_admin() confere quem chama, rollback se qualquer etapa falhar). Sem níveis/permissões novas de propósito (decisão já tomada nesta rodada de correções): todo convidado entra como 'administrador' comum, a coluna 'Nível' só exibe o que já existe no banco. Validação de e-mail duplicado no front antes de enviar. As funções de log de erro estruturado e leitura da mensagem real da Edge Function (criadas pro cadastro de cliente) foram promovidas pra escopo compartilhado e reaproveitadas aqui, em vez de duplicadas."
+    },
+    {
+      pasta: "v34-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Corrigido convite de administrador mostrando só '{}' em vez de uma mensagem real: a Response do erro da Edge Function só pode ser lida uma vez, e se o SDK do supabase-js já tivesse consumido o corpo original ao montar o erro genérico dele, o clone lido depois vinha vazio — sem nenhuma mensagem de verdade sobrando. extrairMensagemErroFuncao() agora sempre garante uma mensagem legível no final (corpo da função → mensagem do erro do SDK → texto genérico de fallback), nunca deixando passar algo vazio pra tela. Causa raiz do próprio erro (não do bug de exibição): confirmado nos logs do Supabase que o convite de administrador falhou porque o modo sandbox do Resend só entrega e-mail pro próprio dono da conta (contatecardozo@gmail.com) — convidar qualquer outro endereço (ex: lorena@milatec.ind.br) precisa do domínio verificado (Trilho 2), ainda pendente."
     }
   ];
 

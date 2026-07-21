@@ -178,6 +178,11 @@
       pasta: "v27-2026-07-21",
       data: "21/07/2026",
       descricao: "Correção de bug crítico introduzido na v25: admin.html travava para sempre na tela de carregamento (overlay branco), sem nenhum erro visível — causa era `CATEGORY_FILE_TYPES`/`CATEGORY_GROUPS` declaradas com `const` tanto em js/app.js (resíduo morto do antigo sistema de categorias em localStorage, sem uso desde a v25) quanto no próprio admin.html, e dois `<script>` da mesma página não podem redeclarar o mesmo identificador — isso quebra o script inteiro com SyntaxError, sem hoisting de nenhuma função, travando o guard de autenticação antes mesmo de rodar. Removido o bloco morto inteiro de app.js (CATEGORY_STORE_KEY, CATEGORY_GROUPS, CATEGORY_COLORS, CATEGORY_FILE_TYPES, defaultCategoryShape, DEFAULT_CATEGORIES, objeto Categories) — nada mais no protótipo usava isso desde que admin.html passou a consultar a tabela categorias de verdade."
+    },
+    {
+      pasta: "v28-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Revisão de UX do painel administrativo (não só estética — cada mudança resolve um problema real de uso diário). Navegação vira uma sidebar recolhível (mesma linguagem visual da sidebar do cliente, ícone+label, preferência salva), em vez da lista de abas fixa de 200px. Container do admin passou de 1280px pra 1600px de largura máxima — a tabela de clientes/documentos tinha pouco espaço real numa tela de notebook. Painel lateral direito consolidado: calendário mensal removido (grade de mês não ajuda a decidir 'quais boletos cobrar essa semana' — uma lista ordenada, que já existia, é mais densa e acionável), 'Próximos vencimentos' e 'Precisa de atenção' viram um único card com duas listas (boletos a vencer / clientes com pendências, que antes se sobrepunham), e 'Envios recentes' saiu do painel principal (era o widget de menor valor operacional, mais um feed de auditoria do que uma decisão a tomar). KPIs 'Boletos vencendo' e 'Clientes com pendências' pararam de ficar sempre laranja mesmo com contagem 0 — o destaque (.attention) agora só aparece quando há de fato algo pendente, e 'Documentos enviados' voltou a contar por mês (não total histórico), mais relevante pro dia a dia. Correção incidental: versão do CSS (?v=) incrementada de 22 pra 23 em todas as páginas — sem isso o navegador continuava servindo o CSS antigo em cache."
     }
   ];
 

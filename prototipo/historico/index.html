@@ -173,6 +173,11 @@
       pasta: "v26-2026-07-21",
       data: "21/07/2026",
       descricao: "Correção de configuração do Supabase Auth (Site URL/Redirect URLs) que fazia o link de recuperação de senha apontar pra localhost mesmo em produção — o código já calculava a URL dinamicamente, faltava liberar o domínio público (lorenacodes.github.io) na allow-list do projeto. esqueci-senha.html ganhou tratamento de erro real (falha de rede/serviço e limite de tentativas do Supabase mostram mensagens específicas, em vez de ignorar o erro silenciosamente) e uma linha extra de apoio ('fale com a Trilhar') na mensagem de sucesso — mantendo de propósito a mensagem sempre genérica sobre o e-mail existir ou não no sistema, pra não abrir brecha de enumeração que revelaria quem é cliente cadastrado da Trilhar."
+    },
+    {
+      pasta: "v27-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Correção de bug crítico introduzido na v25: admin.html travava para sempre na tela de carregamento (overlay branco), sem nenhum erro visível — causa era `CATEGORY_FILE_TYPES`/`CATEGORY_GROUPS` declaradas com `const` tanto em js/app.js (resíduo morto do antigo sistema de categorias em localStorage, sem uso desde a v25) quanto no próprio admin.html, e dois `<script>` da mesma página não podem redeclarar o mesmo identificador — isso quebra o script inteiro com SyntaxError, sem hoisting de nenhuma função, travando o guard de autenticação antes mesmo de rodar. Removido o bloco morto inteiro de app.js (CATEGORY_STORE_KEY, CATEGORY_GROUPS, CATEGORY_COLORS, CATEGORY_FILE_TYPES, defaultCategoryShape, DEFAULT_CATEGORIES, objeto Categories) — nada mais no protótipo usava isso desde que admin.html passou a consultar a tabela categorias de verdade."
     }
   ];
 

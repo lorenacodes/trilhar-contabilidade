@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Administrativo — Trilhar Contabilidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=22">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+      <div>
+        <div class="brand-name">TRILHAR CONTABILIDADE</div>
+        <div class="brand-sub">PAINEL ADMINISTRATIVO</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="dropdown-wrap">
+        <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
+          <div class="avatar">TI</div>
+          <span>Tinaysa</span>
+        </div>
+        <div class="dropdown-panel" id="user-panel">
+          <div class="dropdown-header">Conta</div>
+          <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" id="logout-item"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header page-header-flex">
+      <div>
+        <p class="eyebrow" id="today-eyebrow">Administração</p>
+        <h1 class="page-title">Visão geral</h1>
+        <p class="page-subtitle">Acompanhe a operação do escritório antes de entrar nos detalhes de cada cliente.</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" onclick="openCliente()" id="btn-novo-cliente"></button>
+        <button class="btn btn-primary" onclick="openUpload()" id="btn-upload"></button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-top"><p class="stat-label">Clientes ativos</p><div class="stat-icon" id="kpi-icon-clients"></div></div>
+        <p class="stat-value" id="kpi-value-clientes">—</p>
+        <p class="stat-trend" id="kpi-trend-clientes">—</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><p class="stat-label">Documentos enviados (total)</p><div class="stat-icon" id="kpi-icon-docs"></div></div>
+        <p class="stat-value" id="kpi-value-docs">—</p>
+        <p class="stat-trend" id="kpi-trend-docs">—</p>
+      </div>
+      <div class="stat-card attention clickable" id="kpi-card-warning" title="Ver detalhes em Precisa de atenção">
+        <div class="stat-top"><p class="stat-label">Boletos vencendo em 7 dias</p><div class="stat-icon warn" id="kpi-icon-warning"></div></div>
+        <p class="stat-value" id="kpi-value-boletos">—</p>
+        <p class="stat-trend" id="kpi-trend-boletos" style="color:var(--semantic-warning)">—</p>
+      </div>
+      <div class="stat-card attention clickable" id="kpi-card-pending" title="Ver detalhes em Precisa de atenção">
+        <div class="stat-top"><p class="stat-label">Clientes com pendências</p><div class="stat-icon warn" id="kpi-icon-pending"></div></div>
+        <p class="stat-value" id="kpi-value-pendencias">—</p>
+        <p class="stat-trend" style="color:var(--semantic-warning)" id="kpi-trend-pendencias">—</p>
+      </div>
+    </div>
+
+    <div class="admin-layout">
+      <div class="tabs">
+        <div class="tab active" data-tab="clientes" onclick="switchTab('clientes')">Clientes</div>
+        <div class="tab" data-tab="documentos" onclick="switchTab('documentos')">Documentos e boletos</div>
+        <div class="tab" data-tab="categorias" onclick="switchTab('categorias')">Categorias</div>
+      </div>
+
+      <div class="dashboard-main">
+        <!-- Aba: Clientes -->
+        <div id="tab-clientes">
+          <div style="position:relative; max-width:360px; margin-bottom:16px;">
+            <span id="search-icon" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-secondary); display:flex;"></span>
+            <input id="client-search" type="text" placeholder="Buscar por nome, e-mail ou CPF/CNPJ" style="width:100%; padding:11px 14px 11px 38px; border-radius:8px; border:1px solid var(--border-default); background:var(--bg-surface-elevated); color:var(--text-primary); font-size:14px; font-family:inherit;">
+          </div>
+          <div class="table-card">
+            <table class="table-clients">
+              <thead>
+                <tr><th>Cliente</th><th>E-mail</th><th>Status</th><th>Último documento enviado</th><th>Pendências</th><th></th></tr>
+              </thead>
+              <tbody id="clients-tbody"></tbody>
+            </table>
+            <p class="hint" id="no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum cliente encontrado.</p>
+          </div>
+        </div>
+
+        <!-- Aba: Documentos e boletos -->
+        <div id="tab-documentos" style="display:none;">
+          <div class="docs-toolbar">
+            <div class="docs-search">
+              <span id="docs-search-icon"></span>
+              <input type="text" id="docs-search-input" placeholder="Buscar por cliente ou nome do documento">
+            </div>
+            <button class="btn btn-secondary" id="docs-download-all">Baixar tudo</button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-bar-row">
+              <div class="filter-field">
+                <label>Cliente</label>
+                <select class="select-like" id="docs-filter-cliente">
+                  <option value="">Todos os clientes</option>
+                </select>
+              </div>
+              <div class="filter-field">
+                <label>Tipo de documento</label>
+                <select class="select-like" id="docs-filter-cat">
+                  <option value="">Todos os tipos</option>
+                </select>
+              </div>
+              <div class="filter-field">
+                <label>Status</label>
+                <select class="select-like" id="docs-filter-status">
+                  <option value="">Todos os status</option>
+                  <option value="nao_pago">Não pago</option>
+                  <option value="pago">Pago</option>
+                  <option value="vencido">Vencido</option>
+                  <option value="vencendo">Vencendo em breve</option>
+                </select>
+              </div>
+              <div class="filter-field">
+                <label>Período</label>
+                <div class="period-presets" id="period-presets">
+                  <button type="button" class="period-chip" data-preset="7">7 dias</button>
+                  <button type="button" class="period-chip" data-preset="30">30 dias</button>
+                  <button type="button" class="period-chip" data-preset="custom">Personalizado</button>
+                </div>
+              </div>
+              <label class="filter-toggle">
+                <input type="checkbox" id="docs-filter-novidades">
+                <span class="filter-toggle-track"></span>
+                Só recentes (48h)
+              </label>
+              <button class="btn btn-ghost" id="docs-filter-clear">Limpar filtros</button>
+            </div>
+            <div class="filter-date-range" id="custom-date-range" style="display:none; margin-top:12px;">
+              <input type="date" id="docs-filter-date-de">
+              <span>até</span>
+              <input type="date" id="docs-filter-date-ate">
+            </div>
+            <div class="filter-bar-summary" id="docs-filter-summary"></div>
+          </div>
+
+          <div class="table-card">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Cliente</th><th>Documento</th><th>Tipo</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody id="docs-tbody"></tbody>
+            </table>
+            <p class="hint" id="docs-no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum documento encontrado com esses filtros.</p>
+          </div>
+        </div>
+
+        <!-- Aba: Categorias -->
+        <div id="tab-categorias" style="display:none;">
+          <div class="table-toolbar page-header-flex" style="padding:0; margin-bottom:16px; border-bottom:none;">
+            <p class="page-subtitle" style="margin:0;">Categorias de documento disponíveis para todos os clientes. Crie quantas precisar.</p>
+            <button class="btn btn-secondary" id="btn-nova-categoria"></button>
+          </div>
+          <div class="card-grid" id="categories-grid"></div>
+        </div>
+      </div>
+
+      <!-- Barra lateral -->
+      <div class="dashboard-sidebar">
+        <div class="side-card">
+          <div class="side-card-head">
+            <h3>Próximos vencimentos</h3>
+          </div>
+          <div id="upcoming-list" class="due-list"></div>
+
+          <div class="calendar-mini">
+            <div class="calendar-mini-head">
+              <button class="icon-btn icon-btn-sm" id="cal-prev"></button>
+              <span id="cal-month-label">—</span>
+              <button class="icon-btn icon-btn-sm" id="cal-next"></button>
+            </div>
+            <div class="calendar-weekdays">
+              <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+          </div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-card-head">
+            <h3>Precisa de atenção</h3>
+          </div>
+          <div id="attention-list" class="attention-list"></div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-card-head">
+            <h3>Envios recentes</h3>
+          </div>
+          <div id="activity-feed" class="activity-feed"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Painel lateral: cadastrar / editar cliente -->
+<div class="panel-overlay" id="panel-cliente" onclick="if(event.target===this) closeCliente()">
+  <div class="side-panel">
+    <div class="side-panel-header">
+      <div>
+        <h3 class="panel-title" id="cliente-panel-title">Cadastrar cliente</h3>
+        <p class="panel-subtitle" id="cliente-panel-subtitle">Crie o acesso do cliente ao portal em poucos passos.</p>
+      </div>
+      <button class="panel-close" onclick="closeCliente()" id="cliente-close-btn"></button>
+    </div>
+
+    <div class="side-panel-body">
+      <div class="form-section">
+        <p class="form-section-title">Identificação</p>
+        <div class="field"><label>Nome completo ou razão social</label><input placeholder="Ex: João Silva" id="cliente-nome-input"></div>
+        <div class="field"><label>CPF ou CNPJ</label><input placeholder="000.000.000-00" id="cliente-documento-input"></div>
+      </div>
+
+      <div class="form-section">
+        <p class="form-section-title">Acesso ao portal</p>
+        <div class="field">
+          <label>E-mail</label>
+          <input placeholder="cliente@exemplo.com" id="cliente-email-input">
+          <p class="field-hint" id="cliente-email-hint" style="display:none;">Para trocar o e-mail de login, é preciso falar com o suporte — este campo só está disponível ao cadastrar.</p>
+        </div>
+        <div class="field"><label>Telefone</label><input placeholder="(11) 90000-0000" id="cliente-telefone-input"></div>
+
+        <div class="alert-box alert-info" id="cliente-note-box">
+          <div class="alert-icon" id="cliente-note-icon"></div>
+          <div>
+            <p class="alert-title">O cliente recebe o acesso por e-mail</p>
+            <p class="alert-subtitle">Inclui um link para definir a própria senha no primeiro login.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel-footer">
+      <button class="btn btn-secondary" onclick="closeCliente()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-cliente">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel lateral: upload de documento -->
+<div class="panel-overlay" id="panel-upload" onclick="if(event.target===this) closeUpload()">
+  <div class="side-panel">
+    <div class="side-panel-header">
+      <div class="modal-icon-header">
+        <div class="modal-icon-badge" id="upload-header-icon"></div>
+        <div>
+          <h3 style="margin:0; font-size:16px;">Upload de documento</h3>
+          <p class="hint" style="margin:0;">Selecione o cliente e a categoria do documento.</p>
+        </div>
+      </div>
+      <button class="panel-close" onclick="closeUpload()" id="upload-close-btn"></button>
+    </div>
+
+    <div class="side-panel-body">
+      <div class="field">
+        <label>Cliente</label>
+        <select class="select-like" id="upload-cliente-select"></select>
+      </div>
+      <div class="field">
+        <label>Categoria</label>
+        <select class="select-like" id="cat-select" onchange="toggleDueDate()"></select>
+      </div>
+      <div class="field" id="valor-field" style="display:none;">
+        <label>Valor</label>
+        <input type="number" step="0.01" min="0" id="valor-input" placeholder="0,00">
+      </div>
+      <div class="field" id="due-field" style="display:none;">
+        <label>Data de vencimento</label>
+        <input type="date" id="vencimento-input">
+      </div>
+      <div class="field" id="status-field" style="display:none;">
+        <label>Status</label>
+        <select class="select-like" id="status-input">
+          <option value="nao_pago">Não pago</option>
+          <option value="pago">Pago</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Arquivo(s) PDF</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" accept=".pdf" id="upload-file-input" multiple>
+          <div class="dropzone-icon" id="dropzone-icon"></div>
+          <p class="dropzone-title">Arraste arquivos aqui ou <span>clique para selecionar</span></p>
+          <p class="dropzone-hint">PDF · cada arquivo é salvo como um documento separado</p>
+        </div>
+        <div id="upload-file-list" class="upload-file-list"></div>
+      </div>
+
+      <div class="alert-box alert-info" id="email-note" style="display:none;">
+        <div class="alert-icon" id="email-note-icon"></div>
+        <div>
+          <p class="alert-title">Categoria de boleto</p>
+          <p class="alert-subtitle">Preencha valor e vencimento — o cliente vê isso no Dashboard e em Boletos.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel-footer">
+      <button class="btn btn-secondary" onclick="closeUpload()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-upload">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pré-visualização de documento (Documentos enviados) -->
+<div class="modal-overlay" id="modal-doc-preview">
+  <div class="modal modal-lg">
+    <div class="preview-card" id="doc-preview-icon"></div>
+    <h3 id="doc-preview-name">Documento</h3>
+    <p class="hint" id="doc-preview-meta">—</p>
+    <div id="doc-preview-files" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-doc-preview').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar troca de status de acesso do cliente -->
+<div class="modal-overlay" id="modal-confirm-cliente-status">
+  <div class="modal modal-sm">
+    <div class="modal-icon-header">
+      <div class="modal-icon-badge" style="background:var(--semantic-danger);" id="confirm-cliente-status-icon"></div>
+      <div><h3 style="margin:0;" id="confirm-cliente-status-title">Desativar cliente</h3></div>
+    </div>
+    <p class="hint" id="confirm-cliente-status-text" style="margin:14px 0 0;">—</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-confirm-cliente-status').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" style="background:var(--semantic-danger);" id="btn-confirmar-status-cliente">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar exclusão de documento -->
+<div class="modal-overlay" id="modal-confirm-documento">
+  <div class="modal modal-sm">
+    <div class="modal-icon-header">
+      <div class="modal-icon-badge" style="background:var(--semantic-danger);" id="confirm-documento-icon"></div>
+      <div><h3 style="margin:0;">Excluir documento</h3></div>
+    </div>
+    <p class="hint" id="confirm-documento-text" style="margin:14px 0 0;">—</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-confirm-documento').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" style="background:var(--semantic-danger);" id="btn-confirmar-remocao-documento">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel: configuração de categoria de documento (Geral / Aparência / Validação / Histórico) -->
+<div class="modal-overlay" id="modal-categoria">
+  <div class="config-panel">
+    <div class="config-panel-header">
+      <div class="modal-icon-header">
+        <div class="modal-icon-badge" id="config-header-icon"></div>
+        <div>
+          <h3 id="config-panel-title" style="margin:0;">Nova categoria</h3>
+          <p class="hint" id="config-panel-subtitle" style="margin:0;">Configure os aspectos desta categoria de documento.</p>
+        </div>
+      </div>
+      <button class="panel-close" id="config-close-btn"></button>
+    </div>
+
+    <div class="config-panel-body">
+      <nav class="config-tabs">
+        <button class="config-tab active" data-tab="geral"><span id="tab-icon-geral"></span> Geral</button>
+        <button class="config-tab" data-tab="aparencia">Aparência &amp; Organização</button>
+        <button class="config-tab" data-tab="validacao">Validação</button>
+        <button class="config-tab" data-tab="historico">Histórico</button>
+      </nav>
+
+      <div class="config-content">
+        <!-- Geral -->
+        <div class="config-pane active" data-pane="geral">
+          <p class="form-section-title">Informações básicas</p>
+          <div class="field"><label>Nome da categoria</label><input placeholder="Ex: Procurações, Notas Fiscais..." id="cf-nome"></div>
+          <p class="form-section-title">Ícone</p>
+          <div class="icon-search">
+            <span id="icon-search-icon"></span>
+            <input type="text" id="cf-icon-search" placeholder="Buscar ícone...">
+          </div>
+          <div class="icon-picker" id="cf-icon-grid"></div>
+          <label class="filter-toggle" style="margin-top:18px;">
+            <input type="checkbox" id="cf-obrigatoria">
+            <span class="filter-toggle-track"></span>
+            Categoria obrigatória (todo cliente precisa ter ao menos 1 documento aqui)
+          </label>
+        </div>
+
+        <!-- Aparência & Organização -->
+        <div class="config-pane" data-pane="aparencia">
+          <p class="form-section-title">Cor da categoria</p>
+          <div class="color-row" id="cf-color-row"></div>
+          <p class="form-section-title">Organização</p>
+          <div class="field">
+            <label>Grupo</label>
+            <select class="select-like" id="cf-grupo">
+              <option value="">Sem grupo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Ordem de exibição</label>
+            <input type="number" id="cf-ordem" min="1" style="width:90px; padding:11px 14px; border-radius:8px; border:1px solid var(--border-default); background:var(--bg-surface-elevated); color:var(--text-primary); font-family:inherit; font-size:14px;">
+          </div>
+        </div>
+
+        <!-- Validação -->
+        <div class="config-pane" data-pane="validacao">
+          <p class="form-section-title">Tipos de arquivo aceitos</p>
+          <div class="filetype-chips" id="cf-filetype-chips"></div>
+          <p class="form-section-title" style="margin-top:22px;">Tamanho máximo por arquivo</p>
+          <div class="field" style="max-width:200px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="number" id="cf-maxsize" min="1" style="padding:11px 14px; border-radius:8px; border:1px solid var(--border-default); background:var(--bg-surface-elevated); color:var(--text-primary); font-family:inherit; font-size:14px; width:100px;">
+              <span style="color:var(--text-secondary); font-size:13px;">MB por arquivo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Histórico -->
+        <div class="config-pane" data-pane="historico">
+          <p class="form-section-title">Linha do tempo</p>
+          <div class="info-grid" id="cf-historico-meta" style="margin-bottom:24px;"></div>
+          <p class="form-section-title">Uso desta categoria</p>
+          <div class="info-grid" style="margin-bottom:16px;">
+            <div><p class="label">Documentos vinculados</p><p class="value" id="cf-historico-docs">—</p></div>
+            <div><p class="label">Clientes que possuem essa categoria</p><p class="value" id="cf-historico-clientes">—</p></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="config-preview">
+        <p class="panel-section-title">Pré-visualização</p>
+
+        <p class="preview-label">No painel do cliente / na lista</p>
+        <div class="card-grid" style="grid-template-columns:1fr; margin-bottom:18px;">
+          <div class="cat-card" id="cp-preview-card" style="cursor:default;">
+            <div class="cat-icon" id="cp-preview-icon"></div>
+            <p class="cat-title" id="cp-preview-title">Nome da categoria</p>
+            <p class="cat-meta" id="cp-preview-meta">0 arquivos</p>
+          </div>
+        </div>
+
+        <p class="preview-label">No seletor de upload</p>
+        <div class="select-like preview-select" id="cp-preview-select" style="margin-bottom:18px;"></div>
+
+        <p class="preview-label">Como filtro / tag</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <span class="filter-chip" id="cp-preview-chip" style="cursor:default;"></span>
+          <span class="status-badge neutral" id="cp-preview-tag"></span>
+        </div>
+      </aside>
+    </div>
+
+    <div class="config-panel-footer">
+      <button class="btn btn-secondary" id="config-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="config-save-btn">Salvar categoria</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar remoção de categoria -->
+<div class="modal-overlay" id="modal-confirm-categoria">
+  <div class="modal modal-md">
+    <div class="modal-icon-header">
+      <div class="modal-icon-badge" style="background:var(--semantic-danger);" id="confirm-cat-icon"></div>
+      <div><h3 style="margin:0;">Remover categoria</h3></div>
+    </div>
+    <p class="hint" id="confirm-cat-text" style="margin:14px 0 0;">—</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-confirm-categoria').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" style="background:var(--semantic-danger);" id="btn-confirmar-remocao-categoria">Remover</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel lateral: detalhe do cliente -->
+<div class="panel-overlay" id="panel-detalhe" onclick="if(event.target===this) closeDetalhe()">
+  <div class="side-panel" id="side-panel-detalhe">
+    <div class="panel-resize-handle" id="panel-resize-handle"></div>
+    <div class="side-panel-header">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div class="avatar" id="detalhe-avatar" style="width:48px; height:48px; font-size:16px;"></div>
+        <div>
+          <h3 id="detalhe-nome" style="margin:0; font-size:16px;">Cliente</h3>
+          <p class="hint" id="detalhe-email" style="margin:0;">email@exemplo.com</p>
+        </div>
+      </div>
+      <button class="panel-close" onclick="closeDetalhe()" id="detalhe-close-btn"></button>
+    </div>
+
+    <div class="side-panel-body">
+      <p class="panel-section-title">Dados cadastrais</p>
+      <div class="info-grid">
+        <div><p class="label">Status</p><p class="value" id="detalhe-status">—</p></div>
+        <div><p class="label">CPF / CNPJ</p><p class="value" id="detalhe-doc">—</p></div>
+        <div><p class="label">Telefone</p><p class="value" id="detalhe-tel">—</p></div>
+        <div><p class="label">Cliente desde</p><p class="value" id="detalhe-desde">—</p></div>
+      </div>
+
+      <p class="panel-section-title">Documentos por categoria</p>
+      <div id="detalhe-categorias" style="display:flex; flex-direction:column; gap:20px;"></div>
+    </div>
+
+    <div class="side-panel-footer" style="flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="closeDetalhe()">Fechar</button>
+      <button class="btn btn-secondary" id="detalhe-editar-btn">Editar</button>
+      <button class="btn btn-secondary" id="detalhe-status-btn" style="color:var(--semantic-danger); border-color:var(--semantic-danger);">Desativar</button>
+      <button class="btn btn-primary" id="detalhe-enviar-btn">Enviar documento</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth-guard.js"></script>
+<script>
+  // Guarda de sessão real. Assim que confirma admin, carrega tudo do Supabase
+  // (categorias/clientes/documentos) — nada nesta tela depende mais de mock
+  // ou localStorage. Não envolvo o script inteiro numa função async de
+  // propósito: várias funções aqui embaixo são chamadas via onclick="..."
+  // inline no HTML, e isso as tornaria locais, quebrando o onclick.
+  let ADMIN_ATUAL = null;
+  guardAdministrador().then(admin => {
+    if (!admin) return; // guardAdministrador já redirecionou
+    ADMIN_ATUAL = admin;
+    document.querySelector(".user-chip span").textContent = admin.nome;
+    document.querySelector(".user-chip .avatar").textContent = admin.nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+    hideAuthOverlay();
+    carregarDados();
+  });
+
+  document.getElementById("btn-novo-cliente").innerHTML = ICONS.user + " Novo cliente";
+  document.getElementById("btn-upload").innerHTML = ICONS.download + " Upload de documento";
+  document.getElementById("kpi-icon-clients").innerHTML = ICONS.user;
+  document.getElementById("kpi-icon-docs").innerHTML = ICONS.doc;
+  document.getElementById("kpi-icon-warning").innerHTML = ICONS.bell;
+  document.getElementById("kpi-icon-pending").innerHTML = ICONS.contract;
+  document.getElementById("email-note-icon").innerHTML = ICONS.mail;
+  document.getElementById("cliente-note-icon").innerHTML = ICONS.mail;
+  document.getElementById("logout-item").innerHTML = ICONS.logout + " Sair";
+  document.getElementById("logout-item").onclick = () => logoutAdministrador();
+  document.getElementById("confirm-documento-icon").innerHTML = ICONS.trash;
+  document.getElementById("confirm-cliente-status-icon").innerHTML = ICONS.lock;
+  document.getElementById("doc-preview-icon").innerHTML = ICONS.doc;
+  document.getElementById("search-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("docs-search-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("icon-search-icon").innerHTML = '<svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("config-header-icon").innerHTML = ICONS.doc;
+  document.getElementById("tab-icon-geral").innerHTML = "";
+  const closeIconSvg = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("cliente-close-btn").innerHTML = closeIconSvg;
+  document.getElementById("upload-close-btn").innerHTML = closeIconSvg;
+  document.getElementById("detalhe-close-btn").innerHTML = closeIconSvg;
+  document.getElementById("config-close-btn").innerHTML = closeIconSvg;
+  document.getElementById("upload-header-icon").innerHTML = ICONS.download;
+  document.getElementById("cal-prev").innerHTML = ICONS.back;
+  document.getElementById("cal-next").innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
+  document.getElementById("dropzone-icon").innerHTML = ICONS.download;
+
+  function initials(name) {
+    return (name || "?").split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function parseDataLocal(iso) {
+    if (!iso) return null;
+    const [ano, mes, dia] = iso.split("-").map(Number);
+    return new Date(ano, mes - 1, dia);
+  }
+  function formatDataBR(iso) {
+    const d = parseDataLocal(iso.slice(0, 10));
+    return d ? d.toLocaleDateString("pt-BR") : "—";
+  }
+  function formatRelativo(isoDateTime) {
+    const dt = new Date(isoDateTime);
+    const hoje = new Date();
+    const diffDias = Math.floor((hoje.setHours(0,0,0,0) - new Date(dt).setHours(0,0,0,0)) / 86400000);
+    if (diffDias <= 0) return "Enviado hoje";
+    if (diffDias === 1) return "Enviado ontem";
+    if (diffDias < 7) return "Enviado há " + diffDias + " dias";
+    return "Enviado em " + dt.toLocaleDateString("pt-BR");
+  }
+
+  // ============================================================
+  // Estado real (Supabase é a única fonte de verdade)
+  // ============================================================
+  let CATEGORIAS = [];
+  let CLIENTES = [];
+  let DOCUMENTOS = [];
+
+  function categoriaPorId(id) { return CATEGORIAS.find(c => c.id === id); }
+  function clientePorId(id) { return CLIENTES.find(c => c.id === id); }
+  function isBoletoCategoria(cat) { return !!cat && (cat.slug === "boleto-honorarios" || cat.slug === "boleto-imposto"); }
+  function pendenciasDoCliente(clienteId) {
+    return CATEGORIAS.filter(cat => cat.obrigatoria)
+      .filter(cat => !DOCUMENTOS.some(d => d.cliente_id === clienteId && d.categoria_id === cat.id));
+  }
+
+  async function carregarDados() {
+    const [catRes, cliRes, docRes] = await Promise.all([
+      sb.from("categorias").select("*").order("ordem", { ascending: true }),
+      sb.from("clientes").select("id, documento, telefone, created_at, users(nome, email, status)").order("created_at", { ascending: false }),
+      sb.from("documentos")
+        .select("id, nome, valor, data_vencimento, status, pago_em, created_at, cliente_id, categoria_id, categorias(id, slug, nome), clientes(id, users(nome)), documento_arquivos(id, tipo_arquivo, nome_original, storage_path, tamanho_bytes)")
+        .order("created_at", { ascending: false })
+    ]);
+
+    if (catRes.error || cliRes.error || docRes.error) {
+      showToast("Erro ao carregar dados do painel. Recarregue a página.");
+      return;
+    }
+
+    CATEGORIAS = catRes.data || [];
+    CLIENTES = (cliRes.data || []).map(c => ({
+      id: c.id, documento: c.documento, telefone: c.telefone, created_at: c.created_at,
+      nome: (c.users && c.users.nome) || "—", email: (c.users && c.users.email) || "—",
+      status: (c.users && c.users.status) || "ativo"
+    }));
+    DOCUMENTOS = (docRes.data || []).map(d => ({
+      id: d.id, nome: d.nome, valor: d.valor, data_vencimento: d.data_vencimento, status: d.status,
+      pago_em: d.pago_em, created_at: d.created_at, cliente_id: d.cliente_id, categoria_id: d.categoria_id,
+      categoriaNome: (d.categorias && d.categorias.nome) || "—", categoriaSlug: (d.categorias && d.categorias.slug) || "",
+      clienteNome: (d.clientes && d.clientes.users && d.clientes.users.nome) || "—",
+      arquivos: d.documento_arquivos || []
+    }));
+
+    renderTudo();
+  }
+
+  function renderTudo() {
+    renderKpis();
+    renderClients(document.getElementById("client-search").value);
+    populateDocsFilterCategories();
+    populateDocsFilterClientes();
+    renderDocs();
+    renderCategoriesGrid();
+    populateUploadCategorySelect();
+    populateUploadClienteSelect();
+    renderCalendar();
+    renderUpcoming();
+    renderAttention();
+    renderActivity();
+  }
+
+  // ---------- KPIs ----------
+  function renderKpis() {
+    const ativos = CLIENTES.filter(c => c.status === "ativo");
+    const inativos = CLIENTES.length - ativos.length;
+    document.getElementById("kpi-value-clientes").textContent = ativos.length;
+    document.getElementById("kpi-trend-clientes").textContent = inativos > 0 ? inativos + " inativo(s)" : "Todos ativos";
+
+    document.getElementById("kpi-value-docs").textContent = DOCUMENTOS.length;
+    document.getElementById("kpi-trend-docs").textContent = DOCUMENTOS.length === 1 ? "1 documento no total" : DOCUMENTOS.length + " documentos no total";
+
+    const boletosVencendo = DOCUMENTOS
+      .filter(d => isBoletoCategoria(categoriaPorId(d.categoria_id)))
+      .map(d => statusBoleto(d))
+      .filter(st => st && st.cls === "warning");
+    document.getElementById("kpi-value-boletos").textContent = boletosVencendo.length;
+    document.getElementById("kpi-trend-boletos").textContent = boletosVencendo.length
+      ? "Mais próximo: " + Math.min(...boletosVencendo.map(s => s.dias)) + " dia(s)"
+      : "Nenhum vencendo";
+
+    let clientesComPendencia = 0, totalPendencias = 0;
+    CLIENTES.forEach(c => {
+      const p = pendenciasDoCliente(c.id).length;
+      if (p > 0) clientesComPendencia++;
+      totalPendencias += p;
+    });
+    document.getElementById("kpi-value-pendencias").textContent = clientesComPendencia;
+    document.getElementById("kpi-trend-pendencias").textContent = totalPendencias + " categoria(s) obrigatória(s) pendente(s) no total";
+
+    document.getElementById("today-eyebrow").textContent =
+      "Administração · " + new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  }
+
+  function focusAttention() {
+    const card = document.getElementById("attention-list").closest(".side-card");
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.remove("pulse");
+    requestAnimationFrame(() => card.classList.add("pulse"));
+  }
+  document.getElementById("kpi-card-warning").addEventListener("click", focusAttention);
+  document.getElementById("kpi-card-pending").addEventListener("click", focusAttention);
+
+  // ---------- Aba Clientes ----------
+  const clientsTbody = document.getElementById("clients-tbody");
+  const clientsNoResults = document.getElementById("no-results");
+
+  function ultimoDocumentoDoCliente(clienteId) {
+    const docs = DOCUMENTOS.filter(d => d.cliente_id === clienteId).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return docs[0] || null;
+  }
+
+  function renderClients(filter) {
+    const term = (filter || "").trim().toLowerCase();
+    clientsTbody.innerHTML = "";
+    let visible = 0;
+
+    CLIENTES.forEach(c => {
+      const matches = !term ||
+        c.nome.toLowerCase().includes(term) ||
+        c.email.toLowerCase().includes(term) ||
+        (c.documento || "").toLowerCase().includes(term);
+      if (!matches) return;
+      visible++;
+
+      const pendencias = pendenciasDoCliente(c.id);
+      const ultimo = ultimoDocumentoDoCliente(c.id);
+      const pendTag = pendencias.length === 0
+        ? `<span class="pending-indicator ok" title="Nenhuma categoria obrigatória pendente">${ICONS.check}</span>`
+        : `<span class="pending-indicator warn" title="Pendente: ${pendencias.map(p => p.nome).join(', ')}">${ICONS.bell}<strong>${pendencias.length}</strong></span>`;
+      const statusTag = c.status === "ativo"
+        ? `<span class="status-tag active"><span class="status-dot"></span>Ativo</span>`
+        : `<span class="status-tag inactive"><span class="status-dot"></span>Inativo</span>`;
+
+      const row = document.createElement("tr");
+      row.className = "row-clickable";
+      row.innerHTML = `
+        <td data-label="Cliente">
+          <div class="client-cell">
+            <div class="avatar">${initials(c.nome)}</div>
+            <div>
+              <span class="client-link">${c.nome}</span>
+              <div class="client-doc">${c.documento || "—"}</div>
+            </div>
+          </div>
+        </td>
+        <td data-label="E-mail">${c.email}</td>
+        <td data-label="Status">${statusTag}</td>
+        <td data-label="Último documento"><div class="last-doc">${ultimo ? `<strong>${ultimo.nome}</strong><span>${formatRelativo(ultimo.created_at)}</span>` : `<span class="hint">Nenhum documento ainda</span>`}</div></td>
+        <td data-label="Pendências">${pendTag}</td>
+        <td style="text-align:right;"><button class="icon-btn" type="button" title="Enviar documento"></button></td>
+      `;
+      const sendBtn = row.querySelector(".icon-btn");
+      sendBtn.innerHTML = ICONS.download;
+      sendBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openUpload(c.id);
+      });
+      row.addEventListener("click", () => openDetalhe(c.id));
+      clientsTbody.appendChild(row);
+    });
+
+    clientsNoResults.style.display = visible === 0 ? "block" : "none";
+    clientsTbody.parentElement.style.display = visible === 0 ? "none" : "table";
+  }
+
+  document.getElementById("client-search").addEventListener("input", (e) => renderClients(e.target.value));
+
+  // ---------- Painel: cadastrar / editar cliente ----------
+  let editingClienteId = null;
+
+  function openCliente(clienteId) {
+    editingClienteId = clienteId || null;
+    const c = clienteId ? clientePorId(clienteId) : null;
+
+    document.getElementById("cliente-panel-title").textContent = c ? "Editar cliente" : "Cadastrar cliente";
+    document.getElementById("cliente-panel-subtitle").textContent = c
+      ? "Altere os dados cadastrais deste cliente."
+      : "Crie o acesso do cliente ao portal em poucos passos.";
+    document.getElementById("btn-confirmar-cliente").textContent = c ? "Salvar alterações" : "Cadastrar";
+
+    document.getElementById("cliente-nome-input").value = c ? c.nome : "";
+    document.getElementById("cliente-documento-input").value = c ? (c.documento || "") : "";
+    document.getElementById("cliente-email-input").value = c ? c.email : "";
+    document.getElementById("cliente-email-input").disabled = !!c;
+    document.getElementById("cliente-email-hint").style.display = c ? "block" : "none";
+    document.getElementById("cliente-telefone-input").value = c ? (c.telefone || "") : "";
+    document.getElementById("cliente-note-box").style.display = c ? "none" : "flex";
+
+    document.getElementById("panel-cliente").classList.add("open");
+  }
+  function closeCliente() { document.getElementById("panel-cliente").classList.remove("open"); }
+
+  document.getElementById("btn-confirmar-cliente").addEventListener("click", async function () {
+    const btn = this;
+    const nome = document.getElementById("cliente-nome-input").value.trim();
+    const documento = document.getElementById("cliente-documento-input").value.trim();
+    const email = document.getElementById("cliente-email-input").value.trim();
+    const telefone = document.getElementById("cliente-telefone-input").value.trim();
+
+    if (!nome || !email) {
+      showToast("Nome e e-mail são obrigatórios");
+      return;
+    }
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add("btn-loading");
+    btn.innerHTML = ICONS.spinner + (editingClienteId ? " Salvando..." : " Cadastrando...");
+
+    try {
+      if (editingClienteId) {
+        const { error } = await sb.rpc("admin_atualizar_cliente", {
+          p_cliente_id: editingClienteId, p_nome: nome, p_email: email, p_documento: documento, p_telefone: telefone
+        });
+        if (error) throw error;
+        showToast("Cliente atualizado");
+      } else {
+        const { data, error } = await sb.functions.invoke("admin-criar-cliente", {
+          body: { nome, email, documento, telefone, redirectTo: window.location.origin + window.location.pathname.replace(/admin\.html$/, "primeiro-acesso.html") }
+        });
+        if (error || (data && data.error)) throw new Error((data && data.error) || error.message);
+        showToast("Cliente cadastrado — um e-mail de acesso foi enviado");
+      }
+      closeCliente();
+      await carregarDados();
+    } catch (err) {
+      showToast(err.message || "Não foi possível salvar o cliente");
+    } finally {
+      btn.classList.remove("btn-loading");
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  });
+
+  // ---------- Painel: detalhe do cliente ----------
+  let detalheClienteId = null;
+
+  function openDetalhe(clienteId) {
+    detalheClienteId = clienteId;
+    const c = clientePorId(clienteId);
+    if (!c) return;
+    document.getElementById("detalhe-avatar").textContent = initials(c.nome);
+    document.getElementById("detalhe-nome").textContent = c.nome;
+    document.getElementById("detalhe-email").textContent = c.email;
+    document.getElementById("detalhe-doc").textContent = c.documento || "—";
+    document.getElementById("detalhe-tel").textContent = c.telefone || "—";
+    document.getElementById("detalhe-desde").textContent = formatDataBR(c.created_at);
+    document.getElementById("detalhe-status").innerHTML = c.status === "ativo"
+      ? '<span class="status-tag active"><span class="status-dot"></span>Ativo</span>'
+      : '<span class="status-tag inactive"><span class="status-dot"></span>Inativo</span>';
+
+    const statusBtn = document.getElementById("detalhe-status-btn");
+    if (c.status === "ativo") {
+      statusBtn.textContent = "Desativar";
+      statusBtn.style.color = "var(--semantic-danger)";
+      statusBtn.style.borderColor = "var(--semantic-danger)";
+    } else {
+      statusBtn.textContent = "Reativar";
+      statusBtn.style.color = "";
+      statusBtn.style.borderColor = "";
+    }
+
+    const wrap = document.getElementById("detalhe-categorias");
+    wrap.innerHTML = "";
+    CATEGORIAS.slice().sort((a, b) => (a.ordem || 999) - (b.ordem || 999)).forEach(cat => {
+      const docsDaCategoria = DOCUMENTOS.filter(d => d.cliente_id === clienteId && d.categoria_id === cat.id);
+      const temDocs = docsDaCategoria.length > 0;
+      const pendenteObrigatoria = cat.obrigatoria && !temDocs;
+
+      const group = document.createElement("div");
+      group.className = "cat-group" + (temDocs ? " sent" : (pendenteObrigatoria ? " pending" : ""));
+
+      const head = document.createElement("div");
+      head.className = "cat-group-head";
+      head.innerHTML = `
+        <div class="cat-status-icon">${temDocs ? ICONS.check : ICONS.dot}</div>
+        <span class="cat-group-name">${cat.nome}${cat.obrigatoria ? " (obrigatória)" : ""}</span>
+        <span class="cat-group-count">${docsDaCategoria.length}</span>
+      `;
+      group.appendChild(head);
+
+      if (docsDaCategoria.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "cat-empty-row";
+        empty.innerHTML = `${ICONS.empty} Nenhum documento enviado ainda`;
+        group.appendChild(empty);
+      } else {
+        const list = document.createElement("div");
+        list.className = "doc-chip-list";
+        docsDaCategoria.forEach(doc => {
+          const chip = document.createElement("div");
+          chip.className = "doc-chip";
+          chip.innerHTML = `${ICONS.doc}<div><p>${doc.nome}</p><span>${formatDataBR(doc.created_at.slice(0, 10))}</span></div>`;
+          list.appendChild(chip);
+        });
+        group.appendChild(list);
+      }
+      wrap.appendChild(group);
+    });
+
+    document.getElementById("panel-detalhe").classList.add("open");
+  }
+  function closeDetalhe() { document.getElementById("panel-detalhe").classList.remove("open"); }
+
+  document.getElementById("detalhe-editar-btn").addEventListener("click", () => {
+    if (detalheClienteId == null) return;
+    closeDetalhe();
+    openCliente(detalheClienteId);
+  });
+  document.getElementById("detalhe-enviar-btn").addEventListener("click", () => {
+    if (detalheClienteId == null) return;
+    closeDetalhe();
+    openUpload(detalheClienteId);
+  });
+  document.getElementById("detalhe-status-btn").addEventListener("click", () => {
+    if (detalheClienteId == null) return;
+    const c = clientePorId(detalheClienteId);
+    if (!c) return;
+    const vaiDesativar = c.status === "ativo";
+    document.getElementById("confirm-cliente-status-title").textContent = vaiDesativar ? "Desativar cliente" : "Reativar cliente";
+    document.getElementById("confirm-cliente-status-text").innerHTML = vaiDesativar
+      ? `Tem certeza que deseja desativar <strong>${c.nome}</strong>? A pessoa perde o acesso ao portal imediatamente. Os documentos continuam guardados e o acesso pode ser reativado depois.`
+      : `Reativar o acesso de <strong>${c.nome}</strong> ao portal?`;
+    const confirmBtn = document.getElementById("btn-confirmar-status-cliente");
+    confirmBtn.style.background = vaiDesativar ? "var(--semantic-danger)" : "";
+    confirmBtn.onclick = async () => {
+      try {
+        const { error } = await sb.rpc("admin_definir_status_cliente", { p_cliente_id: c.id, p_novo_status: vaiDesativar ? "inativo" : "ativo" });
+        if (error) throw error;
+        document.getElementById("modal-confirm-cliente-status").classList.remove("open");
+        showToast(vaiDesativar ? "Cliente desativado" : "Cliente reativado");
+        await carregarDados();
+        closeDetalhe();
+      } catch (err) {
+        showToast(err.message || "Não foi possível alterar o status");
+      }
+    };
+    document.getElementById("modal-confirm-cliente-status").classList.add("open");
+  });
+
+  // ---------- Aba Documentos e boletos ----------
+  const docsTbody = document.getElementById("docs-tbody");
+  const docsNoResults = document.getElementById("docs-no-results");
+  const docsFilterCliente = document.getElementById("docs-filter-cliente");
+  const docsFilterCat = document.getElementById("docs-filter-cat");
+  const docsFilterStatus = document.getElementById("docs-filter-status");
+  const docsFilterDateDe = document.getElementById("docs-filter-date-de");
+  const docsFilterDateAte = document.getElementById("docs-filter-date-ate");
+  const docsFilterNovidades = document.getElementById("docs-filter-novidades");
+  const docsSearchInput = document.getElementById("docs-search-input");
+  const docsFilterSummary = document.getElementById("docs-filter-summary");
+  let periodPreset = "";
+  let docsVisiveisAtual = [];
+
+  function populateDocsFilterCategories() {
+    const atual = docsFilterCat.value;
+    docsFilterCat.innerHTML = '<option value="">Todos os tipos</option>';
+    CATEGORIAS.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      docsFilterCat.appendChild(opt);
+    });
+    docsFilterCat.value = atual;
+  }
+  function populateDocsFilterClientes() {
+    const atual = docsFilterCliente.value;
+    docsFilterCliente.innerHTML = '<option value="">Todos os clientes</option>';
+    CLIENTES.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      docsFilterCliente.appendChild(opt);
+    });
+    docsFilterCliente.value = atual;
+  }
+
+  function renderDocs() {
+    const clienteFiltro = docsFilterCliente.value;
+    const catFiltro = docsFilterCat.value;
+    const statusFiltro = docsFilterStatus.value;
+    const de = docsFilterDateDe.value;
+    const ate = docsFilterDateAte.value;
+    const termo = docsSearchInput.value.trim().toLowerCase();
+    const soRecentes = docsFilterNovidades.checked;
+    docsTbody.innerHTML = "";
+    let visible = 0;
+    const visiveis = [];
+    const agora = new Date();
+
+    DOCUMENTOS.forEach(d => {
+      if (clienteFiltro && d.cliente_id !== clienteFiltro) return;
+      if (catFiltro && d.categoria_id !== catFiltro) return;
+      const st = statusBoleto(d);
+      if (statusFiltro) {
+        if (statusFiltro === "pago" && d.status !== "pago") return;
+        if (statusFiltro === "nao_pago" && (!d.data_vencimento || d.status !== "nao_pago")) return;
+        if (statusFiltro === "vencido" && !(st && st.cls === "danger")) return;
+        if (statusFiltro === "vencendo" && !(st && st.cls === "warning")) return;
+      }
+      if (soRecentes && (agora - new Date(d.created_at)) > 48 * 3600 * 1000) return;
+      if (termo && !(d.clienteNome.toLowerCase().includes(termo) || d.nome.toLowerCase().includes(termo))) return;
+      const dataISO = d.created_at.slice(0, 10);
+      if (de && dataISO < de) return;
+      if (ate && dataISO > ate) return;
+      visible++;
+      visiveis.push(d);
+
+      const recente = (agora - new Date(d.created_at)) <= 48 * 3600 * 1000;
+      const statusCell = d.data_vencimento
+        ? `<select class="select-like select-sm doc-status-select">
+             <option value="nao_pago" ${d.status !== "pago" ? "selected" : ""}>Não Pago</option>
+             <option value="pago" ${d.status === "pago" ? "selected" : ""}>Pago</option>
+           </select>`
+        : `<span class="hint">—</span>`;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td data-label="Data">${formatDataBR(d.created_at.slice(0, 10))}${recente ? '<span class="unseen-tag" style="margin-left:6px;">recente</span>' : ""}</td>
+        <td data-label="Cliente">${d.clienteNome}</td>
+        <td data-label="Documento">${d.nome}${st && st.cls !== "ok" ? `<span class="due-tag ${st.cls}" style="margin-left:6px;">${st.label}</span>` : ""}</td>
+        <td data-label="Tipo">${d.categoriaNome}</td>
+        <td data-label="Status">${statusCell}</td>
+        <td style="text-align:right; position:relative;">
+          <button class="icon-btn doc-menu-btn" title="Mais ações"></button>
+          <div class="dropdown-panel doc-menu-panel">
+            <div class="dropdown-item doc-action-view">${ICONS.eye} Visualizar</div>
+            <div class="dropdown-item doc-action-download">${ICONS.download} Baixar arquivo(s)</div>
+            <div class="dropdown-item doc-action-delete" style="color:var(--semantic-danger);">${ICONS.trash} Excluir</div>
+          </div>
+        </td>
+      `;
+      const menuBtn = row.querySelector(".doc-menu-btn");
+      const menuPanel = row.querySelector(".doc-menu-panel");
+      menuBtn.innerHTML = ICONS.kebab;
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = menuPanel.classList.contains("open");
+        document.querySelectorAll(".doc-menu-panel.open").forEach(p => p.classList.remove("open"));
+        if (!isOpen) menuPanel.classList.add("open");
+      });
+      row.querySelector(".doc-action-view").addEventListener("click", () => { openDocPreview(d); menuPanel.classList.remove("open"); });
+      row.querySelector(".doc-action-download").addEventListener("click", (e) => { baixarArquivosDoDocumento(menuBtn, d); menuPanel.classList.remove("open"); });
+      row.querySelector(".doc-action-delete").addEventListener("click", () => { confirmRemoveDocumento(d); menuPanel.classList.remove("open"); });
+
+      const statusSelect = row.querySelector(".doc-status-select");
+      if (statusSelect) {
+        statusSelect.addEventListener("click", (e) => e.stopPropagation());
+        statusSelect.addEventListener("change", async (e) => {
+          const novoStatus = e.target.value;
+          const { error } = await sb.from("documentos")
+            .update({ status: novoStatus, pago_em: novoStatus === "pago" ? new Date().toISOString() : null })
+            .eq("id", d.id);
+          if (error) {
+            showToast("Não foi possível atualizar o status");
+            return;
+          }
+          d.status = novoStatus;
+          d.pago_em = novoStatus === "pago" ? new Date().toISOString() : null;
+          renderDocs();
+          renderKpis();
+          showToast(d.nome + (novoStatus === "pago" ? " marcado como pago" : " marcado como não pago"));
+        });
+      }
+      docsTbody.appendChild(row);
+    });
+
+    docsVisiveisAtual = visiveis;
+    docsNoResults.style.display = visible === 0 ? "block" : "none";
+    docsTbody.parentElement.style.display = visible === 0 ? "none" : "table";
+    renderFilterSummary(visible);
+  }
+
+  const STATUS_FILTRO_LABELS = { pago: "Pago", nao_pago: "Não pago", vencido: "Vencido", vencendo: "Vencendo em breve" };
+  function isoToBr(iso) { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; }
+
+  function renderFilterSummary(visible) {
+    docsFilterSummary.innerHTML = "";
+    const chips = [];
+    if (docsFilterCliente.value) {
+      const c = clientePorId(docsFilterCliente.value);
+      chips.push({ label: "Cliente: " + (c ? c.nome : ""), onClear: () => { docsFilterCliente.value = ""; renderDocs(); } });
+    }
+    if (docsFilterCat.value) {
+      const cat = categoriaPorId(docsFilterCat.value);
+      chips.push({ label: "Tipo: " + (cat ? cat.nome : ""), onClear: () => { docsFilterCat.value = ""; renderDocs(); } });
+    }
+    if (docsFilterStatus.value) {
+      chips.push({ label: "Status: " + STATUS_FILTRO_LABELS[docsFilterStatus.value], onClear: () => { docsFilterStatus.value = ""; renderDocs(); } });
+    }
+    if (docsFilterNovidades.checked) {
+      chips.push({ label: "Só recentes (48h)", onClear: () => { docsFilterNovidades.checked = false; renderDocs(); } });
+    }
+    if (docsFilterDateDe.value || docsFilterDateAte.value) {
+      const de = docsFilterDateDe.value ? isoToBr(docsFilterDateDe.value) : "início";
+      const ate = docsFilterDateAte.value ? isoToBr(docsFilterDateAte.value) : "hoje";
+      chips.push({ label: "Período: " + de + " até " + ate, onClear: () => { docsFilterDateDe.value = ""; docsFilterDateAte.value = ""; clearPeriodPreset(); renderDocs(); } });
+    }
+    if (chips.length === 0) return;
+    chips.forEach(chip => {
+      const el = document.createElement("span");
+      el.className = "filter-chip";
+      el.innerHTML = `${chip.label}<button type="button">${ICONS.x}</button>`;
+      el.querySelector("button").addEventListener("click", chip.onClear);
+      docsFilterSummary.appendChild(el);
+    });
+    const count = document.createElement("span");
+    count.className = "filter-results-count";
+    count.textContent = visible + (visible === 1 ? " resultado" : " resultados");
+    docsFilterSummary.appendChild(count);
+  }
+
+  function clearPeriodPreset() {
+    periodPreset = "";
+    document.querySelectorAll(".period-chip").forEach(c => c.classList.remove("active"));
+    document.getElementById("custom-date-range").style.display = "none";
+  }
+  document.querySelectorAll(".period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const preset = chip.dataset.preset;
+      document.querySelectorAll(".period-chip").forEach(c => c.classList.remove("active"));
+      if (periodPreset === preset) {
+        clearPeriodPreset();
+        docsFilterDateDe.value = ""; docsFilterDateAte.value = "";
+        renderDocs();
+        return;
+      }
+      periodPreset = preset;
+      chip.classList.add("active");
+      if (preset === "custom") {
+        document.getElementById("custom-date-range").style.display = "flex";
+        return;
+      }
+      document.getElementById("custom-date-range").style.display = "none";
+      const hoje = new Date();
+      const inicio = new Date(hoje);
+      inicio.setDate(inicio.getDate() - parseInt(preset, 10));
+      docsFilterDateDe.value = inicio.toISOString().slice(0, 10);
+      docsFilterDateAte.value = hoje.toISOString().slice(0, 10);
+      renderDocs();
+    });
+  });
+
+  docsFilterCliente.addEventListener("change", renderDocs);
+  docsFilterCat.addEventListener("change", renderDocs);
+  docsFilterStatus.addEventListener("change", renderDocs);
+  docsFilterNovidades.addEventListener("change", renderDocs);
+  docsSearchInput.addEventListener("input", renderDocs);
+  docsFilterDateDe.addEventListener("change", renderDocs);
+  docsFilterDateAte.addEventListener("change", renderDocs);
+  document.getElementById("docs-filter-clear").addEventListener("click", () => {
+    docsFilterCliente.value = ""; docsFilterCat.value = ""; docsFilterStatus.value = "";
+    docsFilterNovidades.checked = false; docsSearchInput.value = "";
+    docsFilterDateDe.value = ""; docsFilterDateAte.value = "";
+    clearPeriodPreset();
+    renderDocs();
+  });
+
+  document.getElementById("docs-download-all").addEventListener("click", async function () {
+    const btn = this;
+    if (docsVisiveisAtual.length === 0) {
+      showToast("Nenhum documento para baixar com esses filtros");
+      return;
+    }
+    const arquivos = docsVisiveisAtual.flatMap(d => d.arquivos);
+    if (arquivos.length === 0) {
+      showToast("Nenhum arquivo anexado nos documentos filtrados");
+      return;
+    }
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = ICONS.spinner + " Preparando " + arquivos.length + "...";
+    for (const arq of arquivos) {
+      await downloadFile(btn, arq.storage_path, arq.nome_original);
+    }
+    btn.disabled = false;
+    btn.textContent = original;
+  });
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".doc-menu-panel.open").forEach(p => p.classList.remove("open"));
+  });
+
+  function openDocPreview(d) {
+    document.getElementById("doc-preview-name").textContent = d.nome;
+    document.getElementById("doc-preview-meta").textContent = d.clienteNome + " · " + d.categoriaNome + " · Enviado em " + formatDataBR(d.created_at.slice(0, 10));
+    const wrap = document.getElementById("doc-preview-files");
+    wrap.innerHTML = "";
+    if (!d.arquivos.length) {
+      wrap.innerHTML = '<p class="hint" style="margin:0;">Nenhum arquivo anexado.</p>';
+    } else {
+      d.arquivos.forEach(arq => {
+        const row = document.createElement("div");
+        row.className = "upload-file-item";
+        row.innerHTML = `<div class="doc-icon">${ICONS.doc}</div><div class="upload-file-item-info"><p>${arq.nome_original}</p><span>${arq.tipo_arquivo}</span></div><button type="button" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Baixar</button>`;
+        row.querySelector("button").addEventListener("click", () => downloadFile(row.querySelector("button"), arq.storage_path, arq.nome_original));
+        wrap.appendChild(row);
+      });
+    }
+    document.getElementById("modal-doc-preview").classList.add("open");
+  }
+
+  async function baixarArquivosDoDocumento(btn, d) {
+    if (!d.arquivos.length) { showToast("Nenhum arquivo anexado a este documento"); return; }
+    for (const arq of d.arquivos) {
+      await downloadFile(btn, arq.storage_path, arq.nome_original);
+    }
+  }
+
+  function confirmRemoveDocumento(d) {
+    document.getElementById("confirm-documento-text").innerHTML = `Tem certeza que deseja excluir <strong>${d.nome}</strong> (${d.clienteNome})? Os arquivos anexados também são removidos do armazenamento. Essa ação não pode ser desfeita.`;
+    document.getElementById("modal-confirm-documento").classList.add("open");
+    document.getElementById("btn-confirmar-remocao-documento").onclick = async () => {
+      try {
+        if (d.arquivos.length) {
+          await sb.storage.from("documentos").remove(d.arquivos.map(a => a.storage_path));
+        }
+        const { error } = await sb.from("documentos").delete().eq("id", d.id);
+        if (error) throw error;
+        document.getElementById("modal-confirm-documento").classList.remove("open");
+        showToast("Documento excluído");
+        await carregarDados();
+      } catch (err) {
+        showToast(err.message || "Não foi possível excluir o documento");
+      }
+    };
+  }
+
+  // ---------- Aba Categorias ----------
+  const ICON_LIBRARY = [
+    { key: "doc", label: "Documento" }, { key: "card", label: "Cartão" },
+    { key: "building", label: "Empresa / Prédio" }, { key: "contract", label: "Contrato" },
+    { key: "chart", label: "Gráfico / Relatório" }, { key: "bell", label: "Sino / Alerta" },
+    { key: "mail", label: "E-mail" }, { key: "user", label: "Pessoa" }, { key: "check", label: "Concluído" },
+    { key: "lock", label: "Cadeado" }, { key: "eye", label: "Visualizar" }, { key: "download", label: "Download" },
+    { key: "camera", label: "Câmera / Foto" }, { key: "phone", label: "Telefone" }
+  ];
+  const COLOR_HEX = { navy: "#1F2D6E", gold: "#B8860B", green: "#1E7A4C", red: "#B3261E", purple: "#6B3FA0", teal: "#137A6B", gray: "#5B6072" };
+
+  let selectedIcon = "doc";
+  let selectedColor = "navy";
+  let selectedFileTypes = ["PDF"];
+  let editingCategoryId = null;
+
+  function slugify(nome) {
+    return nome.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+
+  function contarDocsECliente(categoriaId) {
+    const docs = DOCUMENTOS.filter(d => d.categoria_id === categoriaId);
+    const clientes = new Set(docs.map(d => d.cliente_id));
+    return { docs: docs.length, clientes: clientes.size };
+  }
+
+  function populateUploadCategorySelect() {
+    const select = document.getElementById("cat-select");
+    const atual = select.value;
+    select.innerHTML = "";
+    CATEGORIAS.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      select.appendChild(opt);
+    });
+    if (atual) select.value = atual;
+    toggleDueDate();
+  }
+  function populateUploadClienteSelect() {
+    const select = document.getElementById("upload-cliente-select");
+    const atual = select.value;
+    select.innerHTML = "";
+    CLIENTES.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nome;
+      select.appendChild(opt);
+    });
+    if (atual) select.value = atual;
+  }
+
+  function renderCategoriesGrid() {
+    const grid = document.getElementById("categories-grid");
+    grid.innerHTML = "";
+    CATEGORIAS.slice().sort((a, b) => (a.ordem || 999) - (b.ordem || 999)).forEach(c => {
+      const { docs: qtdDocs } = contarDocsECliente(c.id);
+      const hex = COLOR_HEX[c.cor] || COLOR_HEX.navy;
+
+      const card = document.createElement("div");
+      card.className = "cat-card cat-admin-card cat-editable";
+      card.style.cursor = "default";
+      card.innerHTML = `
+        <div class="cat-icon" style="color:${hex}; background:color-mix(in srgb, ${hex} 14%, var(--bg-surface-elevated));">${ICONS[c.icone] || ICONS.doc}</div>
+        <p class="cat-title">${c.nome}${c.obrigatoria ? " *" : ""}</p>
+        <p class="cat-meta">${c.grupo ? c.grupo + " · " : ""}${qtdDocs} ${qtdDocs === 1 ? "documento" : "documentos"}</p>
+        <div class="cat-admin-actions">
+          ${c.padrao ? '<span class="cat-admin-tag">Padrão</span>' : ""}
+          <button class="cat-action-btn cat-action-edit" title="Configurar categoria">${ICONS.edit}</button>
+          ${c.padrao ? "" : `<button class="cat-action-btn cat-action-remove" title="Remover">${ICONS.trash}</button>`}
+        </div>
+      `;
+      card.querySelector(".cat-action-edit").addEventListener("click", () => openCategoryPanel(c));
+      const removeBtn = card.querySelector(".cat-action-remove");
+      if (removeBtn) removeBtn.addEventListener("click", () => confirmRemoveCategoria(c, qtdDocs));
+      grid.appendChild(card);
+    });
+  }
+
+  function confirmRemoveCategoria(cat, qtdDocs) {
+    document.getElementById("confirm-cat-icon").innerHTML = ICONS.trash;
+    const textEl = document.getElementById("confirm-cat-text");
+    textEl.innerHTML = qtdDocs > 0
+      ? `<strong>${cat.nome}</strong> tem ${qtdDocs} documento(s) vinculado(s). Não é possível remover uma categoria com documentos — remova ou reclassifique os documentos primeiro.`
+      : `Tem certeza que deseja remover <strong>${cat.nome}</strong>? Ela deixa de aparecer no upload e no painel dos clientes imediatamente.`;
+    document.getElementById("modal-confirm-categoria").classList.add("open");
+    const confirmBtn = document.getElementById("btn-confirmar-remocao-categoria");
+    confirmBtn.style.display = qtdDocs > 0 ? "none" : "inline-flex";
+    confirmBtn.onclick = async () => {
+      const { error } = await sb.from("categorias").delete().eq("id", cat.id);
+      document.getElementById("modal-confirm-categoria").classList.remove("open");
+      if (error) {
+        showToast("Não foi possível remover: existem documentos usando essa categoria");
+        return;
+      }
+      showToast("Categoria removida");
+      await carregarDados();
+    };
+  }
+
+  function switchConfigTab(name) {
+    document.querySelectorAll(".config-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+    document.querySelectorAll(".config-pane").forEach(p => p.classList.toggle("active", p.dataset.pane === name));
+  }
+  document.querySelectorAll(".config-tab").forEach(tab => tab.addEventListener("click", () => switchConfigTab(tab.dataset.tab)));
+
+  function renderIconGrid(filtro) {
+    const wrap = document.getElementById("cf-icon-grid");
+    wrap.innerHTML = "";
+    const termo = (filtro || "").trim().toLowerCase();
+    ICON_LIBRARY.filter(i => !termo || i.label.toLowerCase().includes(termo)).forEach(i => {
+      const opt = document.createElement("div");
+      opt.className = "icon-picker-option" + (i.key === selectedIcon ? " selected" : "");
+      opt.title = i.label;
+      opt.innerHTML = ICONS[i.key];
+      opt.addEventListener("click", () => {
+        selectedIcon = i.key;
+        wrap.querySelectorAll(".icon-picker-option").forEach(el => el.classList.remove("selected"));
+        opt.classList.add("selected");
+        updateConfigPreview();
+      });
+      wrap.appendChild(opt);
+    });
+  }
+  document.getElementById("cf-icon-search").addEventListener("input", (e) => renderIconGrid(e.target.value));
+
+  function renderColorRow() {
+    const wrap = document.getElementById("cf-color-row");
+    wrap.innerHTML = "";
+    Object.keys(COLOR_HEX).forEach(cor => {
+      const sw = document.createElement("div");
+      sw.className = "color-swatch" + (cor === selectedColor ? " selected" : "");
+      sw.dataset.color = cor;
+      sw.addEventListener("click", () => {
+        selectedColor = cor;
+        wrap.querySelectorAll(".color-swatch").forEach(el => el.classList.remove("selected"));
+        sw.classList.add("selected");
+        updateConfigPreview();
+      });
+      wrap.appendChild(sw);
+    });
+  }
+
+  const CATEGORY_FILE_TYPES = ["PDF", "XML", "ZIP", "DOCX", "PNG", "JPG", "XLSM", "XLS"];
+  const CATEGORY_GROUPS = ["Fiscal", "Jurídico", "Financeiro", "RH", "Societário", "Operacional"];
+  function renderFiletypeChips() {
+    const wrap = document.getElementById("cf-filetype-chips");
+    wrap.innerHTML = "";
+    CATEGORY_FILE_TYPES.forEach(tipo => {
+      const chip = document.createElement("div");
+      chip.className = "filetype-chip" + (selectedFileTypes.includes(tipo) ? " selected" : "");
+      chip.textContent = tipo;
+      chip.addEventListener("click", () => {
+        if (selectedFileTypes.includes(tipo)) {
+          if (selectedFileTypes.length === 1) return;
+          selectedFileTypes = selectedFileTypes.filter(t => t !== tipo);
+        } else {
+          selectedFileTypes.push(tipo);
+        }
+        renderFiletypeChips();
+      });
+      wrap.appendChild(chip);
+    });
+  }
+  CATEGORY_GROUPS.forEach(g => {
+    const opt = document.createElement("option");
+    opt.value = g; opt.textContent = g;
+    document.getElementById("cf-grupo").appendChild(opt);
+  });
+
+  function updateConfigPreview() {
+    const nome = document.getElementById("cf-nome").value.trim() || "Nome da categoria";
+    const hex = COLOR_HEX[selectedColor] || COLOR_HEX.navy;
+    const iconHtml = ICONS[selectedIcon] || ICONS.doc;
+    const previewIcon = document.getElementById("cp-preview-icon");
+    previewIcon.innerHTML = iconHtml;
+    previewIcon.style.color = hex;
+    previewIcon.style.background = `color-mix(in srgb, ${hex} 14%, var(--bg-surface))`;
+    document.getElementById("cp-preview-title").textContent = nome;
+    document.getElementById("cp-preview-meta").textContent = "0 documentos";
+    document.getElementById("cp-preview-select").innerHTML = `<span style="color:${hex}; display:flex;">${iconHtml}</span> ${nome}`;
+    document.getElementById("cp-preview-chip").innerHTML = `Tipo: ${nome}`;
+    const tag = document.getElementById("cp-preview-tag");
+    tag.textContent = nome;
+    tag.style.color = hex;
+    tag.style.background = `color-mix(in srgb, ${hex} 14%, var(--bg-surface-elevated))`;
+  }
+  document.getElementById("cf-nome").addEventListener("input", updateConfigPreview);
+
+  function openCategoryPanel(cat) {
+    editingCategoryId = cat ? cat.id : null;
+
+    document.getElementById("config-panel-title").textContent = cat ? "Configurar categoria" : "Nova categoria";
+    document.getElementById("config-panel-subtitle").textContent = cat ? "Altere os aspectos desta categoria — as mudanças valem pra todos os clientes." : "Configure os aspectos desta categoria de documento.";
+    document.getElementById("config-save-btn").textContent = cat ? "Salvar alterações" : "Criar categoria";
+
+    selectedIcon = (cat && cat.icone) || "doc";
+    selectedColor = (cat && cat.cor) || "navy";
+    selectedFileTypes = (cat && cat.tipos_arquivo_aceitos && cat.tipos_arquivo_aceitos.length) ? cat.tipos_arquivo_aceitos.slice() : ["PDF"];
+
+    document.getElementById("cf-nome").value = cat ? cat.nome : "";
+    document.getElementById("cf-icon-search").value = "";
+    renderIconGrid("");
+    renderColorRow();
+    document.getElementById("cf-obrigatoria").checked = !!(cat && cat.obrigatoria);
+    document.getElementById("cf-grupo").value = (cat && cat.grupo) || "";
+    document.getElementById("cf-ordem").value = (cat && cat.ordem) || 999;
+    document.getElementById("cf-maxsize").value = (cat && cat.tamanho_maximo_mb) || 10;
+    renderFiletypeChips();
+
+    const { docs: qtdDocsHist, clientes: qtdClientesHist } = cat ? contarDocsECliente(cat.id) : { docs: 0, clientes: 0 };
+    document.getElementById("cf-historico-meta").innerHTML = cat ? `
+      <div><p class="label">Criada em</p><p class="value">${formatDataBR(cat.created_at.slice(0, 10))}</p></div>
+      <div><p class="label">Última alteração</p><p class="value">${formatDataBR(cat.updated_at.slice(0, 10))}</p></div>
+    ` : `<div><p class="label">Criada em</p><p class="value">—</p></div>`;
+    document.getElementById("cf-historico-docs").textContent = qtdDocsHist + (qtdDocsHist === 1 ? " documento" : " documentos");
+    document.getElementById("cf-historico-clientes").textContent = qtdClientesHist > 0 ? qtdClientesHist + (qtdClientesHist === 1 ? " cliente" : " clientes") : "Nenhum cliente ainda";
+
+    switchConfigTab("geral");
+    updateConfigPreview();
+    document.getElementById("modal-categoria").classList.add("open");
+  }
+  function closeCategoryPanel() { document.getElementById("modal-categoria").classList.remove("open"); }
+  document.getElementById("config-close-btn").addEventListener("click", closeCategoryPanel);
+  document.getElementById("config-cancel-btn").addEventListener("click", closeCategoryPanel);
+  document.getElementById("btn-nova-categoria").innerHTML = ICONS.doc + " Nova categoria";
+  document.getElementById("btn-nova-categoria").addEventListener("click", () => openCategoryPanel(null));
+
+  document.getElementById("config-save-btn").addEventListener("click", async function () {
+    const btn = this;
+    const nomeInput = document.getElementById("cf-nome");
+    const nome = nomeInput.value.trim();
+    if (!nome) {
+      switchConfigTab("geral");
+      nomeInput.focus();
+      return;
+    }
+    const payload = {
+      nome,
+      icone: selectedIcon,
+      cor: selectedColor,
+      grupo: document.getElementById("cf-grupo").value || null,
+      ordem: parseInt(document.getElementById("cf-ordem").value, 10) || 999,
+      obrigatoria: document.getElementById("cf-obrigatoria").checked,
+      tipos_arquivo_aceitos: selectedFileTypes.slice(),
+      tamanho_maximo_mb: parseInt(document.getElementById("cf-maxsize").value, 10) || 10
+    };
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add("btn-loading");
+    btn.innerHTML = ICONS.spinner + " Salvando...";
+    try {
+      let error;
+      if (editingCategoryId) {
+        ({ error } = await sb.from("categorias").update(payload).eq("id", editingCategoryId));
+      } else {
+        payload.slug = slugify(nome);
+        ({ error } = await sb.from("categorias").insert(payload));
+      }
+      if (error) {
+        showToast(error.code === "23505" ? "Já existe uma categoria com esse nome" : (error.message || "Não foi possível salvar a categoria"));
+        return;
+      }
+      showToast(editingCategoryId ? 'Categoria "' + nome + '" atualizada' : 'Categoria "' + nome + '" criada — já disponível para todos os clientes');
+      closeCategoryPanel();
+      await carregarDados();
+    } finally {
+      btn.classList.remove("btn-loading");
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  });
+
+  // ---------- Calendário de vencimentos (dados reais) ----------
+  function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+
+  function boletosEmAberto() {
+    return DOCUMENTOS
+      .filter(d => isBoletoCategoria(categoriaPorId(d.categoria_id)) && d.data_vencimento && d.status !== "pago")
+      .map(d => ({ data: parseDataLocal(d.data_vencimento), cliente: d.clienteNome, doc: d.nome }));
+  }
+
+  const hoje = new Date();
+  let calYear = hoje.getFullYear();
+  let calMonth = hoje.getMonth();
+
+  function renderCalendar() {
+    const label = new Date(calYear, calMonth, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    document.getElementById("cal-month-label").textContent = label.charAt(0).toUpperCase() + label.slice(1);
+    const grid = document.getElementById("calendar-grid");
+    grid.innerHTML = "";
+    const firstWeekday = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const boletos = boletosEmAberto();
+
+    for (let i = 0; i < firstWeekday; i++) {
+      const empty = document.createElement("div");
+      empty.className = "cal-cell empty";
+      grid.appendChild(empty);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(calYear, calMonth, d);
+      const cell = document.createElement("div");
+      cell.className = "cal-cell";
+      cell.innerHTML = `<span class="cal-daynum">${d}</span>`;
+      const boletosDoDia = boletos.filter(b => sameDay(b.data, date));
+      if (sameDay(date, hoje)) cell.classList.add("today");
+      if (boletosDoDia.length > 0) {
+        cell.classList.add("due");
+        cell.title = boletosDoDia.map(b => b.cliente + " — " + b.doc).join("\n");
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  function renderUpcoming() {
+    const list = document.getElementById("upcoming-list");
+    list.innerHTML = "";
+    const futuros = boletosEmAberto().filter(b => b.data >= new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())).sort((a, b) => a.data - b.data).slice(0, 5);
+    if (futuros.length === 0) {
+      list.innerHTML = '<p class="upcoming-empty">Nenhum boleto programado.</p>';
+      return;
+    }
+    futuros.forEach(b => {
+      const dias = Math.round((b.data - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) / 86400000);
+      const urgente = dias <= 7;
+      const quando = dias === 0 ? "Hoje" : "Em " + dias + " dias";
+      const dia = b.data.toLocaleDateString("pt-BR", { day: "2-digit" });
+      const mes = b.data.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+      const item = document.createElement("div");
+      item.className = "due-item" + (urgente ? " urgent" : "");
+      item.innerHTML = `
+        <div class="due-item-date"><strong>${dia}</strong><span>${mes}</span></div>
+        <div class="due-item-info"><p>${b.cliente}</p><span>${b.doc}</span></div>
+        <span class="due-item-badge">${quando}</span>
+      `;
+      item.addEventListener("click", () => switchTab("documentos"));
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById("cal-prev").addEventListener("click", () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); });
+  document.getElementById("cal-next").addEventListener("click", () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
+
+  // ---------- Precisa de atenção (dados reais) ----------
+  function renderAttention() {
+    const attentionList = document.getElementById("attention-list");
+    attentionList.innerHTML = "";
+    const itens = [];
+
+    CLIENTES.forEach(c => {
+      const pendencias = pendenciasDoCliente(c.id);
+      if (pendencias.length > 0) {
+        itens.push({ texto: c.nome + " está com " + pendencias.length + " categoria(s) obrigatória(s) pendente(s)", meta: "Faltam: " + pendencias.map(p => p.nome).join(", "), clienteId: c.id });
+      }
+    });
+    DOCUMENTOS.forEach(d => {
+      if (!isBoletoCategoria(categoriaPorId(d.categoria_id))) return;
+      const st = statusBoleto(d);
+      if (st && st.cls === "warning") {
+        itens.push({ texto: "Boleto de " + d.clienteNome + " vence em " + st.dias + (st.dias === 1 ? " dia" : " dias"), meta: d.nome, clienteId: d.cliente_id });
+      }
+    });
+
+    if (itens.length === 0) {
+      attentionList.innerHTML = '<p class="attention-empty">Nenhuma pendência no momento.</p>';
+      return;
+    }
+    itens.forEach(item => {
+      const el = document.createElement("div");
+      el.className = "attention-item";
+      el.innerHTML = `<div class="dot-icon">${ICONS.bell}</div><div><p>${item.texto}</p><span>${item.meta}</span></div>`;
+      el.addEventListener("click", () => openDetalhe(item.clienteId));
+      attentionList.appendChild(el);
+    });
+  }
+
+  // ---------- Envios recentes (dados reais, sem log de acesso fictício) ----------
+  function renderActivity() {
+    const activityFeed = document.getElementById("activity-feed");
+    activityFeed.innerHTML = "";
+    const recentes = DOCUMENTOS.slice(0, 5);
+    if (recentes.length === 0) {
+      activityFeed.innerHTML = '<p class="hint" style="margin:0;">Nenhum envio ainda.</p>';
+      return;
+    }
+    recentes.forEach(d => {
+      const el = document.createElement("div");
+      el.className = "activity-item";
+      el.innerHTML = `<div class="dot-icon">${ICONS.doc}</div><div><p>Você enviou <strong>${d.nome}</strong> para ${d.clienteNome}</p><span>${formatRelativo(d.created_at)}</span></div>`;
+      activityFeed.appendChild(el);
+    });
+  }
+
+  // ---------- Tabs ----------
+  function switchTab(name) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+    document.getElementById("tab-clientes").style.display = name === "clientes" ? "block" : "none";
+    document.getElementById("tab-documentos").style.display = name === "documentos" ? "block" : "none";
+    document.getElementById("tab-categorias").style.display = name === "categorias" ? "block" : "none";
+  }
+
+  // ---------- Painel: upload de documento ----------
+  function toggleDueDate() {
+    const catId = document.getElementById("cat-select").value;
+    const cat = categoriaPorId(catId);
+    const isBoleto = isBoletoCategoria(cat);
+    document.getElementById("due-field").style.display = isBoleto ? "block" : "none";
+    document.getElementById("valor-field").style.display = isBoleto ? "block" : "none";
+    document.getElementById("status-field").style.display = isBoleto ? "block" : "none";
+    document.getElementById("email-note").style.display = isBoleto ? "flex" : "none";
+  }
+
+  function openUpload(clienteId) {
+    populateUploadClienteSelect();
+    if (clienteId) document.getElementById("upload-cliente-select").value = clienteId;
+    document.getElementById("panel-upload").classList.add("open");
+  }
+  function closeUpload() { document.getElementById("panel-upload").classList.remove("open"); }
+
+  const uploadFileInput = document.getElementById("upload-file-input");
+  const uploadFileList = document.getElementById("upload-file-list");
+  const dropzone = document.getElementById("dropzone");
+  let selectedFiles = [];
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+  function renderFileList() {
+    uploadFileList.innerHTML = "";
+    selectedFiles.forEach((file, idx) => {
+      const row = document.createElement("div");
+      row.className = "upload-file-item";
+      row.innerHTML = `
+        <div class="doc-icon">${ICONS.doc}</div>
+        <div class="upload-file-item-info"><p>${file.name}</p><span>${formatBytes(file.size)}</span></div>
+        <button type="button" class="upload-file-remove" title="Remover">${ICONS.x}</button>
+      `;
+      row.querySelector(".upload-file-remove").addEventListener("click", () => { selectedFiles.splice(idx, 1); renderFileList(); });
+      uploadFileList.appendChild(row);
+    });
+  }
+  function addFiles(fileList) {
+    Array.from(fileList).forEach(file => {
+      if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) selectedFiles.push(file);
+    });
+    renderFileList();
+  }
+  uploadFileInput.addEventListener("change", function () { addFiles(this.files); this.value = ""; });
+  ["dragenter", "dragover"].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("drag-over"); }));
+  ["dragleave", "drop"].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("drag-over"); }));
+  dropzone.addEventListener("drop", (e) => { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+
+  document.getElementById("btn-confirmar-upload").addEventListener("click", async function () {
+    const btn = this;
+    const clienteId = document.getElementById("upload-cliente-select").value;
+    const categoriaId = document.getElementById("cat-select").value;
+    const cat = categoriaPorId(categoriaId);
+    const isBoleto = isBoletoCategoria(cat);
+
+    if (!clienteId) { showToast("Escolha um cliente primeiro."); return; }
+    if (!categoriaId) { showToast("Escolha uma categoria primeiro."); return; }
+    if (selectedFiles.length === 0) { showToast("Selecione ao menos um arquivo."); return; }
+    if (isBoleto && !document.getElementById("vencimento-input").value) { showToast("Boletos precisam de data de vencimento."); return; }
+
+    const camposBoleto = isBoleto ? {
+      valor: parseFloat(document.getElementById("valor-input").value) || null,
+      data_vencimento: document.getElementById("vencimento-input").value,
+      status: document.getElementById("status-input").value
+    } : {};
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add("btn-loading");
+    btn.innerHTML = ICONS.spinner + " Enviando...";
+
+    let enviados = 0;
+    for (const file of selectedFiles) {
+      try {
+        const { data: docRow, error: docErr } = await sb.from("documentos")
+          .insert(Object.assign({ cliente_id: clienteId, categoria_id: categoriaId, nome: file.name }, camposBoleto))
+          .select().single();
+        if (docErr) throw docErr;
+
+        const arquivoId = crypto.randomUUID();
+        const tipoArquivo = (file.name.split(".").pop() || "arquivo").toUpperCase();
+        const caminho = clienteId + "/" + docRow.id + "/" + arquivoId + "-" + file.name;
+        const { error: upErr } = await sb.storage.from("documentos").upload(caminho, file);
+        if (upErr) throw upErr;
+
+        const { error: arqErr } = await sb.from("documento_arquivos").insert({
+          id: arquivoId, documento_id: docRow.id, tipo_arquivo: tipoArquivo,
+          nome_original: file.name, storage_path: caminho, tamanho_bytes: file.size
+        });
+        if (arqErr) throw arqErr;
+        enviados++;
+      } catch (err) {
+        showToast("Erro ao enviar " + file.name + ": " + (err.message || "tente novamente"));
+      }
+    }
+
+    btn.classList.remove("btn-loading");
+    btn.textContent = original;
+    btn.disabled = false;
+    closeUpload();
+    selectedFiles = [];
+    renderFileList();
+    showToast(enviados + (enviados === 1 ? " documento enviado" : " documentos enviados"));
+    await carregarDados();
+  });
+</script>
+</body>
+</html>

@@ -168,6 +168,11 @@
       pasta: "v25-2026-07-21",
       data: "21/07/2026",
       descricao: "admin.html conectado ao Supabase de verdade (Fase B): eliminados os últimos dados mock (array CLIENTS e objeto Categories em localStorage) — Clientes, Categorias e Documentos/Boletos agora listam, buscam, filtram, criam, editam e excluem direto nas tabelas reais, com a tela atualizando na hora. Cadastro de cliente passou a criar de fato uma conta de acesso (nova Edge Function admin-criar-cliente com convite por e-mail via Supabase Auth); 'excluir cliente' virou 'desativar' (reversível, evita apagar em cascata o histórico de documentos). Painel de categoria simplificado pros campos que o banco realmente tem (saíram Automações e Permissões, que não existiam na tabela). Removida a aba Administradores/Equipe inteira (convites, 2FA, sessões) e o simulador de papéis 'Proprietário/Administrador/Usuário comum' — eram RBAC que nunca existiu no banco (users só distingue administrador/cliente) e ficou fora de escopo desta rodada por decisão explícita. Corrigido também um bug de fuso-horário em statusBoleto() (app.js) que podia calcular 'vencendo/vencido' com 1 dia de diferença. Migrations de segurança aplicadas no banco: search_path fixado em 2 funções de trigger, revogado execute de anon em RPCs sensíveis, e 2 RPCs novas (admin_atualizar_cliente, admin_definir_status_cliente) pra edição/desativação de cliente sem policy ampla de UPDATE em 'users'."
+    },
+    {
+      pasta: "v26-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Correção de configuração do Supabase Auth (Site URL/Redirect URLs) que fazia o link de recuperação de senha apontar pra localhost mesmo em produção — o código já calculava a URL dinamicamente, faltava liberar o domínio público (lorenacodes.github.io) na allow-list do projeto. esqueci-senha.html ganhou tratamento de erro real (falha de rede/serviço e limite de tentativas do Supabase mostram mensagens específicas, em vez de ignorar o erro silenciosamente) e uma linha extra de apoio ('fale com a Trilhar') na mensagem de sucesso — mantendo de propósito a mensagem sempre genérica sobre o e-mail existir ou não no sistema, pra não abrir brecha de enumeração que revelaria quem é cliente cadastrado da Trilhar."
     }
   ];
 

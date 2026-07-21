@@ -198,6 +198,11 @@
       pasta: "v31-2026-07-21",
       data: "21/07/2026",
       descricao: "Ajuste visual no seletor Pessoa Física/Jurídica: os dois botões soltos (bordas retas, sem hierarquia clara de qual estava ativo) viraram um controle segmentado de verdade — trilho cinza com padding, e a opção ativa vira um 'pill' branco elevado (sombra) com o texto na cor da marca, no padrão de Linear/iOS. Só CSS (?v=24), nenhuma mudança de comportamento."
+    },
+    {
+      pasta: "v32-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Corrigido bug real no cadastro de cliente: toda falha da Edge Function aparecia como 'Edge Function returned a non-2xx status code' — a mensagem genérica do SDK do supabase-js, que não expõe o corpo JSON de erro quando a função responde status != 2xx. A mensagem verdadeira (ex: motivo exato pelo qual o convite falhou) ficava presa em error.context (a Response crua do fetch), nunca lida. admin.html agora lê error.context.json() pra mostrar e logar a causa real. Investigação nos logs de auditoria do Supabase mostrou que o convite estava de fato criando o usuário no Auth (5 tentativas, 5 contas novas), mas nenhuma permanecia e nenhum e-mail foi enviado — consistente com o limite de envio do mailer padrão do Supabase (já esgotado nesta sessão), não um bug de lógica. Adicionada também checagem de duplicidade de CPF/CNPJ/e-mail no front (contra os clientes já carregados), com feedback imediato antes mesmo de enviar — o banco (índice único parcial, desde a v30) continua sendo a garantia real."
     }
   ];
 

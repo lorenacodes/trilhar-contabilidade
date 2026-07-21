@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=24">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+      <div>
+        <div class="brand-name">TRILHAR CONTABILIDADE</div>
+        <div class="brand-sub">SEU NEGÓCIO NO CAMINHO CERTO</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="dropdown-wrap">
+        <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
+          <div class="avatar" id="user-avatar"></div>
+          <span id="user-nome"></span>
+        </div>
+        <div class="dropdown-panel" id="user-panel">
+          <div class="dropdown-header">Conta</div>
+          <div class="dropdown-item" onclick="window.location.href='perfil.html'"></div>
+          <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" id="logout-item"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <div class="main">
+      <div class="page-header">
+        <p class="eyebrow" id="eyebrow">Dashboard</p>
+        <h1 class="page-title" id="page-title">Olá</h1>
+        <p class="page-subtitle" id="page-subtitle">Carregando...</p>
+      </div>
+
+      <div class="kpi-row" id="kpi-row"></div>
+
+      <div class="dashboard-layout">
+        <div class="dashboard-main">
+          <div class="side-card">
+            <div class="side-card-head"><h3>Alertas</h3></div>
+            <div id="alertas-list" class="attention-list"></div>
+          </div>
+          <div class="side-card" style="margin-top:24px;">
+            <div class="side-card-head"><h3>Resumo financeiro</h3></div>
+            <div id="resumo-financeiro" class="resumo-financeiro"></div>
+          </div>
+        </div>
+
+        <div class="dashboard-sidebar">
+          <div class="side-card">
+            <div class="side-card-head"><h3>Próximos vencimentos</h3></div>
+            <div id="upcoming-list" class="due-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth-guard.js"></script>
+<script>
+  const userItems = document.querySelectorAll("#user-panel .dropdown-item");
+  userItems[0].innerHTML = ICONS.user + " Meu perfil";
+  document.getElementById("logout-item").innerHTML = ICONS.logout + " Sair";
+  document.getElementById("logout-item").onclick = () => logoutCliente();
+
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function tipoBoleto(nomeCategoria) {
+    return (nomeCategoria || "").replace(/^Boleto\s*-\s*/i, "");
+  }
+  function competencia(iso) {
+    const d = new Date(iso);
+    const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  function diasAte(iso) {
+    return Math.round((new Date(iso) - new Date()) / 86400000);
+  }
+  function formatMoeda(valor) {
+    return (valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+
+    renderNav("dashboard");
+    document.getElementById("user-nome").textContent = cliente.nome;
+    document.getElementById("user-avatar").textContent = initials(cliente.nome);
+    document.getElementById("eyebrow").textContent = "Dashboard";
+    document.getElementById("page-title").textContent = "Olá, " + cliente.nome.split(" ")[0];
+
+    const { data: boletos } = await sb.from("documentos")
+      .select("id, nome, valor, data_vencimento, status, pago_em, created_at, categorias(slug, nome)")
+      .eq("cliente_id", cliente.id)
+      .not("data_vencimento", "is", null)
+      .order("data_vencimento", { ascending: true });
+
+    hideAuthOverlay();
+    render(boletos || []);
+  })();
+
+  function render(boletos) {
+    const naoPagos = boletos.filter(b => b.status === "nao_pago");
+    const vencidos = naoPagos.filter(b => diasAte(b.data_vencimento) < 0);
+    const vencendoSemana = naoPagos.filter(b => diasAte(b.data_vencimento) >= 0 && diasAte(b.data_vencimento) <= 7);
+    const valorTotalAberto = naoPagos.reduce((s, b) => s + Number(b.valor || 0), 0);
+
+    document.getElementById("page-subtitle").textContent = naoPagos.length > 0
+      ? "Você tem " + naoPagos.length + " boleto" + (naoPagos.length > 1 ? "s" : "") + " em aberto."
+      : "Nenhum boleto em aberto no momento.";
+
+    renderKpis(naoPagos, vencidos, vencendoSemana, valorTotalAberto);
+    renderAlertas(vencidos, vencendoSemana);
+    renderUpcoming(naoPagos);
+    renderResumoFinanceiro(boletos, naoPagos, valorTotalAberto);
+  }
+
+  function renderKpis(naoPagos, vencidos, vencendoSemana, valorTotalAberto) {
+    const row = document.getElementById("kpi-row");
+    const vencidosAtivo = vencidos.length > 0;
+    const vencendoAtivo = !vencidosAtivo && vencendoSemana.length > 0;
+
+    row.innerHTML = `
+      <div class="kpi-tile">
+        <p class="kpi-label">Boletos em aberto</p>
+        <p class="kpi-value">${naoPagos.length}</p>
+        <p class="kpi-trend">Aguardando pagamento</p>
+      </div>
+      <div class="kpi-tile">
+        <p class="kpi-label">Valor total em aberto</p>
+        <p class="kpi-value"><span class="kpi-currency">R$</span>${formatMoeda(valorTotalAberto)}</p>
+        <p class="kpi-trend">Soma dos não pagos</p>
+      </div>
+      <div class="kpi-tile${vencendoAtivo ? " attention" : ""}">
+        <p class="kpi-label">Vencendo esta semana</p>
+        <p class="kpi-value">${vencendoSemana.length}</p>
+        <p class="kpi-trend">Próximos 7 dias</p>
+      </div>
+      <div class="kpi-tile${vencidosAtivo ? " attention danger" : ""}">
+        <p class="kpi-label">Vencidos</p>
+        <p class="kpi-value">${vencidos.length}</p>
+        <p class="kpi-trend">${vencidos.length > 0 ? "Requer atenção" : "Nenhum vencido"}</p>
+      </div>
+    `;
+  }
+
+  function renderAlertas(vencidos, vencendoSemana) {
+    const list = document.getElementById("alertas-list");
+    const itens = [...vencidos, ...vencendoSemana].slice(0, 5);
+    if (itens.length === 0) {
+      list.innerHTML = '<p class="attention-empty">Nenhum alerta no momento — tudo em dia.</p>';
+      return;
+    }
+    list.innerHTML = "";
+    itens.forEach(b => {
+      const st = statusBoleto(b);
+      const dias = diasAte(b.data_vencimento);
+      const texto = dias < 0
+        ? "Boleto de " + tipoBoleto(b.categorias.nome) + " venceu há " + Math.abs(dias) + (Math.abs(dias) === 1 ? " dia" : " dias")
+        : "Boleto de " + tipoBoleto(b.categorias.nome) + " vence em " + dias + (dias === 1 ? " dia" : " dias");
+      const el = document.createElement("div");
+      el.className = "attention-item" + (st && st.cls === "danger" ? " danger" : "");
+      el.innerHTML = `<div class="dot-icon">${ICONS.bell}</div><div><p>${texto}</p><span>${b.nome}</span></div>`;
+      el.addEventListener("click", () => window.location.href = "boletos.html");
+      list.appendChild(el);
+    });
+  }
+
+  function renderUpcoming(naoPagos) {
+    const list = document.getElementById("upcoming-list");
+    const futuros = naoPagos.slice(0, 5);
+    if (futuros.length === 0) {
+      list.innerHTML = '<p class="upcoming-empty">Nenhum boleto programado.</p>';
+      return;
+    }
+    list.innerHTML = "";
+    futuros.forEach(b => {
+      const st = statusBoleto(b);
+      const dias = diasAte(b.data_vencimento);
+      const quando = dias < 0 ? "Vencido" : dias === 0 ? "Hoje" : "Em " + dias + " dias";
+      const d = new Date(b.data_vencimento);
+      const dia = d.toLocaleDateString("pt-BR", { day: "2-digit" });
+      const mes = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+      const classeSeveridade = st && st.cls === "danger" ? " danger" : st && st.cls === "warning" ? " urgent" : "";
+      const item = document.createElement("div");
+      item.className = "due-item" + classeSeveridade;
+      item.innerHTML = `
+        <div class="due-item-date"><strong>${dia}</strong><span>${mes}</span></div>
+        <div class="due-item-info"><p>${tipoBoleto(b.categorias.nome)}</p><span>${b.nome}</span></div>
+        <span class="due-item-badge">${quando}</span>
+      `;
+      item.addEventListener("click", () => window.location.href = "boletos.html");
+      list.appendChild(item);
+    });
+  }
+
+  function renderResumoFinanceiro(boletos, naoPagos, valorTotalAberto) {
+    const hoje = new Date();
+    const pagoEsteMes = boletos
+      .filter(b => b.status === "pago" && b.pago_em && new Date(b.pago_em).getMonth() === hoje.getMonth() && new Date(b.pago_em).getFullYear() === hoje.getFullYear())
+      .reduce((s, b) => s + Number(b.valor || 0), 0);
+
+    const honorarios = naoPagos.filter(b => b.categorias.slug === "boleto-honorarios").reduce((s, b) => s + Number(b.valor || 0), 0);
+    const imposto = naoPagos.filter(b => b.categorias.slug === "boleto-imposto").reduce((s, b) => s + Number(b.valor || 0), 0);
+
+    const ultimo = boletos.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+    document.getElementById("resumo-financeiro").innerHTML = `
+      <div class="resumo-linha"><span>Pago este mês</span><strong>R$ ${formatMoeda(pagoEsteMes)}</strong></div>
+      <div class="resumo-linha"><span>Em aberto — Honorários</span><strong>R$ ${formatMoeda(honorarios)}</strong></div>
+      <div class="resumo-linha"><span>Em aberto — Imposto</span><strong>R$ ${formatMoeda(imposto)}</strong></div>
+      <div class="resumo-linha total"><span>Total em aberto</span><strong>R$ ${formatMoeda(valorTotalAberto)}</strong></div>
+      ${ultimo ? `<p class="resumo-nota">Último boleto recebido: ${ultimo.nome}</p>` : ""}
+    `;
+  }
+</script>
+</body>
+</html>

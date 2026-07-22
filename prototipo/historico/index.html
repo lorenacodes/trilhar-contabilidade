@@ -223,6 +223,11 @@
       pasta: "v36-2026-07-21",
       data: "21/07/2026",
       descricao: "A v35 foi sutil demais — a diferença de fundo não ficou perceptível de verdade. --bg-canvas escureceu mais (de #ECEEF3 pra #E3E7EF), com --bg-surface-elevated e --border-default acompanhando pra manter a proporção. Também mudou uma decisão antiga do design system: cards em repouso (KPI, tabelas, lista de boletos, categoria, painel 'Precisa de atenção', barra de filtro) não usavam nenhuma sombra, só borda fina — a pedido explícito desta rodada por 'sombras suaves', passaram a usar --shadow-xs (sombra bem discreta) também em repouso, não só no hover. Verificado direto via curl que o servidor local estava servindo o arquivo certo — a ferramenta de preview do navegador é que estava presa numa versão em cache mesmo em aba nova, sem afetar o site publicado de verdade."
+    },
+    {
+      pasta: "v37-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Identificado o real 'painel azul' do pedido de redesign: não era o fundo geral, era o menu lateral (Clientes/Documentos e boletos/Categorias/Administradores) — que nunca teve cor nenhuma, só flutuava transparente sobre o fundo da página. Agora .admin-nav é um painel sólido preenchido com --brand-navy (a mesma cor de marca dos botões), com sombra suave. Os itens do menu viraram texto claro (branco 70% opacidade quando inativo, branco cheio no hover) e o item ativo passou a usar --brand-gold-soft sobre um destaque translúcido branco — mesmo papel que o dourado já tinha no tema escuro (--action-primary), agora reaproveitado aqui como o acento de 'isso está selecionado' contra o navy. Ajustada também a versão mobile/tablet (≤1024px, menu vira tira horizontal) removendo uma borda que só fazia sentido quando o menu era transparente."
     }
   ];
 

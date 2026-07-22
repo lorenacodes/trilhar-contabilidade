@@ -213,6 +213,11 @@
       pasta: "v34-2026-07-21",
       data: "21/07/2026",
       descricao: "Corrigido convite de administrador mostrando só '{}' em vez de uma mensagem real: a Response do erro da Edge Function só pode ser lida uma vez, e se o SDK do supabase-js já tivesse consumido o corpo original ao montar o erro genérico dele, o clone lido depois vinha vazio — sem nenhuma mensagem de verdade sobrando. extrairMensagemErroFuncao() agora sempre garante uma mensagem legível no final (corpo da função → mensagem do erro do SDK → texto genérico de fallback), nunca deixando passar algo vazio pra tela. Causa raiz do próprio erro (não do bug de exibição): confirmado nos logs do Supabase que o convite de administrador falhou porque o modo sandbox do Resend só entrega e-mail pro próprio dono da conta (contatecardozo@gmail.com) — convidar qualquer outro endereço (ex: lorena@milatec.ind.br) precisa do domínio verificado (Trilho 2), ainda pendente."
+    },
+    {
+      pasta: "v35-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Ajuste visual de profissionalismo no painel administrativo (só tokens de design em css/styles.css, sem mudança de comportamento). O fundo (--bg-canvas) já não era branco puro, mas #F6F7FB era tão próximo do branco que ninguém percebia a diferença — virou #ECEEF3, um cinza neutro claramente visível, dando mais separação pros cards brancos. --bg-surface-elevated (fundo 'afundado' dentro de cards, usado em hover de menu, badges etc.) e --border-default acompanharam o ajuste pra manter a mesma relação de contraste entre as camadas. O azul da marca (--brand-navy, usado em botões, item ativo do menu, ícones e destaques) saiu de #1F2D6E — um índigo mais saturado — para #28345C, um azul-marinho mais sóbrio e menos vívido, com o hover (--brand-navy-hover) escurecido na mesma proporção. Como todo o sistema já referenciava essas variáveis (inclusive os tons derivados via color-mix()), o efeito se propaga sozinho pra tudo sem precisar editar componente por componente."
     }
   ];
 

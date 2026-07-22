@@ -273,6 +273,11 @@
       pasta: "v46-2026-07-22",
       data: "22/07/2026",
       descricao: "A v44 só resolveu a parte funcional de Perfil da empresa/Configurações (passaram a salvar de verdade), mas a aparência continuava idêntica à versão sem função — e foi exatamente essa aparência 'sem graça' que motivou o pedido original. Agora sim: Perfil da empresa ganhou um cabeçalho com o logo da empresa, nome (ou apelido) em destaque e a data da última atualização de verdade (calculada a partir de updated_at, não um texto fixo); os campos foram organizados em duas seções nomeadas ('Identificação' e 'Contato') lado a lado em vez de uma lista única empilhada. Configurações ganhou um ícone de sino no cabeçalho da seção e, principalmente, um texto de prévia ao vivo que muda enquanto você digita o número de dias ou liga/desliga o alerta (ex: 'Boletos com vencimento em até 5 dias vão aparecer com destaque...') — dá pra ver o efeito da configuração antes mesmo de salvar."
+    },
+    {
+      pasta: "v47-2026-07-22",
+      data: "22/07/2026",
+      descricao: "Foto de perfil do administrador: clicar no nome no rodapé da sidebar agora tem a opção 'Alterar foto de perfil', que abre um modal com upload de imagem e recorte real (biblioteca Cropper.js) — arrasta pra reposicionar e usa o controle de zoom pra ajustar o enquadramento antes de salvar. A foto final sai sempre quadrada (320×320) e vai para um bucket próprio no Supabase Storage ('avatars', público pra leitura, mas cada usuário só grava dentro da sua própria pasta, isolada por RLS usando o id de autenticação). Nova coluna users.avatar_url guarda o link da foto atual. O avatar da sidebar já reflete a foto de verdade assim que ela é salva, no lugar das iniciais. Aproveitados componentes visuais (.avatar-field, .avatar-ring, .avatar-upload-badge) que já existiam no CSS mas nunca tinham sido usados em nenhuma tela."
     }
   ];
 

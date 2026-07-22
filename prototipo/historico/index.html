@@ -263,6 +263,11 @@
       pasta: "v44-2026-07-22",
       data: "22/07/2026",
       descricao: "Auditoria pedida por Lorena: conferido que toda tabela, coluna, RPC e Edge Function usada no código bate com o banco de verdade (nenhuma divergência encontrada) e que nada de dado de negócio fica preso só no navegador — os 3 usos de localStorage no sistema são preferência de interface (tema, sidebar recolhida, largura da sidebar), não dado de cliente/documento. O achado real: 'Perfil da empresa' e 'Configurações' não salvavam nada — só mostravam um aviso 'em breve'. Criada a tabela configuracoes_empresa (linha única, RLS: leitura pra qualquer autenticado, escrita só admin) e os dois formulários passaram a ler e gravar de verdade nela. O campo 'dias de antecedência' deixou de ser decorativo: agora alimenta de verdade o cálculo de 'vencendo' em statusBoleto() (antes fixo em 7 dias), o rótulo do KPI 'Boletos vencendo em X dias' e o destaque de urgência no painel 'Precisa de atenção'. O interruptor 'Avisar sobre boletos a vencer' também passou a fazer algo real: desativado, o KPI mostra 'Alerta desativado' e a lista de boletos a vencer no painel mostra um aviso em vez da lista."
+    },
+    {
+      pasta: "v45-2026-07-22",
+      data: "22/07/2026",
+      descricao: "Achado um bug real de cache que provavelmente afetava várias rodadas anteriores sem ninguém perceber: só o styles.css tinha o parâmetro ?v=NN contra cache — os três arquivos JS (app.js, auth-guard.js, supabase-client.js), em todas as 13 páginas, nunca tiveram nenhum. Isso significa que qualquer mudança só em JavaScript (como a divisão Documentos/Boletos ou a conexão real do Perfil da empresa) podia ficar presa em cache no navegador de quem já tinha visitado o site antes, mesmo depois de um Ctrl+Shift+R — só o HTML se atualizava, o JavaScript antigo continuava rodando por baixo. Adicionado ?v=32 nos três arquivos JS em todas as páginas, igualando ao número que o CSS já usa. A partir de agora um único número de versão cobre CSS e JS juntos — sempre que qualquer um dos dois mudar, o número sobe nos dois ao mesmo tempo."
     }
   ];
 

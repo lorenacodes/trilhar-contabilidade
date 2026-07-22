@@ -218,6 +218,11 @@
       pasta: "v35-2026-07-21",
       data: "21/07/2026",
       descricao: "Ajuste visual de profissionalismo no painel administrativo (só tokens de design em css/styles.css, sem mudança de comportamento). O fundo (--bg-canvas) já não era branco puro, mas #F6F7FB era tão próximo do branco que ninguém percebia a diferença — virou #ECEEF3, um cinza neutro claramente visível, dando mais separação pros cards brancos. --bg-surface-elevated (fundo 'afundado' dentro de cards, usado em hover de menu, badges etc.) e --border-default acompanharam o ajuste pra manter a mesma relação de contraste entre as camadas. O azul da marca (--brand-navy, usado em botões, item ativo do menu, ícones e destaques) saiu de #1F2D6E — um índigo mais saturado — para #28345C, um azul-marinho mais sóbrio e menos vívido, com o hover (--brand-navy-hover) escurecido na mesma proporção. Como todo o sistema já referenciava essas variáveis (inclusive os tons derivados via color-mix()), o efeito se propaga sozinho pra tudo sem precisar editar componente por componente."
+    },
+    {
+      pasta: "v36-2026-07-21",
+      data: "21/07/2026",
+      descricao: "A v35 foi sutil demais — a diferença de fundo não ficou perceptível de verdade. --bg-canvas escureceu mais (de #ECEEF3 pra #E3E7EF), com --bg-surface-elevated e --border-default acompanhando pra manter a proporção. Também mudou uma decisão antiga do design system: cards em repouso (KPI, tabelas, lista de boletos, categoria, painel 'Precisa de atenção', barra de filtro) não usavam nenhuma sombra, só borda fina — a pedido explícito desta rodada por 'sombras suaves', passaram a usar --shadow-xs (sombra bem discreta) também em repouso, não só no hover. Verificado direto via curl que o servidor local estava servindo o arquivo certo — a ferramenta de preview do navegador é que estava presa numa versão em cache mesmo em aba nova, sem afetar o site publicado de verdade."
     }
   ];
 

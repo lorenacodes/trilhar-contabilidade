@@ -253,6 +253,11 @@
       pasta: "v42-2026-07-22",
       data: "22/07/2026",
       descricao: "'TRILHAR CONTABILIDADE' em caixa alta virou 'Trilhar Contabilidade' — era texto digitado em maiúsculas direto no HTML (não uma regra de CSS), repetido em todas as páginas (topbar do cliente, sidebar do admin, telas de login). Trocado nas 13 páginas de uma vez pra manter consistência em todo o sistema."
+    },
+    {
+      pasta: "v43-2026-07-22",
+      data: "22/07/2026",
+      descricao: "'Documentos e boletos' virou duas abas de verdade na sidebar: 'Documentos' (arquivos comuns — Notas Fiscais, Cartão CNPJ, Contrato etc.) e 'Boletos' (as duas categorias financeiras — Honorários e Impostos). O motor de status automático (dentro do prazo / vencendo em X dias / vencido / pago) e o 'marcar como pago' já existiam e continuam do mesmo jeito, só que agora só aparecem na aba Boletos (não fazia sentido numa nota fiscal comum). Documentos ganhou um badge simples 'Enviado' no lugar do seletor de pagamento, que não se aplica a arquivo comum. Aba Boletos ganhou um resumo financeiro de verdade, calculado a partir dos documentos reais (nada fixo): receita mensal de honorários (soma dos boletos de honorários com vencimento no mês), recebido no mês (soma de tudo pago com data de pagamento no mês), total pendente (soma do que ainda não foi pago) e impostos pagos no mês com um detalhamento por cliente. As duas tabelas (Documentos e Boletos) ganharam paginação (10 por página) e os filtros de categoria passaram a mostrar só as categorias relevantes pra cada aba, em vez da lista completa. Testado com dados simulados (categorias/documentos injetados direto no estado da página, já que o banco está zerado): a separação, os cálculos financeiros e a paginação bateram certo."
     }
   ];
 

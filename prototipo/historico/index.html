@@ -248,6 +248,11 @@
       pasta: "v41-2026-07-22",
       data: "22/07/2026",
       descricao: "Largura da sidebar do admin agora é ajustável: uma faixa fina na borda direita (cursor de redimensionamento) permite arrastar entre 200px e 400px. A largura escolhida fica salva (safeStorage) e volta a ser aplicada em visitas futuras. Recolher pra modo ícone limpa a largura customizada (volta pro tamanho fixo de 76px); reabrir restaura a largura salva. Em telas ≤1024px (modo gaveta/drawer) o arrasto fica desativado, já que a sidebar some da tela nesse tamanho. Ajuste técnico: o valor salvo passou a vir da própria posição do arrasto (uma variável JS), não de uma medição do elemento logo após a mudança de estilo — evita salvar um número levemente errado por causa de timing de repintura."
+    },
+    {
+      pasta: "v42-2026-07-22",
+      data: "22/07/2026",
+      descricao: "'TRILHAR CONTABILIDADE' em caixa alta virou 'Trilhar Contabilidade' — era texto digitado em maiúsculas direto no HTML (não uma regra de CSS), repetido em todas as páginas (topbar do cliente, sidebar do admin, telas de login). Trocado nas 13 páginas de uma vez pra manter consistência em todo o sistema."
     }
   ];
 

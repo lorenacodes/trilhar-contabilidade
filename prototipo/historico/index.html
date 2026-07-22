@@ -243,6 +243,11 @@
       pasta: "v40-2026-07-22",
       data: "22/07/2026",
       descricao: "Correções de consistência na sidebar. (1) O nome da empresa não estourava só na aparência — faltava min-width:0 no container .brand (pai do texto), então em nomes longos o texto real ultrapassava a sidebar antes da regra de reticências conseguir agir; agora o truncamento com … funciona de verdade (testado com um nome bem mais longo que 'Trilhar Contabilidade'). (2) Corrigido um bug real de tema escuro que não tinha sido percebido ainda: a cor do texto da sidebar usava a variável --text-inverse, que no tema escuro vira quase preto (é pensada pra texto em cima de botão dourado, não pra texto branco numa sidebar sempre escura) — o texto da sidebar ficaria invisível se alguém trocasse pro tema escuro. Criadas variáveis próprias --sidebar-bg e --sidebar-text, independentes de --brand-navy/--text-inverse, iguais nos dois temas. (3) Cor da sidebar escurecida de #28345C pra #141D33 (navy bem mais forte e sóbrio). (4) Espaçamento entre itens do menu aumentado (2px → 4px) e item ativo ganhou mais peso (fundo mais opaco + negrito), além da borda lateral dourada que já existia. (5) 'Perfil da empresa' e 'Configurações' deixaram de ser só um aviso 'Em breve' — agora são telas reais com formulário (nome da empresa, e-mail, telefone, endereço / preferência de alerta de vencimento com dias configuráveis) e botões Salvar/Cancelar; Salvar ainda mostra um aviso honesto de que não está gravando no banco (sem fingir uma função que não existe), Cancelar volta pra Visão geral."
+    },
+    {
+      pasta: "v41-2026-07-22",
+      data: "22/07/2026",
+      descricao: "Largura da sidebar do admin agora é ajustável: uma faixa fina na borda direita (cursor de redimensionamento) permite arrastar entre 200px e 400px. A largura escolhida fica salva (safeStorage) e volta a ser aplicada em visitas futuras. Recolher pra modo ícone limpa a largura customizada (volta pro tamanho fixo de 76px); reabrir restaura a largura salva. Em telas ≤1024px (modo gaveta/drawer) o arrasto fica desativado, já que a sidebar some da tela nesse tamanho. Ajuste técnico: o valor salvo passou a vir da própria posição do arrasto (uma variável JS), não de uma medição do elemento logo após a mudança de estilo — evita salvar um número levemente errado por causa de timing de repintura."
     }
   ];
 

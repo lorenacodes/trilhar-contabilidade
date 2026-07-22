@@ -228,6 +228,16 @@
       pasta: "v37-2026-07-21",
       data: "21/07/2026",
       descricao: "Identificado o real 'painel azul' do pedido de redesign: não era o fundo geral, era o menu lateral (Clientes/Documentos e boletos/Categorias/Administradores) — que nunca teve cor nenhuma, só flutuava transparente sobre o fundo da página. Agora .admin-nav é um painel sólido preenchido com --brand-navy (a mesma cor de marca dos botões), com sombra suave. Os itens do menu viraram texto claro (branco 70% opacidade quando inativo, branco cheio no hover) e o item ativo passou a usar --brand-gold-soft sobre um destaque translúcido branco — mesmo papel que o dourado já tinha no tema escuro (--action-primary), agora reaproveitado aqui como o acento de 'isso está selecionado' contra o navy. Ajustada também a versão mobile/tablet (≤1024px, menu vira tira horizontal) removendo uma borda que só fazia sentido quando o menu era transparente."
+    },
+    {
+      pasta: "v38-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Reestruturação da sidebar do admin para o padrão real de SaaS: virou uma barra fixa de 260px (76px recolhida) ocupando 100% da altura da tela, em vez de um menu que só existia dentro da área de conteúdo. Três seções: topo (logo + nome do sistema), meio (navegação, rolável se precisar) e rodapé (avatar + nome + menu de conta/sair) — a marca e o usuário, que antes viviam numa topbar separada, migraram pra dentro da própria sidebar. Item ativo ganhou uma borda lateral dourada além do destaque de fundo. Itens de menu viraram <button> de verdade (antes eram <div onclick>) — dá suporte a navegação por teclado (Tab + Enter) e estado de foco visível, que não existia. Em telas ≤1024px a sidebar some da tela (drawer) em vez de virar tira horizontal, abrindo por cima do conteúdo via um botão de menu novo + fundo escurecido ao clicar fora; fecha sozinha ao escolher uma aba. O grid de conteúdo perdeu a coluna do menu (agora só conteúdo principal + painel 'Precisa de atenção')."
+    },
+    {
+      pasta: "v39-2026-07-21",
+      data: "21/07/2026",
+      descricao: "Reprojeto do painel administrativo a partir de uma referência visual (mockup de dashboard SaaS): 'Visão geral' virou uma aba própria na sidebar (ícone de casa), separada de 'Clientes' — antes os KPIs e o painel 'Precisa de atenção' apareciam sempre, misturados com qualquer aba; agora só aparecem em Visão geral, com um botão 'Ver todos os clientes' levando pra aba de fato. Sidebar ganhou uma seção 'Configurações' (separador visual + 'Perfil da empresa'/'Configurações', ainda sem tela própria — mostram um aviso 'Em breve', mesmo padrão já usado em Meu Perfil do cliente). Rodapé da sidebar separou o menu de conta (tema) do botão 'Sair', que agora é sempre visível em vez de escondido dentro do dropdown. Cards de KPI ganharam ícone dentro de um chip colorido (azul/verde/laranja/vermelho, usando as cores semânticas já existentes no sistema, não cores novas) acima do rótulo, em vez de ícone e rótulo lado a lado. Adicionado rodapé com copyright no fim da página. Nenhuma mudança de comportamento nos dados — só estrutura visual e navegação."
     }
   ];
 

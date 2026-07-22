@@ -6,7 +6,7 @@
 <title>Painel Administrativo — Trilhar Contabilidade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=29">
+<link rel="stylesheet" href="css/styles.css?v=28">
 </head>
 <body>
 <div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
@@ -24,11 +24,7 @@
     </div>
 
     <nav class="admin-nav" id="admin-nav">
-      <button type="button" class="admin-nav-item active" data-tab="visao-geral" onclick="switchTab('visao-geral')">
-        <span class="admin-nav-item-icon" id="nav-icon-visao-geral"></span>
-        <span class="admin-nav-item-label">Visão geral</span>
-      </button>
-      <button type="button" class="admin-nav-item" data-tab="clientes" onclick="switchTab('clientes')">
+      <button type="button" class="admin-nav-item active" data-tab="clientes" onclick="switchTab('clientes')">
         <span class="admin-nav-item-icon" id="nav-icon-clientes"></span>
         <span class="admin-nav-item-label">Clientes</span>
       </button>
@@ -44,33 +40,21 @@
         <span class="admin-nav-item-icon" id="nav-icon-administradores"></span>
         <span class="admin-nav-item-label">Administradores</span>
       </button>
-
-      <p class="admin-nav-section-label"><span>Configurações</span></p>
-      <button type="button" class="admin-nav-item" onclick="showToast('Em breve.')">
-        <span class="admin-nav-item-icon" id="nav-icon-empresa"></span>
-        <span class="admin-nav-item-label">Perfil da empresa</span>
-      </button>
-      <button type="button" class="admin-nav-item" onclick="showToast('Em breve.')">
-        <span class="admin-nav-item-icon" id="nav-icon-config"></span>
-        <span class="admin-nav-item-label">Configurações</span>
-      </button>
     </nav>
 
     <div class="admin-sidebar-footer">
       <div class="dropdown-wrap">
         <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
           <div class="avatar">TI</div>
-          <div class="admin-sidebar-user-text">
-            <span>Tinaysa</span>
-            <small>Administrador</small>
-          </div>
+          <span>Tinaysa</span>
         </div>
         <div class="dropdown-panel" id="user-panel">
           <div class="dropdown-header">Conta</div>
           <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" id="logout-item"></div>
         </div>
       </div>
-      <button type="button" class="admin-sidebar-logout" id="logout-item"></button>
     </div>
   </aside>
 
@@ -98,63 +82,34 @@
       </div>
     </div>
 
+    <!-- KPIs -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-top"><p class="stat-label">Clientes ativos</p><div class="stat-icon" id="kpi-icon-clients"></div></div>
+        <p class="stat-value" id="kpi-value-clientes">—</p>
+        <p class="stat-trend" id="kpi-trend-clientes">—</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><p class="stat-label">Documentos enviados (mês)</p><div class="stat-icon" id="kpi-icon-docs"></div></div>
+        <p class="stat-value" id="kpi-value-docs">—</p>
+        <p class="stat-trend" id="kpi-trend-docs">—</p>
+      </div>
+      <div class="stat-card clickable" id="kpi-card-warning" title="Ver detalhes em Precisa de atenção">
+        <div class="stat-top"><p class="stat-label">Boletos vencendo em 7 dias</p><div class="stat-icon" id="kpi-icon-warning"></div></div>
+        <p class="stat-value" id="kpi-value-boletos">—</p>
+        <p class="stat-trend" id="kpi-trend-boletos">—</p>
+      </div>
+      <div class="stat-card clickable" id="kpi-card-pending" title="Ver detalhes em Precisa de atenção">
+        <div class="stat-top"><p class="stat-label">Clientes com pendências</p><div class="stat-icon" id="kpi-icon-pending"></div></div>
+        <p class="stat-value" id="kpi-value-pendencias">—</p>
+        <p class="stat-trend" id="kpi-trend-pendencias">—</p>
+      </div>
+    </div>
+
     <div class="admin-layout" id="admin-layout">
       <div class="dashboard-main">
-        <!-- Aba: Visão geral -->
-        <div id="tab-visao-geral">
-          <div class="stats-row">
-            <div class="stat-card">
-              <div class="stat-top">
-                <div class="stat-icon-chip stat-icon-chip-navy" id="kpi-icon-clients"></div>
-              </div>
-              <p class="stat-label">Clientes ativos</p>
-              <p class="stat-value" id="kpi-value-clientes">—</p>
-              <p class="stat-trend" id="kpi-trend-clientes">—</p>
-            </div>
-            <div class="stat-card">
-              <div class="stat-top">
-                <div class="stat-icon-chip stat-icon-chip-success" id="kpi-icon-docs"></div>
-              </div>
-              <p class="stat-label">Documentos enviados (mês)</p>
-              <p class="stat-value" id="kpi-value-docs">—</p>
-              <p class="stat-trend" id="kpi-trend-docs">—</p>
-            </div>
-            <div class="stat-card clickable" id="kpi-card-warning" title="Ver detalhes em Precisa de atenção">
-              <div class="stat-top">
-                <div class="stat-icon-chip stat-icon-chip-warning" id="kpi-icon-warning"></div>
-              </div>
-              <p class="stat-label">Boletos vencendo em 7 dias</p>
-              <p class="stat-value" id="kpi-value-boletos">—</p>
-              <p class="stat-trend" id="kpi-trend-boletos">—</p>
-            </div>
-            <div class="stat-card clickable" id="kpi-card-pending" title="Ver detalhes em Precisa de atenção">
-              <div class="stat-top">
-                <div class="stat-icon-chip stat-icon-chip-danger" id="kpi-icon-pending"></div>
-              </div>
-              <p class="stat-label">Clientes com pendências</p>
-              <p class="stat-value" id="kpi-value-pendencias">—</p>
-              <p class="stat-trend" id="kpi-trend-pendencias">—</p>
-            </div>
-          </div>
-
-          <div class="side-card" style="max-width:480px;">
-            <div class="side-card-head">
-              <h3>Precisa de atenção</h3>
-            </div>
-            <div class="attention-panel-section">
-              <p class="attention-panel-title">Boletos a vencer</p>
-              <div id="upcoming-list" class="due-list"></div>
-            </div>
-            <div class="attention-panel-section">
-              <p class="attention-panel-title">Clientes com pendências</p>
-              <div id="attention-list" class="attention-list"></div>
-            </div>
-            <button type="button" class="btn btn-secondary" style="width:100%; margin-top:var(--space-4);" onclick="switchTab('clientes')">Ver todos os clientes</button>
-          </div>
-        </div>
-
         <!-- Aba: Clientes -->
-        <div id="tab-clientes" style="display:none;">
+        <div id="tab-clientes">
           <div style="position:relative; max-width:360px; margin-bottom:16px;">
             <span id="search-icon" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-secondary); display:flex;"></span>
             <input id="client-search" type="text" placeholder="Buscar por nome, e-mail ou CPF/CNPJ" style="width:100%; padding:11px 14px 11px 38px; border-radius:8px; border:1px solid var(--border-default); background:var(--bg-surface-elevated); color:var(--text-primary); font-size:14px; font-family:inherit;">
@@ -264,9 +219,26 @@
           </div>
         </div>
       </div>
+
+      <!-- Barra lateral: painel único de atenção (substitui calendário +
+           "Próximos vencimentos" + "Envios recentes", que se sobrepunham) -->
+      <div class="dashboard-sidebar">
+        <div class="side-card">
+          <div class="side-card-head">
+            <h3>Precisa de atenção</h3>
+          </div>
+          <div class="attention-panel-section">
+            <p class="attention-panel-title">Boletos a vencer</p>
+            <div id="upcoming-list" class="due-list"></div>
+          </div>
+          <div class="attention-panel-section">
+            <p class="attention-panel-title">Clientes com pendências</p>
+            <div id="attention-list" class="attention-list"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <p class="admin-content-footer">© <span id="current-year"></span> Trilhar Contabilidade. Todos os direitos reservados.</p>
   </div>
 </div>
 
@@ -690,21 +662,17 @@
   document.getElementById("kpi-icon-docs").innerHTML = ICONS.doc;
   document.getElementById("kpi-icon-warning").innerHTML = ICONS.bell;
   document.getElementById("kpi-icon-pending").innerHTML = ICONS.contract;
-  document.getElementById("nav-icon-visao-geral").innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>';
-  document.getElementById("current-year").textContent = new Date().getFullYear();
   document.getElementById("nav-icon-clientes").innerHTML = ICONS.user;
   document.getElementById("nav-icon-documentos").innerHTML = ICONS.doc;
   document.getElementById("nav-icon-categorias").innerHTML = ICONS.card;
   document.getElementById("nav-icon-administradores").innerHTML = ICONS.lock;
-  document.getElementById("nav-icon-empresa").innerHTML = ICONS.building;
-  document.getElementById("nav-icon-config").innerHTML = '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>';
   document.getElementById("admin-nav-toggle").innerHTML = ICONS.back;
   document.getElementById("admin-mobile-menu-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
   document.getElementById("email-note-icon").innerHTML = ICONS.mail;
   document.getElementById("cliente-note-icon").innerHTML = ICONS.mail;
   document.getElementById("administrador-note-icon").innerHTML = ICONS.mail;
   document.getElementById("btn-novo-administrador").innerHTML = ICONS.user + " Convidar administrador";
-  document.getElementById("logout-item").innerHTML = ICONS.logout + " <span>Sair</span>";
+  document.getElementById("logout-item").innerHTML = ICONS.logout + " Sair";
   document.getElementById("logout-item").onclick = () => logoutAdministrador();
   document.getElementById("confirm-documento-icon").innerHTML = ICONS.trash;
   document.getElementById("confirm-cliente-status-icon").innerHTML = ICONS.lock;
@@ -2065,7 +2033,6 @@
   // ---------- Tabs ----------
   function switchTab(name) {
     document.querySelectorAll(".admin-nav-item").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
-    document.getElementById("tab-visao-geral").style.display = name === "visao-geral" ? "block" : "none";
     document.getElementById("tab-clientes").style.display = name === "clientes" ? "block" : "none";
     document.getElementById("tab-documentos").style.display = name === "documentos" ? "block" : "none";
     document.getElementById("tab-categorias").style.display = name === "categorias" ? "block" : "none";

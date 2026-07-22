@@ -3,53 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Redefinir senha — Portal do Cliente</title>
+<title>Definir nova senha — Portal do Cliente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=29">
+<link rel="stylesheet" href="css/styles.css?v=28">
 </head>
 <body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
 <div class="login-screen">
   <div class="login-card login-graphic" style="width:420px;">
     <div class="login-logo">
       <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
       <div class="brand-name">TRILHAR CONTABILIDADE</div>
-      <div class="brand-sub">REDEFINIR SENHA</div>
+      <div class="brand-sub">PRIMEIRO ACESSO</div>
     </div>
 
-    <div id="carregando" style="text-align:center; padding:20px 0;">
-      <div class="auth-guard-spinner" style="margin:0 auto;"></div>
-      <p class="hint" style="margin-top:14px;">Validando seu link de recuperação...</p>
+    <p class="hint" style="margin:0 0 20px; text-align:center;">Essa é a primeira vez que você entra. Defina uma senha nova antes de continuar.</p>
+
+    <div class="field">
+      <label>Nova senha</label>
+      <input type="password" id="nova-senha" placeholder="••••••••">
     </div>
-
-    <div id="link-invalido" style="display:none; text-align:center;">
-      <p class="hint">Esse link de recuperação é inválido ou já expirou. Solicite um novo.</p>
-      <a href="esqueci-senha.html" class="btn btn-secondary" style="width:100%; margin-top:12px; display:block; text-align:center;">Solicitar novo link</a>
+    <div class="senha-forca-bar" id="forca-bar">
+      <div class="senha-forca-bar-seg"></div>
+      <div class="senha-forca-bar-seg"></div>
+      <div class="senha-forca-bar-seg"></div>
+      <div class="senha-forca-bar-seg"></div>
     </div>
+    <p class="senha-forca-label" id="forca-label"></p>
+    <ul class="senha-criterios" id="senha-criterios"></ul>
 
-    <div id="form-senha" style="display:none;">
-      <div class="field">
-        <label>Nova senha</label>
-        <input type="password" id="nova-senha" placeholder="••••••••">
-      </div>
-      <div class="senha-forca-bar" id="forca-bar">
-        <div class="senha-forca-bar-seg"></div>
-        <div class="senha-forca-bar-seg"></div>
-        <div class="senha-forca-bar-seg"></div>
-        <div class="senha-forca-bar-seg"></div>
-      </div>
-      <p class="senha-forca-label" id="forca-label"></p>
-      <ul class="senha-criterios" id="senha-criterios"></ul>
-
-      <div class="field" style="margin-top:20px;">
-        <label>Confirmar nova senha</label>
-        <input type="password" id="confirmar-senha" placeholder="••••••••">
-      </div>
-      <p class="field-error" id="senha-erro"></p>
-
-      <button class="btn btn-primary" id="btn-trocar-senha" style="width:100%;" disabled>Redefinir senha</button>
-      <p class="hint" id="motivo-btn" style="text-align:center; margin-top:8px; min-height:16px;"></p>
+    <div class="field" style="margin-top:20px;">
+      <label>Confirmar nova senha</label>
+      <input type="password" id="confirmar-senha" placeholder="••••••••">
     </div>
+    <p class="field-error" id="senha-erro"></p>
+
+    <button class="btn btn-primary" id="btn-trocar-senha" style="width:100%;" disabled>Definir nova senha</button>
+    <p class="hint" id="motivo-btn" style="text-align:center; margin-top:8px; min-height:16px;"></p>
   </div>
 
   <button class="theme-toggle" data-theme-toggle style="position:fixed; bottom:24px; right:24px;"></button>
@@ -58,6 +49,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/app.js"></script>
+<script src="js/auth-guard.js"></script>
 <script>
   const CRITERIOS = [
     { key: "tamanho", texto: "Pelo menos 8 caracteres (ideal 12+)" },
@@ -71,6 +63,7 @@
     `<li class="senha-criterio" data-c="${c.key}">${ICONS.check}<span>${c.texto}</span></li>`
   ).join("");
 
+  let USUARIO = null;
   const inputNovaSenha = document.getElementById("nova-senha");
   const inputConfirmar = document.getElementById("confirmar-senha");
   const btn = document.getElementById("btn-trocar-senha");
@@ -111,6 +104,7 @@
       motivoEl.textContent = "As senhas precisam ser idênticas pra habilitar o botão.";
     }
   }
+
   inputNovaSenha.addEventListener("input", atualizarForca);
   inputConfirmar.addEventListener("input", atualizarForca);
   atualizarForca();
@@ -123,7 +117,7 @@
 
     const { error } = await sb.auth.updateUser({ password: inputNovaSenha.value });
     if (error) {
-      showToast("Não foi possível redefinir a senha. Tente novamente.");
+      showToast("Não foi possível definir a senha. Tente novamente.");
       btn.disabled = false;
       btn.classList.remove("btn-loading");
       btn.textContent = original;
@@ -131,30 +125,16 @@
       return;
     }
 
-    const { data: { session } } = await sb.auth.getSession();
-    const { data: usuario } = await sb.from("users").select("tipo").eq("auth_user_id", session.user.id).maybeSingle();
-    await sb.auth.signOut();
-    window.location.href = (usuario && usuario.tipo === "administrador" ? "admin-login.html" : "index.html") + "?senha_redefinida=1";
+    await sb.rpc("marcar_primeiro_acesso_concluido");
+    window.location.href = USUARIO && USUARIO.tipo === "administrador" ? "admin.html" : "dashboard.html";
   });
 
-  // Link de recuperação: supabase-js processa o token da URL sozinho ao
-  // inicializar o cliente. Escutar PASSWORD_RECOVERY é a forma correta de
-  // saber que isso já aconteceu, em vez de checar getSession() direto (pode
-  // rodar antes do processamento do hash terminar).
-  let sessaoDeRecuperacaoOk = false;
-  sb.auth.onAuthStateChange((event) => {
-    if (event === "PASSWORD_RECOVERY") {
-      sessaoDeRecuperacaoOk = true;
-      document.getElementById("carregando").style.display = "none";
-      document.getElementById("form-senha").style.display = "block";
-    }
-  });
-  setTimeout(() => {
-    if (!sessaoDeRecuperacaoOk) {
-      document.getElementById("carregando").style.display = "none";
-      document.getElementById("link-invalido").style.display = "block";
-    }
-  }, 4000);
+  (async function init() {
+    const usuario = await guardPrimeiroAcesso();
+    if (!usuario) return;
+    USUARIO = usuario;
+    hideAuthOverlay();
+  })();
 </script>
 </body>
 </html>

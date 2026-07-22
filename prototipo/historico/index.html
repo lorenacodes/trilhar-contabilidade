@@ -268,6 +268,11 @@
       pasta: "v45-2026-07-22",
       data: "22/07/2026",
       descricao: "Achado um bug real de cache que provavelmente afetava várias rodadas anteriores sem ninguém perceber: só o styles.css tinha o parâmetro ?v=NN contra cache — os três arquivos JS (app.js, auth-guard.js, supabase-client.js), em todas as 13 páginas, nunca tiveram nenhum. Isso significa que qualquer mudança só em JavaScript (como a divisão Documentos/Boletos ou a conexão real do Perfil da empresa) podia ficar presa em cache no navegador de quem já tinha visitado o site antes, mesmo depois de um Ctrl+Shift+R — só o HTML se atualizava, o JavaScript antigo continuava rodando por baixo. Adicionado ?v=32 nos três arquivos JS em todas as páginas, igualando ao número que o CSS já usa. A partir de agora um único número de versão cobre CSS e JS juntos — sempre que qualquer um dos dois mudar, o número sobe nos dois ao mesmo tempo."
+    },
+    {
+      pasta: "v46-2026-07-22",
+      data: "22/07/2026",
+      descricao: "A v44 só resolveu a parte funcional de Perfil da empresa/Configurações (passaram a salvar de verdade), mas a aparência continuava idêntica à versão sem função — e foi exatamente essa aparência 'sem graça' que motivou o pedido original. Agora sim: Perfil da empresa ganhou um cabeçalho com o logo da empresa, nome (ou apelido) em destaque e a data da última atualização de verdade (calculada a partir de updated_at, não um texto fixo); os campos foram organizados em duas seções nomeadas ('Identificação' e 'Contato') lado a lado em vez de uma lista única empilhada. Configurações ganhou um ícone de sino no cabeçalho da seção e, principalmente, um texto de prévia ao vivo que muda enquanto você digita o número de dias ou liga/desliga o alerta (ex: 'Boletos com vencimento em até 5 dias vão aparecer com destaque...') — dá pra ver o efeito da configuração antes mesmo de salvar."
     }
   ];
 

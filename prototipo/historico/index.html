@@ -278,6 +278,11 @@
       pasta: "v47-2026-07-22",
       data: "22/07/2026",
       descricao: "Foto de perfil do administrador: clicar no nome no rodapé da sidebar agora tem a opção 'Alterar foto de perfil', que abre um modal com upload de imagem e recorte real (biblioteca Cropper.js) — arrasta pra reposicionar e usa o controle de zoom pra ajustar o enquadramento antes de salvar. A foto final sai sempre quadrada (320×320) e vai para um bucket próprio no Supabase Storage ('avatars', público pra leitura, mas cada usuário só grava dentro da sua própria pasta, isolada por RLS usando o id de autenticação). Nova coluna users.avatar_url guarda o link da foto atual. O avatar da sidebar já reflete a foto de verdade assim que ela é salva, no lugar das iniciais. Aproveitados componentes visuais (.avatar-field, .avatar-ring, .avatar-upload-badge) que já existiam no CSS mas nunca tinham sido usados em nenhuma tela."
+    },
+    {
+      pasta: "v48-2026-07-23",
+      data: "23/07/2026",
+      descricao: "Duas correções prioritárias pra produção. (1) Bug real: a cliente não conseguia anexar documentos — causa raiz era o Supabase Storage recusando (erro 400) nomes de arquivo com acento (ç, ã...); corrigido com sanitização do nome só na chave do arquivo (o nome bonito original continua exibido normalmente) e reordenação do envio (arquivo sobe pro Storage antes de criar o registro no banco, evitando documento 'fantasma' se o Storage recusar). (2) O envio de e-mail de convite pro cliente foi desativado temporariamente (o Resend está em modo sandbox e só entrega pro próprio dono da conta — nenhum convite real estava chegando); no lugar, a conta do cliente já nasce ativa com senha temporária gerada no servidor, e uma carta de boas-vindas profissional (reaproveitada e adaptada da carta que já existia pra administradores) abre automaticamente com os dados de acesso — o botão 'Baixar PDF' agora gera um PDF de verdade (biblioteca jsPDF, com logo, cores e tipografia da marca) em vez de depender da caixa de impressão do navegador."
     }
   ];
 

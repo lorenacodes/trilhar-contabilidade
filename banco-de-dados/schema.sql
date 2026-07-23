@@ -566,3 +566,167 @@ create policy "storage_admin_gerencia_tudo" on storage.objects
 create policy "storage_cliente_envia_para_propria_pasta" on storage.objects
   for insert
   with check (bucket_id = 'documentos' and (storage.foldername(name))[1] = current_cliente_id()::text);
+
+-- ============================================================================
+-- Migração: categorias dinâmicas (quem pode anexar, recorrência) + fluxo de
+-- aprovação de documentos (pendente/enviado/em análise/aprovado/rejeitado)
+-- ============================================================================
+-- Contexto: até aqui, "é boleto?" era decidido comparando categoria.slug
+-- contra um array fixo ('boleto-honorarios','boleto-imposto'), repetido com
+-- pequenas variações em várias telas e nas duas policies de RLS abaixo. Isso
+-- vira um campo real (quem_pode_anexar), e ganha também recorrência
+-- (documento que o cliente precisa reenviar todo mês/quinzena/semana/ano) e
+-- um status de revisão de verdade — coisas que "status" (pago/não-pago)
+-- nunca representou, porque aquilo é sobre pagamento de boleto, não sobre
+-- aprovação de documento.
+-- ============================================================================
+
+alter table categorias
+  add column if not exists descricao text,
+  add column if not exists quem_pode_anexar text not null default 'ambos',
+  add column if not exists recorrente boolean not null default false,
+  add column if not exists frequencia text not null default 'sob_demanda',
+  add column if not exists ativa boolean not null default true;
+
+alter table categorias
+  add constraint categorias_quem_pode_anexar_valido
+    check (quem_pode_anexar in ('administrador', 'cliente', 'ambos'));
+
+alter table categorias
+  add constraint categorias_frequencia_valida
+    check (frequencia in ('mensal', 'quinzenal', 'semanal', 'anual', 'sob_demanda'));
+
+-- recorrente=false sempre implica frequencia='sob_demanda' — não dá pra uma
+-- categoria ficar "recorrente" sem dizer de quanto em quanto tempo, nem
+-- "não recorrente" com uma frequência de verdade sobrando no dado.
+alter table categorias
+  add constraint categorias_recorrencia_consistente
+    check (
+      (recorrente = false and frequencia = 'sob_demanda')
+      or (recorrente = true and frequencia in ('mensal', 'quinzenal', 'semanal', 'anual'))
+    );
+
+-- Backfill: só a partir daqui "apenas administrador" é um dado real — antes
+-- disso só existia via slug hardcoded em código + RLS.
+update categorias
+  set quem_pode_anexar = 'administrador'
+  where slug in ('boleto-honorarios', 'boleto-imposto');
+
+alter table documentos
+  add column if not exists status_revisao text not null default 'enviado',
+  add column if not exists motivo_rejeicao text,
+  add column if not exists revisado_em timestamptz,
+  add column if not exists revisado_por uuid references administradores(id),
+  add column if not exists periodo_referencia text;
+
+alter table documentos
+  add constraint documentos_status_revisao_valido
+    check (status_revisao in ('enviado', 'em_analise', 'aprovado', 'rejeitado'));
+
+-- "Pendente" nunca é uma linha gravada aqui — é sempre calculado no app a
+-- partir da AUSÊNCIA de um documento pra aquela categoria+período. Não tem
+-- cron/worker nesse projeto (protótipo estático + Supabase), então "pendente"
+-- só pode ser um cálculo em tempo de leitura, nunca algo que precisa ser
+-- gerado antecipadamente.
+--
+-- Reenvio depois de rejeitado = um documentos NOVO (insert), nunca um update
+-- da linha rejeitada — preserva o histórico completo e significa que
+-- cliente nunca precisa de policy de UPDATE (continua só INSERT+SELECT).
+
+-- periodo_referencia é SEMPRE calculado aqui dentro, nunca aceito do que o
+-- chamador mandar no insert — mesmo motivo do trigger definir_origem_documento
+-- acima: um período adulterado (ou só um relógio errado no navegador do
+-- cliente) poderia marcar uma obrigação futura como já resolvida.
+create or replace function definir_periodo_referencia()
+returns trigger as $$
+declare
+  cat public.categorias%rowtype;
+  agora timestamp;
+begin
+  select * into cat from public.categorias where id = new.categoria_id;
+  agora := now() at time zone 'America/Sao_Paulo';
+
+  if cat.recorrente then
+    new.periodo_referencia := case cat.frequencia
+      when 'mensal' then to_char(agora, 'YYYY-MM')
+      when 'anual' then to_char(agora, 'YYYY')
+      -- IYYY (ano ISO), não YYYY: perto do fim de dezembro a semana ISO pode
+      -- já pertencer ao ano seguinte, e YYYY-IW quebraria a ordenação.
+      when 'semanal' then to_char(agora, 'IYYY-IW')
+      when 'quinzenal' then to_char(agora, 'YYYY-MM') || '-Q' ||
+        (case when extract(day from agora) <= 15 then '1' else '2' end)
+      else null
+    end;
+  else
+    new.periodo_referencia := null;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql set search_path = '';
+
+drop trigger if exists trg_definir_periodo_referencia on documentos;
+create trigger trg_definir_periodo_referencia
+  before insert on documentos
+  for each row execute function definir_periodo_referencia();
+
+-- ---------- Seed: categorias do grupo "Documentos Mensais" ----------
+-- "Notas Fiscais" já existia como categoria padrão — não duplica, só passa a
+-- fazer parte do grupo recorrente mensal.
+update categorias
+  set grupo = 'Documentos Mensais',
+      recorrente = true,
+      frequencia = 'mensal',
+      obrigatoria = true,
+      quem_pode_anexar = 'ambos'
+  where slug = 'notas-fiscais';
+
+insert into categorias (slug, nome, grupo, icone, cor, ordem, obrigatoria, recorrente, frequencia, quem_pode_anexar, tipos_arquivo_aceitos, tamanho_maximo_mb)
+values
+  ('extrato-bancario', 'Extrato Bancário', 'Documentos Mensais', 'doc', 'teal', 20, true, true, 'mensal', 'ambos', array['PDF'], 15),
+  ('relatorio-maquininha', 'Relatório da Maquininha', 'Documentos Mensais', 'chart', 'teal', 21, true, true, 'mensal', 'ambos', array['PDF'], 15),
+  ('comprovantes-pagamento', 'Comprovantes de Pagamentos', 'Documentos Mensais', 'doc', 'teal', 22, false, true, 'mensal', 'ambos', array['PDF'], 15)
+on conflict (slug) do nothing;
+
+-- Backfill de periodo_referencia pros documentos que já existiam ANTES da
+-- categoria deles virar recorrente (ex: uma Nota Fiscal enviada este mês,
+-- antes desta migration) — calculado a partir de created_at (quando o envio
+-- de fato aconteceu), não de "agora".
+update documentos d
+set periodo_referencia = case c.frequencia
+  when 'mensal' then to_char(d.created_at at time zone 'America/Sao_Paulo', 'YYYY-MM')
+  when 'anual' then to_char(d.created_at at time zone 'America/Sao_Paulo', 'YYYY')
+  when 'semanal' then to_char(d.created_at at time zone 'America/Sao_Paulo', 'IYYY-IW')
+  when 'quinzenal' then to_char(d.created_at at time zone 'America/Sao_Paulo', 'YYYY-MM') || '-Q' ||
+    (case when extract(day from d.created_at at time zone 'America/Sao_Paulo') <= 15 then '1' else '2' end)
+  else null
+end
+from categorias c
+where c.id = d.categoria_id and c.recorrente and d.periodo_referencia is null;
+
+-- ---------- RLS: troca a checagem hardcoded de slug por quem_pode_anexar ----------
+drop policy if exists "documentos_cliente_insere_nao_boleto" on documentos;
+create policy "documentos_cliente_insere_permitido" on documentos
+  for insert
+  with check (
+    cliente_id = current_cliente_id()
+    and criado_por is null
+    and categoria_id in (
+      select id from categorias
+      where quem_pode_anexar in ('cliente', 'ambos') and ativa
+    )
+  );
+
+drop policy if exists "arquivos_cliente_insere_nos_seus_documentos" on documento_arquivos;
+create policy "arquivos_cliente_insere_nos_seus_documentos" on documento_arquivos
+  for insert
+  with check (
+    documento_id in (
+      select d.id from documentos d
+      where d.cliente_id = current_cliente_id()
+        and d.categoria_id in (
+          select id from categorias
+          where quem_pode_anexar in ('cliente', 'ambos') and ativa
+        )
+    )
+  );

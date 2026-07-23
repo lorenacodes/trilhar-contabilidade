@@ -283,6 +283,11 @@
       pasta: "v48-2026-07-23",
       data: "23/07/2026",
       descricao: "Duas correções prioritárias pra produção. (1) Bug real: a cliente não conseguia anexar documentos — causa raiz era o Supabase Storage recusando (erro 400) nomes de arquivo com acento (ç, ã...); corrigido com sanitização do nome só na chave do arquivo (o nome bonito original continua exibido normalmente) e reordenação do envio (arquivo sobe pro Storage antes de criar o registro no banco, evitando documento 'fantasma' se o Storage recusar). (2) O envio de e-mail de convite pro cliente foi desativado temporariamente (o Resend está em modo sandbox e só entrega pro próprio dono da conta — nenhum convite real estava chegando); no lugar, a conta do cliente já nasce ativa com senha temporária gerada no servidor, e uma carta de boas-vindas profissional (reaproveitada e adaptada da carta que já existia pra administradores) abre automaticamente com os dados de acesso — o botão 'Baixar PDF' agora gera um PDF de verdade (biblioteca jsPDF, com logo, cores e tipografia da marca) em vez de depender da caixa de impressão do navegador."
+    },
+    {
+      pasta: "v49-2026-07-23",
+      data: "23/07/2026",
+      descricao: "No painel de detalhe do cliente (aba Clientes), cada categoria de documento ganhou um botão 'Anexar' direto no próprio cartão — antes era preciso fechar o painel, abrir 'Enviar documento' e escolher de novo o cliente e a categoria (que já estavam óbvios ali). Categorias comuns (Notas Fiscais, Cartão CNPJ, Documentos da Empresa...) enviam o arquivo na hora, sem sair do painel. Boletos continuam abrindo o painel completo — já com cliente e categoria pré-preenchidos e o arquivo escolhido pronto — porque exigem valor, vencimento e status, que não cabem no cartão da categoria."
     }
   ];
 

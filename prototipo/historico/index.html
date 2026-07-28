@@ -313,6 +313,11 @@
       pasta: "v54-2026-07-28",
       data: "28/07/2026",
       descricao: "Bairro virou campo obrigatório no endereço do cliente (mesma validação em três camadas do resto do endereço). CEP ganhou preenchimento automático de verdade: ao digitar e sair do campo, busca na API dos Correios (ViaCEP) e preenche rua, bairro, cidade e estado sozinho — sem travar nada se o CEP não existir ou a busca falhar, só avisa pra preencher manualmente. Cidade deixou de ser texto livre: agora é uma lista carregada automaticamente da API do IBGE assim que o Estado é escolhido (ou vem junto do CEP), evitando nome de cidade errado ou inventado — e se a API do IBGE cair por qualquer motivo, o campo volta a aceitar texto manual na hora, pra nunca travar um cadastro por causa de um serviço externo fora do ar. Testado de ponta a ponta com CEP real (Av. Paulista, preencheu tudo certo incluindo a cidade certa entre as 645 de SP), troca manual de Estado carregando outra lista (Sergipe, 75 cidades), CEP inexistente, queda simulada da API do IBGE (caiu pro campo manual sem travar) e edição de cliente existente (carrega a cidade salva certinha)."
+    },
+    {
+      pasta: "v55-2026-07-28",
+      data: "28/07/2026",
+      descricao: "Telefone e CEP viraram campos obrigatórios no cadastro de cliente/empresa, impedindo finalizar o registro sem eles preenchidos corretamente — mesma validação em três camadas já usada pro resto do endereço (formulário focando o primeiro campo em falta, Edge Function e RPC que gravam o cadastro, e um CHECK constraint no banco garantindo o formato do CEP). Testado direto no banco simulando telefone vazio, CEP vazio e CEP com tamanho errado (bloqueado nos três casos) e cadastro completo (salvo certinho), e no navegador confirmando que o formulário bloqueia envio com telefone/CEP em branco ou mal formatados, foca o campo certo, aceita valores válidos e continua pré-preenchendo certinho na edição de um cliente já cadastrado."
     }
   ];
 

@@ -730,3 +730,23 @@ create policy "arquivos_cliente_insere_nos_seus_documentos" on documento_arquivo
         )
     )
   );
+
+-- ============================================================================
+-- Migração: obrigatoriedade só em "Documentos da Empresa"/"Contrato" +
+-- data_validade (alerta de documento ausente/vencendo/vencido)
+-- ============================================================================
+-- Pedido explícito: os únicos documentos obrigatórios pra todo cliente devem
+-- ser esses dois — tudo que era obrigatório antes por outro motivo (boleto de
+-- honorários, Cartão CNPJ, categorias recorrentes de Documentos Mensais)
+-- deixa de ser (continuam existindo e podendo ser enviadas normalmente, só
+-- não geram mais alerta de "ausente").
+update categorias set obrigatoria = false where slug <> 'empresa' and slug <> 'contrato';
+update categorias set obrigatoria = true where slug in ('empresa', 'contrato');
+
+-- data_validade: quando o PRÓPRIO documento (ex: um Contrato) deixa de valer
+-- e precisa ser renovado — conceito deliberadamente separado de
+-- data_vencimento (que é só de boleto, e o trigger enforce_boleto_vencimento
+-- proíbe em qualquer outra categoria). Nullable, sem trigger: é o admin quem
+-- define isso manualmente ao aprovar um documento.
+alter table documentos
+  add column if not exists data_validade date;

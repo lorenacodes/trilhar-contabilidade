@@ -568,6 +568,138 @@ create policy "storage_cliente_envia_para_propria_pasta" on storage.objects
   with check (bucket_id = 'documentos' and (storage.foldername(name))[1] = current_cliente_id()::text);
 
 -- ============================================================================
+-- Migração: clientes ganha pessoa física/jurídica (tipo_pessoa, nome,
+-- sobrenome, razão social, nome fantasia, CPF, CNPJ) + status de cliente
+-- ============================================================================
+-- Contexto: a migração anterior (users como fonte única) tirou nome/email de
+-- clientes mas nunca devolveu um jeito de guardar os dados que distinguem
+-- pessoa física de pessoa jurídica — isso volta aqui, junto com a RPC que
+-- ativa/desativa o acesso de um cliente ao portal (admin_definir_status_cliente),
+-- que faltava neste arquivo apesar de estar em uso desde a Fase 3 (aba
+-- Clientes real). "documento" (a coluna genérica "CPF ou CNPJ" da tabela
+-- original) sai de circulação — cpf e cnpj passam a ser colunas próprias,
+-- cada uma validada e única só dentro do seu tipo de pessoa.
+-- ============================================================================
+
+alter table clientes
+  drop column if exists documento,
+  add column if not exists tipo_pessoa text,
+  add column if not exists nome text,
+  add column if not exists sobrenome text,
+  add column if not exists razao_social text,
+  add column if not exists nome_fantasia text,
+  add column if not exists cpf text,
+  add column if not exists cnpj text;
+
+update clientes set tipo_pessoa = 'fisica' where tipo_pessoa is null;
+alter table clientes alter column tipo_pessoa set not null;
+
+alter table clientes
+  add constraint clientes_tipo_pessoa_check check (tipo_pessoa in ('fisica', 'juridica')),
+  add constraint clientes_nome_consistente check (
+    (tipo_pessoa = 'fisica' and nome is not null and razao_social is null)
+    or (tipo_pessoa = 'juridica' and razao_social is not null and nome is null)
+  ),
+  add constraint clientes_doc_consistente check (
+    (tipo_pessoa = 'fisica' and cpf is not null and cnpj is null)
+    or (tipo_pessoa = 'juridica' and cnpj is not null and cpf is null)
+  );
+
+-- Único só dentro de quem tem CPF/CNPJ preenchido (parcial) — não dá pra usar
+-- "unique" direto porque cpf/cnpj ficam null pra quem é do outro tipo de
+-- pessoa, e "unique" comum trataria vários nulls como duplicata só em alguns
+-- bancos (Postgres na real já ignora NULL em unique, mas o índice parcial
+-- deixa a intenção explícita e mais rápido de consultar).
+create unique index if not exists clientes_cpf_key on clientes(cpf) where cpf is not null;
+create unique index if not exists clientes_cnpj_key on clientes(cnpj) where cnpj is not null;
+
+-- ---------- RPC admin_atualizar_cliente (primeira versão, só PF/PJ) ----------
+create function public.admin_atualizar_cliente(
+  p_cliente_id uuid, p_tipo_pessoa text, p_nome text, p_sobrenome text,
+  p_razao_social text, p_nome_fantasia text, p_cpf text, p_cnpj text,
+  p_email text, p_telefone text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+  v_nome_completo text;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem editar clientes';
+  end if;
+  if p_tipo_pessoa not in ('fisica', 'juridica') then
+    raise exception 'Tipo de pessoa inválido: %', p_tipo_pessoa;
+  end if;
+
+  select user_id into v_user_id from public.clientes where id = p_cliente_id;
+  if v_user_id is null then
+    raise exception 'Cliente não encontrado';
+  end if;
+
+  v_nome_completo := case
+    when p_tipo_pessoa = 'fisica' then trim(p_nome || ' ' || coalesce(p_sobrenome, ''))
+    else p_razao_social
+  end;
+
+  update public.users
+     set nome = v_nome_completo, email = p_email, updated_at = now()
+   where id = v_user_id;
+
+  update public.clientes
+     set tipo_pessoa = p_tipo_pessoa,
+         nome = case when p_tipo_pessoa = 'fisica' then p_nome else null end,
+         sobrenome = case when p_tipo_pessoa = 'fisica' then p_sobrenome else null end,
+         razao_social = case when p_tipo_pessoa = 'juridica' then p_razao_social else null end,
+         nome_fantasia = case when p_tipo_pessoa = 'juridica' then p_nome_fantasia else null end,
+         cpf = case when p_tipo_pessoa = 'fisica' then p_cpf else null end,
+         cnpj = case when p_tipo_pessoa = 'juridica' then p_cnpj else null end,
+         telefone = nullif(trim(p_telefone), ''),
+         updated_at = now()
+   where id = p_cliente_id;
+end;
+$$;
+
+revoke all on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text) from public;
+revoke execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text) from anon;
+grant execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text) to authenticated;
+
+-- ---------- RPC admin_definir_status_cliente (ativar/desativar acesso) ----------
+create or replace function public.admin_definir_status_cliente(p_cliente_id uuid, p_novo_status text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem alterar status de clientes';
+  end if;
+  if p_novo_status not in ('ativo', 'inativo') then
+    raise exception 'Status inválido: %', p_novo_status;
+  end if;
+
+  select user_id into v_user_id from public.clientes where id = p_cliente_id;
+  if v_user_id is null then
+    raise exception 'Cliente não encontrado';
+  end if;
+
+  update public.users
+     set status = p_novo_status, updated_at = now()
+   where id = v_user_id;
+end;
+$$;
+
+revoke all on function public.admin_definir_status_cliente(uuid, text) from public;
+revoke execute on function public.admin_definir_status_cliente(uuid, text) from anon;
+grant execute on function public.admin_definir_status_cliente(uuid, text) to authenticated;
+
+-- ============================================================================
 -- Migração: categorias dinâmicas (quem pode anexar, recorrência) + fluxo de
 -- aprovação de documentos (pendente/enviado/em análise/aprovado/rejeitado)
 -- ============================================================================
@@ -1063,3 +1195,242 @@ begin
    where id = p_cliente_id;
 end;
 $$;
+
+-- ============================================================================
+-- Migração: correções da auditoria de segurança/produção — proprietário vs
+-- administrador, proteção de categoria padrão, unificação da detecção de
+-- boleto, motivo de rejeição obrigatório no banco, blindagem contra nome de
+-- arquivo malicioso/malformado, e-mail não muda mais silenciosamente na
+-- edição de cliente, índices que faltavam, RLS reavaliando auth.uid()/
+-- auth.role() por linha
+-- ============================================================================
+-- Contexto: uma auditoria completa do fluxo de cliente e de documentos achou,
+-- entre outras coisas, um XSS armazenado real (nome de arquivo enviado pelo
+-- cliente era injetado sem escape no innerHTML do painel administrativo — a
+-- correção principal foi no front-end, escapando/usando textContent em vez de
+-- innerHTML; o que está aqui é a blindagem correspondente no banco) e que
+-- "proprietário" existia como rótulo em administradores.nivel mas nunca era
+-- de fato aplicado em nenhuma regra de permissão.
+-- ============================================================================
+
+-- ---------- 1) proprietário vs administrador (categorias) ----------
+create or replace function public.is_proprietario()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.users u
+    join public.administradores a on a.user_id = u.id
+    where u.auth_user_id = auth.uid()
+      and u.tipo = 'administrador'
+      and u.status = 'ativo'
+      and a.nivel = 'proprietario'
+  );
+$$;
+
+-- Função nova (não "or replace" de uma já existente) — o Supabase concede
+-- EXECUTE pra PUBLIC por padrão em funções novas no schema public, e "anon"
+-- herda de PUBLIC. Revoga de PUBLIC (não bastaria revogar só de "anon") e
+-- regrante só pra authenticated, no mesmo padrão de is_admin().
+revoke execute on function public.is_proprietario() from public;
+grant execute on function public.is_proprietario() to authenticated;
+
+drop policy if exists "categorias_escrita_admin" on categorias;
+
+create policy "categorias_insere_proprietario" on categorias
+  for insert
+  with check (is_proprietario());
+
+create policy "categorias_atualiza_proprietario" on categorias
+  for update
+  using (is_proprietario())
+  with check (is_proprietario());
+
+create policy "categorias_exclui_proprietario" on categorias
+  for delete
+  using (is_proprietario());
+
+-- ---------- 2) categoria padrão nunca pode ser excluída (agora de verdade) ----------
+create or replace function public.impedir_exclusao_categoria_padrao()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.padrao then
+    raise exception 'Categoria padrão "%" não pode ser excluída', old.nome;
+  end if;
+  return old;
+end;
+$$;
+
+drop trigger if exists trg_impedir_exclusao_categoria_padrao on categorias;
+create trigger trg_impedir_exclusao_categoria_padrao
+  before delete on categorias
+  for each row execute function public.impedir_exclusao_categoria_padrao();
+
+-- ---------- 3) "é boleto?" vira um campo explícito, não duas definições diferentes ----------
+-- Antes disso, a tela decidia "é boleto" olhando quem_pode_anexar==='administrador'
+-- e o gatilho abaixo decidia olhando o slug — uma categoria administrador-only
+-- nova que não fosse literalmente um dos dois boletos quebrava a tela.
+alter table categorias add column if not exists eh_boleto boolean not null default false;
+update categorias set eh_boleto = true where slug in ('boleto-honorarios', 'boleto-imposto');
+
+create or replace function public.enforce_boleto_vencimento()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_categoria_nome text;
+  v_eh_boleto boolean;
+begin
+  select nome, eh_boleto into v_categoria_nome, v_eh_boleto
+  from public.categorias where id = new.categoria_id;
+
+  if v_eh_boleto then
+    if new.data_vencimento is null then
+      raise exception 'Boletos (categoria %) precisam de data_vencimento', v_categoria_nome;
+    end if;
+    if new.status is null or new.status not in ('pago', 'nao_pago') then
+      raise exception 'Boletos (categoria %) precisam de status "pago" ou "nao_pago"', v_categoria_nome;
+    end if;
+  else
+    if new.data_vencimento is not null then
+      raise exception 'Documentos da categoria % não podem ter data_vencimento (só boletos têm vencimento)', v_categoria_nome;
+    end if;
+    if new.status is not null then
+      raise exception 'Documentos da categoria % não podem ter status de pagamento (só boletos têm)', v_categoria_nome;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- ---------- 4) motivo de rejeição obrigatório também no banco ----------
+alter table documentos add constraint documentos_motivo_rejeicao_obrigatorio
+  check (status_revisao != 'rejeitado' or motivo_rejeicao is not null);
+
+-- ---------- 5) defesa em profundidade contra nome de arquivo malicioso/malformado ----------
+-- A correção real do XSS foi escapar na renderização (front-end) — isso aqui
+-- só impede que um nome de arquivo absurdo (controle de caractere, tamanho
+-- desproporcional) chegue a ser gravado.
+alter table documentos add constraint documentos_nome_seguro
+  check (char_length(nome) between 1 and 255 and nome !~ '[\x00-\x1F\x7F]');
+
+alter table documento_arquivos add constraint documento_arquivos_nome_original_seguro
+  check (char_length(nome_original) between 1 and 255 and nome_original !~ '[\x00-\x1F\x7F]');
+
+alter table documento_arquivos add constraint documento_arquivos_tipo_arquivo_seguro
+  check (char_length(tipo_arquivo) between 1 and 20 and tipo_arquivo !~ '[\x00-\x1F\x7F]');
+
+-- ---------- 6) editar cliente nunca mais muda e-mail por essa via ----------
+-- O campo de e-mail já vinha desabilitado na tela de edição, mas isso é só um
+-- atributo HTML — quem chamasse a RPC direto (console do navegador) conseguia
+-- mudar o e-mail exibido sem tocar no e-mail de login real do Supabase Auth,
+-- desalinhando os dois. A RPC agora ignora p_email numa edição — o e-mail só
+-- é definido na criação (Edge Function). Corpo muda, assinatura continua igual.
+create or replace function public.admin_atualizar_cliente(
+  p_cliente_id uuid, p_tipo_pessoa text, p_nome text, p_sobrenome text,
+  p_razao_social text, p_nome_fantasia text, p_cpf text, p_cnpj text,
+  p_email text, p_telefone text,
+  p_endereco_cep text, p_endereco_rua text, p_endereco_numero text,
+  p_endereco_complemento text, p_endereco_bairro text, p_endereco_cidade text, p_endereco_estado text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+  v_nome_completo text;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem editar clientes';
+  end if;
+  if p_tipo_pessoa not in ('fisica', 'juridica') then
+    raise exception 'Tipo de pessoa inválido: %', p_tipo_pessoa;
+  end if;
+
+  if coalesce(trim(p_telefone), '') = '' then
+    raise exception 'Telefone é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_cep), '') = '' then
+    raise exception 'Endereço: CEP é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_rua), '') = '' then
+    raise exception 'Endereço: rua é obrigatória';
+  end if;
+  if coalesce(trim(p_endereco_numero), '') = '' then
+    raise exception 'Endereço: número é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_bairro), '') = '' then
+    raise exception 'Endereço: bairro é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_cidade), '') = '' then
+    raise exception 'Endereço: cidade é obrigatória';
+  end if;
+  if upper(coalesce(p_endereco_estado, '')) not in ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO') then
+    raise exception 'Endereço: estado inválido';
+  end if;
+
+  select user_id into v_user_id from public.clientes where id = p_cliente_id;
+  if v_user_id is null then
+    raise exception 'Cliente não encontrado';
+  end if;
+
+  v_nome_completo := case
+    when p_tipo_pessoa = 'fisica' then trim(p_nome || ' ' || coalesce(p_sobrenome, ''))
+    else p_razao_social
+  end;
+
+  update public.users
+     set nome = v_nome_completo, updated_at = now()
+   where id = v_user_id;
+
+  update public.clientes
+     set tipo_pessoa = p_tipo_pessoa,
+         nome = case when p_tipo_pessoa = 'fisica' then p_nome else null end,
+         sobrenome = case when p_tipo_pessoa = 'fisica' then p_sobrenome else null end,
+         razao_social = case when p_tipo_pessoa = 'juridica' then p_razao_social else null end,
+         nome_fantasia = case when p_tipo_pessoa = 'juridica' then p_nome_fantasia else null end,
+         cpf = case when p_tipo_pessoa = 'fisica' then p_cpf else null end,
+         cnpj = case when p_tipo_pessoa = 'juridica' then p_cnpj else null end,
+         telefone = p_telefone,
+         endereco_cep = p_endereco_cep,
+         endereco_rua = p_endereco_rua,
+         endereco_numero = p_endereco_numero,
+         endereco_complemento = nullif(trim(p_endereco_complemento), ''),
+         endereco_bairro = p_endereco_bairro,
+         endereco_cidade = p_endereco_cidade,
+         endereco_estado = upper(p_endereco_estado),
+         updated_at = now()
+   where id = p_cliente_id;
+end;
+$$;
+
+-- ---------- 7) índices que faltavam (FKs usadas em filtro/join no admin) ----------
+create index if not exists idx_documentos_criado_por on documentos(criado_por);
+create index if not exists idx_documentos_revisado_por on documentos(revisado_por);
+
+-- ---------- 8) RLS reavaliando auth.uid()/auth.role() por linha (perf em escala) ----------
+drop policy if exists "categorias_leitura_geral" on categorias;
+create policy "categorias_leitura_geral" on categorias
+  for select
+  using ((select auth.role()) = 'authenticated');
+
+drop policy if exists "usuarios_ve_proprio_registro" on users;
+create policy "usuarios_ve_proprio_registro" on users
+  for select
+  using (auth_user_id = (select auth.uid()));
+
+drop policy if exists "configuracoes_empresa_leitura_geral" on configuracoes_empresa;
+create policy "configuracoes_empresa_leitura_geral" on configuracoes_empresa
+  for select
+  using ((select auth.role()) = 'authenticated');

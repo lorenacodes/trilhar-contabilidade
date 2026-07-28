@@ -870,3 +870,96 @@ $$;
 revoke all on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) from public;
 revoke execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) from anon;
 grant execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) to authenticated;
+
+-- ============================================================================
+-- Migração: bairro passa a ser obrigatório no endereço do cliente
+-- ============================================================================
+-- Backfill primeiro: os clientes de teste tinham cidade = 'Não informado',
+-- que não bate com nenhum município real do IBGE — Cidade virou um select
+-- carregado da API do IBGE (lado admin.html), então esse valor ficaria órfão
+-- (não apareceria selecionado na lista). Troca pra "São Paulo" (nome real,
+-- já que o estado desses testes é SP) + bairro "Centro".
+update clientes set
+  endereco_bairro = coalesce(endereco_bairro, 'Centro'),
+  endereco_cidade = case when endereco_cidade = 'Não informado' then 'São Paulo' else endereco_cidade end
+where endereco_bairro is null or endereco_cidade = 'Não informado';
+
+alter table clientes
+  alter column endereco_bairro set not null;
+
+-- admin_atualizar_cliente: bairro deixa de ser nullif(...) e passa a validar
+-- como os outros campos obrigatórios do endereço (mesmo esquema de create-
+-- or-replace, sem mudar a assinatura desta vez — só o corpo da função).
+create or replace function public.admin_atualizar_cliente(
+  p_cliente_id uuid, p_tipo_pessoa text, p_nome text, p_sobrenome text,
+  p_razao_social text, p_nome_fantasia text, p_cpf text, p_cnpj text,
+  p_email text, p_telefone text,
+  p_endereco_cep text, p_endereco_rua text, p_endereco_numero text,
+  p_endereco_complemento text, p_endereco_bairro text, p_endereco_cidade text, p_endereco_estado text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+  v_nome_completo text;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem editar clientes';
+  end if;
+  if p_tipo_pessoa not in ('fisica', 'juridica') then
+    raise exception 'Tipo de pessoa inválido: %', p_tipo_pessoa;
+  end if;
+
+  if coalesce(trim(p_endereco_rua), '') = '' then
+    raise exception 'Endereço: rua é obrigatória';
+  end if;
+  if coalesce(trim(p_endereco_numero), '') = '' then
+    raise exception 'Endereço: número é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_bairro), '') = '' then
+    raise exception 'Endereço: bairro é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_cidade), '') = '' then
+    raise exception 'Endereço: cidade é obrigatória';
+  end if;
+  if upper(coalesce(p_endereco_estado, '')) not in ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO') then
+    raise exception 'Endereço: estado inválido';
+  end if;
+
+  select user_id into v_user_id from public.clientes where id = p_cliente_id;
+  if v_user_id is null then
+    raise exception 'Cliente não encontrado';
+  end if;
+
+  v_nome_completo := case
+    when p_tipo_pessoa = 'fisica' then trim(p_nome || ' ' || coalesce(p_sobrenome, ''))
+    else p_razao_social
+  end;
+
+  update public.users
+     set nome = v_nome_completo, email = p_email, updated_at = now()
+   where id = v_user_id;
+
+  update public.clientes
+     set tipo_pessoa = p_tipo_pessoa,
+         nome = case when p_tipo_pessoa = 'fisica' then p_nome else null end,
+         sobrenome = case when p_tipo_pessoa = 'fisica' then p_sobrenome else null end,
+         razao_social = case when p_tipo_pessoa = 'juridica' then p_razao_social else null end,
+         nome_fantasia = case when p_tipo_pessoa = 'juridica' then p_nome_fantasia else null end,
+         cpf = case when p_tipo_pessoa = 'fisica' then p_cpf else null end,
+         cnpj = case when p_tipo_pessoa = 'juridica' then p_cnpj else null end,
+         telefone = p_telefone,
+         endereco_cep = nullif(trim(p_endereco_cep), ''),
+         endereco_rua = p_endereco_rua,
+         endereco_numero = p_endereco_numero,
+         endereco_complemento = nullif(trim(p_endereco_complemento), ''),
+         endereco_bairro = p_endereco_bairro,
+         endereco_cidade = p_endereco_cidade,
+         endereco_estado = upper(p_endereco_estado),
+         updated_at = now()
+   where id = p_cliente_id;
+end;
+$$;

@@ -750,3 +750,123 @@ update categorias set obrigatoria = true where slug in ('empresa', 'contrato');
 -- define isso manualmente ao aprovar um documento.
 alter table documentos
   add column if not exists data_validade date;
+
+-- ============================================================================
+-- Migração: endereço obrigatório no cadastro de cliente
+-- ============================================================================
+-- Rua, número, cidade e estado são o mínimo exigido; CEP, complemento e
+-- bairro ficam opcionais. Colunas planas (não jsonb), mesma convenção do
+-- resto da tabela clientes.
+alter table clientes
+  add column if not exists endereco_cep text,
+  add column if not exists endereco_rua text,
+  add column if not exists endereco_numero text,
+  add column if not exists endereco_complemento text,
+  add column if not exists endereco_bairro text,
+  add column if not exists endereco_cidade text,
+  add column if not exists endereco_estado text;
+
+update clientes set
+  endereco_rua = coalesce(endereco_rua, 'Não informado'),
+  endereco_numero = coalesce(endereco_numero, 'S/N'),
+  endereco_cidade = coalesce(endereco_cidade, 'Não informado'),
+  endereco_estado = coalesce(endereco_estado, 'SP')
+where endereco_rua is null or endereco_numero is null or endereco_cidade is null or endereco_estado is null;
+
+alter table clientes
+  alter column endereco_rua set not null,
+  alter column endereco_numero set not null,
+  alter column endereco_cidade set not null,
+  alter column endereco_estado set not null;
+
+alter table clientes
+  add constraint clientes_endereco_estado_valido check (
+    endereco_estado in ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')
+  );
+
+-- ---------- RPC admin_atualizar_cliente: nova assinatura com endereço ----------
+-- Assinatura muda (novos parâmetros) — drop explícito antes do create,
+-- senão o Postgres cria uma função sobrecarregada nova em vez de substituir.
+drop function if exists public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text);
+
+create function public.admin_atualizar_cliente(
+  p_cliente_id uuid, p_tipo_pessoa text, p_nome text, p_sobrenome text,
+  p_razao_social text, p_nome_fantasia text, p_cpf text, p_cnpj text,
+  p_email text, p_telefone text,
+  p_endereco_cep text, p_endereco_rua text, p_endereco_numero text,
+  p_endereco_complemento text, p_endereco_bairro text, p_endereco_cidade text, p_endereco_estado text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+  v_nome_completo text;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem editar clientes';
+  end if;
+  if p_tipo_pessoa not in ('fisica', 'juridica') then
+    raise exception 'Tipo de pessoa inválido: %', p_tipo_pessoa;
+  end if;
+
+  -- Mesma regra de negócio da Edge Function admin-criar-cliente: rua,
+  -- número, cidade e estado são obrigatórios pra qualquer cliente — nunca
+  -- confiar só na validação que já rodou no admin.html.
+  if coalesce(trim(p_endereco_rua), '') = '' then
+    raise exception 'Endereço: rua é obrigatória';
+  end if;
+  if coalesce(trim(p_endereco_numero), '') = '' then
+    raise exception 'Endereço: número é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_cidade), '') = '' then
+    raise exception 'Endereço: cidade é obrigatória';
+  end if;
+  if upper(coalesce(p_endereco_estado, '')) not in ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO') then
+    raise exception 'Endereço: estado inválido';
+  end if;
+
+  select user_id into v_user_id from public.clientes where id = p_cliente_id;
+  if v_user_id is null then
+    raise exception 'Cliente não encontrado';
+  end if;
+
+  v_nome_completo := case
+    when p_tipo_pessoa = 'fisica' then trim(p_nome || ' ' || coalesce(p_sobrenome, ''))
+    else p_razao_social
+  end;
+
+  update public.users
+     set nome = v_nome_completo, email = p_email, updated_at = now()
+   where id = v_user_id;
+
+  update public.clientes
+     set tipo_pessoa = p_tipo_pessoa,
+         nome = case when p_tipo_pessoa = 'fisica' then p_nome else null end,
+         sobrenome = case when p_tipo_pessoa = 'fisica' then p_sobrenome else null end,
+         razao_social = case when p_tipo_pessoa = 'juridica' then p_razao_social else null end,
+         nome_fantasia = case when p_tipo_pessoa = 'juridica' then p_nome_fantasia else null end,
+         cpf = case when p_tipo_pessoa = 'fisica' then p_cpf else null end,
+         cnpj = case when p_tipo_pessoa = 'juridica' then p_cnpj else null end,
+         telefone = p_telefone,
+         endereco_cep = nullif(trim(p_endereco_cep), ''),
+         endereco_rua = p_endereco_rua,
+         endereco_numero = p_endereco_numero,
+         endereco_complemento = nullif(trim(p_endereco_complemento), ''),
+         endereco_bairro = nullif(trim(p_endereco_bairro), ''),
+         endereco_cidade = p_endereco_cidade,
+         endereco_estado = upper(p_endereco_estado),
+         updated_at = now()
+   where id = p_cliente_id;
+end;
+$$;
+
+-- O projeto tem uma default privilege que concede EXECUTE a "anon" em toda
+-- função nova criada no schema public — "revoke all ... from public" não
+-- alcança isso (é um grant direto pro role anon, não herdado de PUBLIC),
+-- por isso o revoke explícito de anon logo abaixo.
+revoke all on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) from public;
+revoke execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) from anon;
+grant execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) to authenticated;

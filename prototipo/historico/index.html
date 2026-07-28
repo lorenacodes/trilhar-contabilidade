@@ -303,6 +303,11 @@
       pasta: "v52-2026-07-28",
       data: "28/07/2026",
       descricao: "Os únicos documentos obrigatórios pra todo cliente agora são 'Documentos da Empresa' e 'Contrato' (as outras categorias — boleto de honorários, Cartão CNPJ, Documentos Mensais — deixaram de ser obrigatórias, continuam existindo normalmente). Novo mecanismo de alerta automático pra esses dois: documento ausente (nunca enviado, ou só rejeitado), vencendo (dentro do prazo de aviso configurado em Configurações) ou vencido — usando uma nova data de validade que o admin define ao aprovar o documento (campo novo em 'Analisar', só aparece pra essas categorias obrigatórias). O KPI 'Clientes com pendências' e a lista 'Precisa de atenção' na Visão geral agora cobrem os três estados, não só 'nunca enviou'. O cliente também vê no seu checklist quando o Contrato ou os Documentos da Empresa estão vencendo ou já venceram, com botão pra enviar uma versão atualizada. Testado com clientes simulados nos três estados (ausente, vencendo, vencido) e conferido que nenhuma categoria antiga continuou marcada como obrigatória por engano."
+    },
+    {
+      pasta: "v53-2026-07-28",
+      data: "28/07/2026",
+      descricao: "Endereço completo (rua, número, complemento, bairro, cidade, estado e CEP) agora faz parte do cadastro de cliente — rua, número, cidade e estado são obrigatórios (CEP/complemento/bairro ficam opcionais), pra pessoa física ou jurídica. A validação existe em três camadas: no formulário (foca o primeiro campo em falta e mostra a mensagem, mesmo padrão já usado pra CPF/CNPJ/telefone), na Edge Function e na RPC que gravam o cadastro (nunca confiar só no que o front validou), e um CHECK constraint no próprio banco garantindo que o estado é sempre uma UF válida. O endereço aparece formatado no painel de detalhe do cliente, junto com os outros dados cadastrais. Testado direto no banco simulando o cadastro com endereço incompleto (bloqueado nos três níveis) e completo (salvo certinho), e conferido que nenhuma tela do lado do cliente foi afetada."
     }
   ];
 

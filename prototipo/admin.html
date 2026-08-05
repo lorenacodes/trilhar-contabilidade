@@ -92,8 +92,8 @@
     <div class="page-header page-header-flex">
       <div>
         <p class="eyebrow" id="today-eyebrow">Administração</p>
-        <h1 class="page-title">Visão geral</h1>
-        <p class="page-subtitle">Acompanhe a operação do escritório antes de entrar nos detalhes de cada cliente.</p>
+        <h1 class="page-title" id="page-title">Visão geral</h1>
+        <p class="page-subtitle" id="page-subtitle-global">Acompanhe a operação do escritório antes de entrar nos detalhes de cada cliente.</p>
       </div>
       <div style="display:flex; gap:10px;">
         <button class="btn btn-secondary" onclick="openCliente()" id="btn-novo-cliente"></button>
@@ -3650,6 +3650,22 @@
   });
 
   // ---------- Tabs ----------
+  // Título/subtítulo do cabeçalho global por aba — antes ficava fixo em
+  // "Visão geral" em qualquer aba (bug real: entrar em Documentos, por
+  // exemplo, mostrava o título e o texto da Visão geral). "subtitle: null"
+  // marca aba que já tem seu próprio subtítulo dentro do conteúdo (geralmente
+  // ao lado de um botão de ação, tipo "Nova categoria") — nesses casos o
+  // subtítulo global só duplicaria a mesma informação.
+  const TITULOS_ABA = {
+    "visao-geral": { title: "Visão geral", subtitle: "Acompanhe a operação do escritório antes de entrar nos detalhes de cada cliente." },
+    "clientes": { title: "Clientes", subtitle: "Cadastro completo, com status e pendências de cada cliente." },
+    "documentos": { title: "Documentos", subtitle: "Documentos enviados pelos clientes e pela Trilhar, com controle de status e visibilidade." },
+    "boletos": { title: "Boletos", subtitle: null },
+    "administradores": { title: "Administradores", subtitle: null },
+    "perfil-empresa": { title: "Perfil da empresa", subtitle: null },
+    "configuracoes": { title: "Configurações", subtitle: null }
+  };
+
   function switchTab(name) {
     document.querySelectorAll(".admin-nav-item").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
     document.getElementById("tab-visao-geral").style.display = name === "visao-geral" ? "block" : "none";
@@ -3659,6 +3675,13 @@
     document.getElementById("tab-administradores").style.display = name === "administradores" ? "block" : "none";
     document.getElementById("tab-perfil-empresa").style.display = name === "perfil-empresa" ? "block" : "none";
     document.getElementById("tab-configuracoes").style.display = name === "configuracoes" ? "block" : "none";
+
+    const info = TITULOS_ABA[name] || TITULOS_ABA["visao-geral"];
+    document.getElementById("page-title").textContent = info.title;
+    const subtitleEl = document.getElementById("page-subtitle-global");
+    subtitleEl.style.display = info.subtitle ? "block" : "none";
+    if (info.subtitle) subtitleEl.textContent = info.subtitle;
+
     // Entrar na aba Documentos sempre volta pra subaba "Lista" — clicar num
     // item de menu de primeiro nível deveria sempre levar pro conteúdo
     // principal daquela área, não deixar "preso" numa subaba de config.

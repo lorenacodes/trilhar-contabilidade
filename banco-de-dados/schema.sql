@@ -1543,3 +1543,37 @@ create policy "categorias_leitura_admin" on categorias
 create policy "categorias_leitura_cliente" on categorias
   for select
   using (current_cliente_id() is not null and ativa = true);
+
+-- ---------- 12) Visibilidade de documento por cliente (interno vs visível) ----------
+-- Controle explícito, por documento, de "isso é interno ou o cliente pode
+-- ver": até agora um documento existia pro cliente sempre que cliente_id
+-- batia — não havia como o administrador marcar algo como uso interno (ex:
+-- rascunho, anotação, documento em revisão) sem ele aparecer na hora no
+-- painel do cliente. Default true preserva o comportamento de todos os
+-- documentos já existentes (nenhum vira "invisível" retroativamente).
+alter table documentos add column visivel_cliente boolean not null default true;
+
+-- A categoria continua sendo a camada de permissão SUPERIOR: mesmo um
+-- documento com visivel_cliente=true não aparece se a própria categoria
+-- estiver desativada — enforcement 100% aqui na RLS, não no frontend.
+drop policy if exists "documentos_cliente_ve_os_seus" on documentos;
+create policy "documentos_cliente_ve_os_seus" on documentos
+  for select
+  using (
+    cliente_id = current_cliente_id()
+    and visivel_cliente = true
+    and categoria_id in (select id from categorias where ativa = true)
+  );
+
+drop policy if exists "arquivos_cliente_ve_os_seus" on documento_arquivos;
+create policy "arquivos_cliente_ve_os_seus" on documento_arquivos
+  for select
+  using (
+    documento_id in (
+      select d.id from documentos d
+      join categorias c on c.id = d.categoria_id
+      where d.cliente_id = current_cliente_id()
+        and d.visivel_cliente = true
+        and c.ativa = true
+    )
+  );

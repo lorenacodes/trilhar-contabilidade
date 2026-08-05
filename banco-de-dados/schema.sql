@@ -1516,3 +1516,30 @@ create trigger trg_validar_arquivo_documento
 
 revoke execute on function impedir_exclusao_ultimo_proprietario() from public;
 revoke execute on function validar_arquivo_documento() from public;
+
+-- ---------- 10) Nova categoria: Folha de Pagamento ----------
+-- Documento mensal recorrente, preparado e entregue pelo escritório de
+-- contabilidade pro cliente (mesmo padrão de boleto: quem_pode_anexar =
+-- 'administrador') — a folha é calculada pelo contador com base na equipe
+-- do cliente, não é algo que o cliente já tem em mãos pra anexar.
+insert into categorias (slug, nome, grupo, icone, cor, ordem, padrao, obrigatoria, tipos_arquivo_aceitos, tamanho_maximo_mb, quem_pode_anexar, recorrente, frequencia, ativa, eh_boleto)
+values ('folha-pagamento', 'Folha de Pagamento', 'Documentos Mensais', 'doc', 'navy', 23, false, false, array['PDF'], 10, 'administrador', true, 'mensal', true, false)
+on conflict (slug) do nothing;
+
+-- ---------- 11) RLS de categorias: cliente só vê categorias ativas ----------
+-- Antes, "categorias_leitura_geral" liberava SELECT pra QUALQUER usuário
+-- autenticado (admin ou cliente) em TODAS as linhas, incluindo categorias
+-- desativadas (ativa=false) — um cliente chamando a API do Supabase direto
+-- (sem passar pela tela) conseguia listar nome/ícone/regras de categorias
+-- que nunca deveriam aparecer pra ele. Agora: administrador continua vendo
+-- tudo (precisa, pra gerenciar até categoria desativada); cliente só vê
+-- categorias com ativa=true — nem a linha existe pra ele se desativada.
+drop policy if exists "categorias_leitura_geral" on categorias;
+
+create policy "categorias_leitura_admin" on categorias
+  for select
+  using (is_admin());
+
+create policy "categorias_leitura_cliente" on categorias
+  for select
+  using (current_cliente_id() is not null and ativa = true);

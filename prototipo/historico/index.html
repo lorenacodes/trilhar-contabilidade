@@ -353,6 +353,11 @@
       pasta: "v62-2026-08-04",
       data: "04/08/2026",
       descricao: "Degradê da sidebar refinado com base numa referência visual fornecida: cores exatas #0B1220 (topo) → #111A2E (base), gradiente esticado pra altura inteira (antes parava em 65%, deixando o terço de baixo sem transição). Adicionado um segundo gradiente por cima, bem sutil (branco quase transparente só no primeiro terço), que simula o 'pegar luz' de uma superfície de vidro sem usar backdrop-filter — decisão deliberada: a sidebar é opaca e não tem nada atrás pra desfocar de verdade, então blur real não teria efeito visível e só custaria performance à toa; o efeito de profundidade vem inteiramente de gradientes em camadas, que são praticamente grátis pro navegador renderizar. Acrescentada uma borda direita bem sutil (rgba branco 6%) simulando a borda de um painel de vidro. Hover e item ativo do menu passaram de cor sólida pra gradiente horizontal sutil, mesma lógica. Testado visualmente nos dois temas, sem impacto de performance (nenhum blur pesado usado) e sem regressão nos estados já existentes (recolhido, item ativo, foco por teclado)."
+    },
+    {
+      pasta: "v63-2026-08-04",
+      data: "04/08/2026",
+      descricao: "Correção do item ativo do menu lateral: a borda azul na lateral esquerda (resquício da versão anterior) foi removida por completo — virou um 'pill' limpo, só com preenchimento azul translúcido arredondado (mesmo raio dos outros itens) e um glow bem discreto ao redor, sem nenhuma borda ou deslocamento de padding. Sidebar ganhou mais sensação de profundidade/vidro: além do degradê vertical entre as cores de referência (#0B1220 → #111A2E), agora tem um brilho radial bem fraco saindo do canto superior esquerdo (luz 'pegando' a borda do painel) e um escurecimento gradual em direção à base, que 'aterra' o painel em vez de parecer um bloco uniforme flutuando. Tudo com gradientes puros — nenhum backdrop-filter/blur real usado, porque a sidebar não tem nada atrás dela pra desfocar de verdade (é opaca, o conteúdo fica ao lado, não por baixo); um blur ali não teria efeito visível e só custaria performance à toa. Hover do menu simplificado pra um realce sólido bem sutil, mesma filosofia 'pill limpo' do item ativo. Testado nos dois temas, sem regressão no menu recolhido, sem custo de performance perceptível."
     }
   ];
 

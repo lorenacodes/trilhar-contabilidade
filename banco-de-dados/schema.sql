@@ -1434,3 +1434,85 @@ drop policy if exists "configuracoes_empresa_leitura_geral" on configuracoes_emp
 create policy "configuracoes_empresa_leitura_geral" on configuracoes_empresa
   for select
   using ((select auth.role()) = 'authenticated');
+
+-- ---------- 9) Exclusão permanente de usuários (hard delete) + validação de arquivo no banco ----------
+-- Antes, excluir um administrador que já criou/revisou algum documento
+-- falhava com violação de FK (NO ACTION) — na prática, a funcionalidade não
+-- existia pra nenhum admin com histórico real de uso. Trocado pra SET NULL:
+-- o documento sobrevive intacto (nada órfão), só perde a referência de
+-- "quem enviou/revisou", aceitável ao excluir a conta.
+alter table documentos drop constraint documentos_criado_por_fkey;
+alter table documentos add constraint documentos_criado_por_fkey
+  foreign key (criado_por) references administradores(id) on delete set null;
+
+alter table documentos drop constraint documentos_revisado_por_fkey;
+alter table documentos add constraint documentos_revisado_por_fkey
+  foreign key (revisado_por) references administradores(id) on delete set null;
+
+-- Trava de segurança direto no banco: nunca permite excluir o último
+-- administrador de nível 'proprietario' (o sistema ficaria sem ninguém
+-- capaz de gerenciar categorias/outros administradores).
+create or replace function impedir_exclusao_ultimo_proprietario()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if old.nivel = 'proprietario' and (
+    select count(*) from administradores where nivel = 'proprietario'
+  ) <= 1 then
+    raise exception 'Não é possível excluir o único administrador proprietário do sistema.';
+  end if;
+  return old;
+end;
+$$;
+
+create trigger trg_impedir_exclusao_ultimo_proprietario
+  before delete on administradores
+  for each row execute function impedir_exclusao_ultimo_proprietario();
+
+-- Gap real encontrado numa auditoria: tipo e tamanho de arquivo só eram
+-- validados no JS (validarArquivoParaCategoria em app.js) — nada impedia um
+-- cliente tecnicamente capaz de chamar a API do Supabase direto (contornando
+-- a tela) de subir um arquivo de tipo/tamanho fora do permitido pra
+-- categoria. Agora documento_arquivos valida contra as regras reais da
+-- categoria (via documentos.categoria_id) no próprio banco, na inserção E
+-- na atualização — o front continua com o mesmo aviso amigável de antes
+-- (mais rápido, sem round-trip), mas deixa de ser a única barreira.
+create or replace function validar_arquivo_documento()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_tipos_aceitos text[];
+  v_tamanho_maximo_mb integer;
+begin
+  select c.tipos_arquivo_aceitos, c.tamanho_maximo_mb
+    into v_tipos_aceitos, v_tamanho_maximo_mb
+  from documentos d
+  join categorias c on c.id = d.categoria_id
+  where d.id = new.documento_id;
+
+  if v_tipos_aceitos is not null and array_length(v_tipos_aceitos, 1) > 0
+     and upper(new.tipo_arquivo) <> all (v_tipos_aceitos) then
+    raise exception 'Tipo de arquivo "%" não é aceito nesta categoria.', new.tipo_arquivo;
+  end if;
+
+  if new.tamanho_bytes is not null and v_tamanho_maximo_mb is not null
+     and new.tamanho_bytes > (v_tamanho_maximo_mb::bigint * 1024 * 1024) then
+    raise exception 'Arquivo maior que o permitido nesta categoria (máx. % MB).', v_tamanho_maximo_mb;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger trg_validar_arquivo_documento
+  before insert or update on documento_arquivos
+  for each row execute function validar_arquivo_documento();
+
+revoke execute on function impedir_exclusao_ultimo_proprietario() from public;
+revoke execute on function validar_arquivo_documento() from public;

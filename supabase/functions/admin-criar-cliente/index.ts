@@ -27,6 +27,39 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
+// Rate limiting: no máximo LIMITE chamadas por IP a cada JANELA_SEGUNDOS,
+// contra abuso de uma sessão de admin comprometida (ou script em loop)
+// criando contas em sequência sem nenhum freio. Não é perfeitamente atômico
+// sob concorrência alta (select+update, não um upsert atômico único) —
+// aceitável aqui porque o volume normal de uso administrativo é baixíssimo
+// (ninguém cadastra 10 clientes por minuto de verdade); o objetivo é frear
+// abuso óbvio, não servir de rate limiter de produção de alto tráfego.
+async function verificarRateLimit(
+  adminClient: ReturnType<typeof createClient>,
+  chave: string,
+  limite: number,
+  janelaSegundos: number,
+): Promise<boolean> {
+  const agora = new Date();
+  await adminClient.from("rate_limit_contadores").delete().lt("expira_em", agora.toISOString());
+
+  const { data: existente } = await adminClient
+    .from("rate_limit_contadores")
+    .select("contagem, expira_em")
+    .eq("chave", chave)
+    .maybeSingle();
+
+  if (existente && new Date(existente.expira_em) > agora) {
+    if (existente.contagem >= limite) return false;
+    await adminClient.from("rate_limit_contadores").update({ contagem: existente.contagem + 1 }).eq("chave", chave);
+    return true;
+  }
+
+  const expiraEm = new Date(agora.getTime() + janelaSegundos * 1000).toISOString();
+  await adminClient.from("rate_limit_contadores").upsert({ chave, contagem: 1, expira_em: expiraEm });
+  return true;
+}
+
 function somenteDigitos(v: string): string {
   return (v || "").replace(/\D/g, "");
 }
@@ -116,6 +149,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Apenas administradores podem cadastrar clientes" }, 403);
     }
 
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "desconhecido";
+    const podeSeguir = await verificarRateLimit(adminClient, `admin-criar-cliente:${ip}`, 10, 60);
+    if (!podeSeguir) {
+      return jsonResponse({ error: "Muitas tentativas em pouco tempo. Aguarde um minuto e tente novamente." }, 429);
+    }
+
     const body = await req.json().catch(() => ({}));
     const tipoPessoa = body.tipoPessoa === "juridica" ? "juridica" : "fisica";
     const nome = String(body.nome || "").trim();
@@ -160,8 +200,6 @@ Deno.serve(async (req) => {
     if (!UFS_VALIDAS.has(enderecoEstado)) return jsonResponse({ error: "Endereço: estado inválido" }, 400);
 
     const nomeCompleto = tipoPessoa === "fisica" ? [nome, sobrenome].filter(Boolean).join(" ") : razaoSocial;
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     const senhaTemporaria = gerarSenhaTemporaria();
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({

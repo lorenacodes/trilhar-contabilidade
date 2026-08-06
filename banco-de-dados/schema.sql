@@ -1577,3 +1577,68 @@ create policy "arquivos_cliente_ve_os_seus" on documento_arquivos
         and c.ativa = true
     )
   );
+
+-- ============================================================================
+-- Tabela: configuracoes_empresa (documentação retroativa)
+-- ============================================================================
+-- Esta tabela já existia em produção (usada por admin.html na aba
+-- "Perfil da empresa" desde antes deste arquivo cobrir essa parte do
+-- schema) mas nunca tinha sido registrada aqui — uma auditoria de
+-- segurança revisando "toda tabela tem RLS?" não conseguiu confirmar isso
+-- só lendo o repositório, porque faltava exatamente esta seção. Consultado
+-- direto no banco: RLS está ativo e as policies já são as corretas (leitura
+-- geral autenticada, escrita só admin) — nada mudou no banco aqui, é só
+-- documentação alcançando a realidade.
+create table if not exists configuracoes_empresa (
+  id uuid primary key default gen_random_uuid(),
+  nome text,
+  nome_fantasia text,
+  email_contato text,
+  telefone text,
+  endereco text,
+  dias_antecedencia_alerta integer not null default 7,
+  alerta_boletos_ativo boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
+alter table configuracoes_empresa enable row level security;
+
+create policy "configuracoes_empresa_leitura_geral" on configuracoes_empresa
+  for select
+  using ((select auth.role()) = 'authenticated');
+
+create policy "configuracoes_empresa_escrita_admin" on configuracoes_empresa
+  for all using (is_admin()) with check (is_admin());
+
+-- ============================================================================
+-- Migração: correções da auditoria de segurança (rate limiting + EXECUTE
+-- desnecessário revelado pelo linter do Supabase)
+-- ============================================================================
+-- Contexto: uma auditoria de segurança contra os 10 furos mais comuns em
+-- apps feitos com IA achou, entre outras coisas, que duas funções
+-- SECURITY DEFINER usadas SÓ como gatilho (nunca deveriam ser chamáveis
+-- direto pela API) estavam com EXECUTE concedido a anon/authenticated —
+-- sobra da concessão padrão que o Supabase aplica a toda função nova no
+-- schema public, nunca revogada porque ninguém tinha motivo de suspeitar
+-- até o advisor de segurança apontar. Um gatilho não precisa de EXECUTE
+-- concedido pra rodar (roda com o dono da função automaticamente).
+revoke execute on function public.impedir_exclusao_ultimo_proprietario() from public, anon, authenticated;
+revoke execute on function public.validar_arquivo_documento() from public, anon, authenticated;
+
+-- Suporte pro rate limiting das 4 Edge Functions administrativas (criar
+-- cliente, excluir cliente, convidar administrador, excluir administrador)
+-- — nenhuma delas tinha qualquer limite próprio contra uma sessão de admin
+-- comprometida (ou script em loop) repetindo a chamada sem parar. Não
+-- existe cron/worker nesse projeto (protótipo estático + Supabase), então
+-- a limpeza de linha expirada acontece de carona em cada chamada.
+create table if not exists rate_limit_contadores (
+  chave text primary key,
+  contagem integer not null default 1,
+  expira_em timestamptz not null
+);
+
+-- RLS ativado com ZERO policy pra anon/authenticated de propósito — só
+-- service_role (as próprias Edge Functions) toca nessa tabela; ninguém
+-- conseguiria ler ou escrever aqui via API pública mesmo que tentasse.
+alter table rate_limit_contadores enable row level security;
+revoke all on rate_limit_contadores from anon, authenticated;

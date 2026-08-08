@@ -1642,3 +1642,37 @@ create table if not exists rate_limit_contadores (
 -- conseguiria ler ou escrever aqui via API pública mesmo que tentasse.
 alter table rate_limit_contadores enable row level security;
 revoke all on rate_limit_contadores from anon, authenticated;
+
+-- ---------- Histórico do cliente: eventos sem timestamp próprio ----------
+-- "Documento enviado/aprovado/rejeitado" e "boleto pago" já são derivados
+-- direto de documentos.created_at/revisado_em/pago_em na tela — não
+-- precisam de tabela própria. Só "status alterado" (ativo/inativo) e
+-- "dados cadastrais editados" não deixavam NENHUM rastro até aqui; esta
+-- tabela cobre só esses dois, não é uma auditoria genérica do sistema.
+-- Inserção feita no admin.html, direto depois do sucesso das RPCs
+-- admin_definir_status_cliente/admin_atualizar_cliente (mesmo padrão
+-- "grava só depois que a ação principal confirmou" do resto do painel).
+create table if not exists eventos_cliente (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references clientes(id) on delete cascade,
+  tipo text not null check (tipo = any (array['status_alterado', 'dados_editados'])),
+  descricao text not null,
+  ator text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_eventos_cliente_cliente_id on eventos_cliente(cliente_id);
+
+alter table eventos_cliente enable row level security;
+
+-- Só administradores leem/escrevem — mesmo is_admin() já usado em outras
+-- tabelas administrativas deste projeto.
+create policy eventos_cliente_leitura_admin on eventos_cliente
+  for select
+  to authenticated
+  using (is_admin());
+
+create policy eventos_cliente_escrita_admin on eventos_cliente
+  for insert
+  to authenticated
+  with check (is_admin());

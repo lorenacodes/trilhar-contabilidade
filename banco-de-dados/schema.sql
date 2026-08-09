@@ -1980,3 +1980,98 @@ select cron.schedule(
   '0 3 * * *',
   $$select public.limpar_eventos_cliente_antigos()$$
 );
+
+-- ---------- 15) Auditoria real do status do boleto ----------
+-- Marcar um boleto como pago/não pago era um UPDATE direto do navegador,
+-- sem nenhum registro de quem fez. Nível "leve" confirmado: só a última
+-- troca (quem + quando), mesmo padrão de revisado_por/revisado_em.
+alter table documentos
+  add column if not exists status_alterado_por uuid references administradores(id) on delete set null,
+  add column if not exists status_alterado_em timestamptz;
+create index if not exists idx_documentos_status_alterado_por on documentos(status_alterado_por);
+
+-- Fecha a fresta real encontrada na investigação: o gatilho já garantia
+-- data_vencimento/status nulos em categoria não-boleto, mas não garantia
+-- valor nulo (nem as 2 colunas novas acima).
+create or replace function public.enforce_boleto_vencimento()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_categoria_nome text;
+  v_eh_boleto boolean;
+begin
+  select nome, eh_boleto into v_categoria_nome, v_eh_boleto
+  from public.categorias where id = new.categoria_id;
+
+  if v_eh_boleto then
+    if new.data_vencimento is null then
+      raise exception 'Boletos (categoria %) precisam de data_vencimento', v_categoria_nome;
+    end if;
+    if new.status is null or new.status not in ('pago', 'nao_pago') then
+      raise exception 'Boletos (categoria %) precisam de status "pago" ou "nao_pago"', v_categoria_nome;
+    end if;
+  else
+    if new.data_vencimento is not null then
+      raise exception 'Documentos da categoria % não podem ter data_vencimento (só boletos têm vencimento)', v_categoria_nome;
+    end if;
+    if new.status is not null then
+      raise exception 'Documentos da categoria % não podem ter status de pagamento (só boletos têm)', v_categoria_nome;
+    end if;
+    if new.valor is not null then
+      raise exception 'Documentos da categoria % não podem ter valor (só boletos têm valor financeiro)', v_categoria_nome;
+    end if;
+    if new.status_alterado_por is not null or new.status_alterado_em is not null then
+      raise exception 'Documentos da categoria % não podem ter alteração de status de pagamento', v_categoria_nome;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- admin_definir_status_boleto: mesmo esqueleto de admin_definir_status_cliente.
+create or replace function public.admin_definir_status_boleto(p_documento_id uuid, p_novo_status text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_eh_boleto boolean;
+  v_admin_id uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem alterar status de boleto';
+  end if;
+  if p_novo_status not in ('pago', 'nao_pago') then
+    raise exception 'Status inválido: %', p_novo_status;
+  end if;
+
+  select c.eh_boleto into v_eh_boleto
+  from public.documentos d join public.categorias c on c.id = d.categoria_id
+  where d.id = p_documento_id;
+  if v_eh_boleto is null then
+    raise exception 'Documento não encontrado';
+  end if;
+  if not v_eh_boleto then
+    raise exception 'Documento não é um boleto';
+  end if;
+
+  select a.id into v_admin_id
+  from public.administradores a join public.users u on u.id = a.user_id
+  where u.auth_user_id = auth.uid();
+
+  update public.documentos
+     set status = p_novo_status,
+         pago_em = case when p_novo_status = 'pago' then now() else null end,
+         status_alterado_por = v_admin_id,
+         status_alterado_em = now()
+   where id = p_documento_id;
+end;
+$$;
+
+revoke all on function public.admin_definir_status_boleto(uuid, text) from public;
+revoke execute on function public.admin_definir_status_boleto(uuid, text) from anon;
+grant execute on function public.admin_definir_status_boleto(uuid, text) to authenticated;

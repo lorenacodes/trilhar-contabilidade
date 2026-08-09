@@ -1694,3 +1694,10 @@ drop trigger if exists trg_atualizar_updated_at_documentos on documentos;
 create trigger trg_atualizar_updated_at_documentos
   before update on documentos
   for each row execute function atualizar_updated_at_documentos();
+
+-- ---------- 12) Realtime no painel administrativo ----------
+-- Painel admin passa a usar Supabase Realtime pra sincronizar entre sessões
+-- sem F5. RLS já existente (is_admin() etc.) protege quem recebe cada
+-- evento — inscrever na publicação não abre nenhuma policy nova.
+alter publication supabase_realtime add table
+  categorias, clientes, documentos, administradores, configuracoes_empresa, eventos_cliente;

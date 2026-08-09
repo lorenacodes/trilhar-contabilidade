@@ -473,6 +473,11 @@
       pasta: "v86-2026-08-09",
       data: "09/08/2026",
       descricao: "Correção imediata de feedback sobre a v85: o 'tom alternado por seção' virou, na prática, blocos de fundo chapado com aparência de card empilhado — exatamente o que tinha sido pedido pra evitar, e bem diferente do degradê sutil e contínuo que era o pedido original. Removida a regra de fundo alternado por seção (nth-of-type) por completo. No lugar, um único gradiente contínuo (linear-gradient de 4 pontos, diferença de poucas unidades de RGB entre eles) aplicado no card inteiro do detalhe do cliente, do topo ao fim — sem nenhuma borda de cor entre uma seção e outra, sensação de continuidade ao rolar a página sem parecer caixa nem card. Confirmado via inspeção computada: todas as seções voltaram a não ter nenhum fundo próprio (transparent), e o gradiente do card cobre toda a altura real do conteúdo (~1480px no teste) com transição imperceptível entre os 4 pontos. Nenhuma outra mudança nesta versão."
+    },
+    {
+      pasta: "v87-2026-08-09",
+      data: "09/08/2026",
+      descricao: "Correção de feedback sobre densidade: as linhas de 'Pendentes' (Documentos) e 'Pendências' tinham o conteúdo (ícone + texto) todo colado à esquerda, deixando uma faixa vazia grande até a borda direita da linha — mesmo a linha em si já ocupando a largura toda do container. Corrigido fazendo o bloco de texto crescer (flex:1) até encontrar o elemento da direita, que agora fica ancorado na borda (botão 'Anexar' nas pendências de Documentos; um badge de status novo — Ausente/Vencido/A vencer/Em aberto — nas Pendências). O badge não é informação inventada: é só a visualização do mesmo dado ('vencido ou não', já calculado) que antes só aparecia como cor do ícone, sem rótulo. Confirmado via medição de posição: botão e badge agora encostam na borda direita da linha em qualquer largura de tela, sem sobra vazia no meio."
     }
   ];
 

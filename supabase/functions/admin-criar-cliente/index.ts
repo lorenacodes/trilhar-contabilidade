@@ -149,6 +149,15 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Apenas administradores podem cadastrar clientes" }, 403);
     }
 
+    // Quem está criando, resolvido no servidor (nunca confiar em nada que o
+    // browser mandasse) — grava em clientes.criado_por e no evento de
+    // histórico, pra "quem criou o cadastro" ser um registro real, não uma
+    // inferência do frontend.
+    const { data: adminAtualRows } = await callerClient.rpc("admin_atual");
+    const adminAtual = Array.isArray(adminAtualRows) ? adminAtualRows[0] : adminAtualRows;
+    const criadoPorId: string | null = adminAtual?.id ?? null;
+    const criadoPorNome: string | null = adminAtual?.nome ?? null;
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "desconhecido";
     const podeSeguir = await verificarRateLimit(adminClient, `admin-criar-cliente:${ip}`, 10, 60);
@@ -247,6 +256,7 @@ Deno.serve(async (req) => {
         endereco_bairro: enderecoBairro,
         endereco_cidade: enderecoCidade,
         endereco_estado: enderecoEstado,
+        criado_por: criadoPorId,
       })
       .select("id")
       .single();
@@ -259,6 +269,14 @@ Deno.serve(async (req) => {
         : "Não foi possível criar o cadastro do cliente";
       return jsonResponse({ error: msg }, clienteError?.code === "23505" ? 409 : 500);
     }
+
+    // Evento auxiliar de histórico — mesmo padrão do resto do sistema:
+    // se falhar, não desfaz a criação (que já teve sucesso), só loga.
+    const { error: eventoErro } = await adminClient.from("eventos_cliente").insert({
+      cliente_id: clienteRow.id, tipo: "cliente_criado",
+      descricao: "Cliente cadastrado", ator: criadoPorNome, ator_admin_id: criadoPorId,
+    });
+    if (eventoErro) console.error("Falha ao registrar evento de criação:", eventoErro);
 
     return jsonResponse({
       success: true,

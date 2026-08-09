@@ -1701,3 +1701,282 @@ create trigger trg_atualizar_updated_at_documentos
 -- evento — inscrever na publicação não abre nenhuma policy nova.
 alter publication supabase_realtime add table
   categorias, clientes, documentos, administradores, configuracoes_empresa, eventos_cliente;
+
+-- ---------- 13) Fundação de auditoria real: quem criou/editou o quê ----------
+-- Antes desta migration, clientes não guardava quem criou o cadastro, e
+-- eventos_cliente só guardava uma frase genérica ("Dados cadastrais
+-- atualizados") com um "ator" texto livre inserido pelo próprio browser
+-- DEPOIS da RPC retornar sucesso — nunca resolvido no servidor, sem diff
+-- por campo. Esta migration move a gravação do evento pra dentro das RPCs
+-- (SECURITY DEFINER, mesma transação do UPDATE) e adiciona colunas pra
+-- registrar o campo alterado + valor anterior/novo.
+
+alter table clientes
+  add column if not exists criado_por uuid references administradores(id) on delete set null;
+-- null nas linhas existentes antes desta migration — não dá pra descobrir
+-- retroativamente quem criou; a UI admite "origem desconhecida" em vez de
+-- inventar um nome.
+create index if not exists idx_clientes_criado_por on clientes(criado_por);
+
+alter table eventos_cliente
+  add column if not exists campo text,
+  add column if not exists valor_anterior text,
+  add column if not exists valor_novo text,
+  add column if not exists ator_admin_id uuid references administradores(id) on delete set null;
+create index if not exists idx_eventos_cliente_ator_admin_id on eventos_cliente(ator_admin_id);
+
+alter table eventos_cliente drop constraint eventos_cliente_tipo_check;
+alter table eventos_cliente add constraint eventos_cliente_tipo_check
+  check (tipo = any (array['status_alterado', 'dados_editados', 'cliente_criado']));
+
+-- admin_atual(): quem está autenticado agora, resolvido no servidor.
+-- Reaproveitada por admin_atualizar_cliente/admin_definir_status_cliente
+-- abaixo e pela Edge Function admin-criar-cliente (via callerClient.rpc).
+create or replace function public.admin_atual()
+returns table(id uuid, nome text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select a.id, u.nome
+  from public.administradores a
+  join public.users u on u.id = a.user_id
+  where u.auth_user_id = auth.uid();
+$$;
+revoke all on function public.admin_atual() from public;
+revoke execute on function public.admin_atual() from anon;
+grant execute on function public.admin_atual() to authenticated;
+
+-- admin_atualizar_cliente: agora grava o diff por campo, na mesma transação.
+create or replace function public.admin_atualizar_cliente(
+  p_cliente_id uuid, p_tipo_pessoa text, p_nome text, p_sobrenome text,
+  p_razao_social text, p_nome_fantasia text, p_cpf text, p_cnpj text,
+  p_email text, p_telefone text,
+  p_endereco_cep text, p_endereco_rua text, p_endereco_numero text,
+  p_endereco_complemento text, p_endereco_bairro text, p_endereco_cidade text, p_endereco_estado text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_old public.clientes;
+  v_admin_id uuid;
+  v_admin_nome text;
+  v_nome_completo text;
+  v_novo_nome text; v_novo_sobrenome text; v_nova_razao text; v_nova_fantasia text;
+  v_novo_cpf text; v_novo_cnpj text; v_novo_complemento text; v_novo_estado text;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem editar clientes';
+  end if;
+  if p_tipo_pessoa not in ('fisica', 'juridica') then
+    raise exception 'Tipo de pessoa inválido: %', p_tipo_pessoa;
+  end if;
+
+  if coalesce(trim(p_telefone), '') = '' then
+    raise exception 'Telefone é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_cep), '') = '' then
+    raise exception 'Endereço: CEP é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_rua), '') = '' then
+    raise exception 'Endereço: rua é obrigatória';
+  end if;
+  if coalesce(trim(p_endereco_numero), '') = '' then
+    raise exception 'Endereço: número é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_bairro), '') = '' then
+    raise exception 'Endereço: bairro é obrigatório';
+  end if;
+  if coalesce(trim(p_endereco_cidade), '') = '' then
+    raise exception 'Endereço: cidade é obrigatória';
+  end if;
+  if upper(coalesce(p_endereco_estado, '')) not in ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO') then
+    raise exception 'Endereço: estado inválido';
+  end if;
+
+  select * into v_old from public.clientes where id = p_cliente_id;
+  if v_old.id is null then
+    raise exception 'Cliente não encontrado';
+  end if;
+
+  select a.id, u.nome into v_admin_id, v_admin_nome
+  from public.administradores a join public.users u on u.id = a.user_id
+  where u.auth_user_id = auth.uid();
+
+  v_novo_nome := case when p_tipo_pessoa = 'fisica' then p_nome else null end;
+  v_novo_sobrenome := case when p_tipo_pessoa = 'fisica' then p_sobrenome else null end;
+  v_nova_razao := case when p_tipo_pessoa = 'juridica' then p_razao_social else null end;
+  v_nova_fantasia := case when p_tipo_pessoa = 'juridica' then p_nome_fantasia else null end;
+  v_novo_cpf := case when p_tipo_pessoa = 'fisica' then p_cpf else null end;
+  v_novo_cnpj := case when p_tipo_pessoa = 'juridica' then p_cnpj else null end;
+  v_novo_complemento := nullif(trim(p_endereco_complemento), '');
+  v_novo_estado := upper(p_endereco_estado);
+
+  v_nome_completo := case
+    when p_tipo_pessoa = 'fisica' then trim(p_nome || ' ' || coalesce(p_sobrenome, ''))
+    else p_razao_social
+  end;
+
+  update public.users
+     set nome = v_nome_completo, updated_at = now()
+   where id = v_old.user_id;
+
+  update public.clientes
+     set tipo_pessoa = p_tipo_pessoa,
+         nome = v_novo_nome,
+         sobrenome = v_novo_sobrenome,
+         razao_social = v_nova_razao,
+         nome_fantasia = v_nova_fantasia,
+         cpf = v_novo_cpf,
+         cnpj = v_novo_cnpj,
+         telefone = p_telefone,
+         endereco_cep = p_endereco_cep,
+         endereco_rua = p_endereco_rua,
+         endereco_numero = p_endereco_numero,
+         endereco_complemento = v_novo_complemento,
+         endereco_bairro = p_endereco_bairro,
+         endereco_cidade = p_endereco_cidade,
+         endereco_estado = v_novo_estado,
+         updated_at = now()
+   where id = p_cliente_id;
+
+  -- Uma linha de evento por campo realmente alterado (não por chamada) —
+  -- "is distinct from" trata null corretamente (null vs null não é diff).
+  if v_old.tipo_pessoa is distinct from p_tipo_pessoa then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'tipo_pessoa', v_old.tipo_pessoa, p_tipo_pessoa);
+  end if;
+  if v_old.nome is distinct from v_novo_nome then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'nome', v_old.nome, v_novo_nome);
+  end if;
+  if v_old.sobrenome is distinct from v_novo_sobrenome then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'sobrenome', v_old.sobrenome, v_novo_sobrenome);
+  end if;
+  if v_old.razao_social is distinct from v_nova_razao then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'razao_social', v_old.razao_social, v_nova_razao);
+  end if;
+  if v_old.nome_fantasia is distinct from v_nova_fantasia then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'nome_fantasia', v_old.nome_fantasia, v_nova_fantasia);
+  end if;
+  if v_old.cpf is distinct from v_novo_cpf then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'cpf', v_old.cpf, v_novo_cpf);
+  end if;
+  if v_old.cnpj is distinct from v_novo_cnpj then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'cnpj', v_old.cnpj, v_novo_cnpj);
+  end if;
+  if v_old.telefone is distinct from p_telefone then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'telefone', v_old.telefone, p_telefone);
+  end if;
+  if v_old.endereco_cep is distinct from p_endereco_cep then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'endereco_cep', v_old.endereco_cep, p_endereco_cep);
+  end if;
+  if v_old.endereco_rua is distinct from p_endereco_rua then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'endereco_rua', v_old.endereco_rua, p_endereco_rua);
+  end if;
+  if v_old.endereco_numero is distinct from p_endereco_numero then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'endereco_numero', v_old.endereco_numero, p_endereco_numero);
+  end if;
+  if v_old.endereco_complemento is distinct from v_novo_complemento then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'endereco_complemento', v_old.endereco_complemento, v_novo_complemento);
+  end if;
+  if v_old.endereco_bairro is distinct from p_endereco_bairro then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'endereco_bairro', v_old.endereco_bairro, p_endereco_bairro);
+  end if;
+  if v_old.endereco_cidade is distinct from p_endereco_cidade then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'endereco_cidade', v_old.endereco_cidade, p_endereco_cidade);
+  end if;
+  if v_old.endereco_estado is distinct from v_novo_estado then
+    insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo)
+    values (p_cliente_id, 'dados_editados', 'Dados cadastrais atualizados', v_admin_nome, v_admin_id, 'endereco_estado', v_old.endereco_estado, v_novo_estado);
+  end if;
+end;
+$$;
+
+revoke all on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) from public;
+revoke execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) from anon;
+grant execute on function public.admin_atualizar_cliente(uuid, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text) to authenticated;
+
+-- admin_definir_status_cliente: agora grava o evento ela mesma.
+create or replace function public.admin_definir_status_cliente(p_cliente_id uuid, p_novo_status text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+  v_admin_id uuid;
+  v_admin_nome text;
+begin
+  if not public.is_admin() then
+    raise exception 'Apenas administradores podem alterar status de clientes';
+  end if;
+  if p_novo_status not in ('ativo', 'inativo') then
+    raise exception 'Status inválido: %', p_novo_status;
+  end if;
+
+  select user_id into v_user_id from public.clientes where id = p_cliente_id;
+  if v_user_id is null then
+    raise exception 'Cliente não encontrado';
+  end if;
+
+  select a.id, u.nome into v_admin_id, v_admin_nome
+  from public.administradores a join public.users u on u.id = a.user_id
+  where u.auth_user_id = auth.uid();
+
+  update public.users
+     set status = p_novo_status, updated_at = now()
+   where id = v_user_id;
+
+  insert into public.eventos_cliente (cliente_id, tipo, descricao, ator, ator_admin_id)
+  values (p_cliente_id, 'status_alterado', 'Status alterado para ' || (case when p_novo_status = 'ativo' then 'Ativo' else 'Inativo' end), v_admin_nome, v_admin_id);
+end;
+$$;
+
+revoke all on function public.admin_definir_status_cliente(uuid, text) from public;
+revoke execute on function public.admin_definir_status_cliente(uuid, text) from anon;
+grant execute on function public.admin_definir_status_cliente(uuid, text) to authenticated;
+
+-- ---------- 14) Retenção de 90 dias em eventos_cliente ----------
+-- Escopada estritamente a eventos_cliente (log interno de auditoria do
+-- painel) — nunca clientes/documentos/boletos, que continuam pra sempre.
+-- Não há exigência legal/contábil conhecida que obrigue guardar esse log
+-- específico por mais tempo (não é documento fiscal, é histórico de
+-- alterações no cadastro dentro do painel).
+create extension if not exists pg_cron;
+
+create or replace function public.limpar_eventos_cliente_antigos()
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from public.eventos_cliente where created_at < now() - interval '90 days';
+$$;
+-- Roda só via pg_cron, nunca via PostgREST.
+revoke all on function public.limpar_eventos_cliente_antigos() from public;
+revoke execute on function public.limpar_eventos_cliente_antigos() from anon;
+revoke execute on function public.limpar_eventos_cliente_antigos() from authenticated;
+
+select cron.schedule(
+  'limpar-eventos-cliente-antigos',
+  '0 3 * * *',
+  $$select public.limpar_eventos_cliente_antigos()$$
+);

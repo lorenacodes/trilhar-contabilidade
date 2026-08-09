@@ -478,6 +478,11 @@
       pasta: "v87-2026-08-09",
       data: "09/08/2026",
       descricao: "Correção de feedback sobre densidade: as linhas de 'Pendentes' (Documentos) e 'Pendências' tinham o conteúdo (ícone + texto) todo colado à esquerda, deixando uma faixa vazia grande até a borda direita da linha — mesmo a linha em si já ocupando a largura toda do container. Corrigido fazendo o bloco de texto crescer (flex:1) até encontrar o elemento da direita, que agora fica ancorado na borda (botão 'Anexar' nas pendências de Documentos; um badge de status novo — Ausente/Vencido/A vencer/Em aberto — nas Pendências). O badge não é informação inventada: é só a visualização do mesmo dado ('vencido ou não', já calculado) que antes só aparecia como cor do ícone, sem rótulo. Confirmado via medição de posição: botão e badge agora encostam na borda direita da linha em qualquer largura de tela, sem sobra vazia no meio."
+    },
+    {
+      pasta: "v88-2026-08-09",
+      data: "09/08/2026",
+      descricao: "Reordenação pedida diretamente: 'Boletos e Financeiro' passou a vir logo depois de 'Dados cadastrais' na página de detalhe do cliente (ordem nova: Dados cadastrais → Boletos e Financeiro → Documentos → Pendências → Histórico). Mudança só de posição — a seção em si, os chips de navegação, o scroll-spy e o gradiente de fundo entre seções não tiveram nenhuma lógica alterada, só a ordem em que aparecem no HTML e no JS de renderização. Confirmado com dados sintéticos: ordem das seções no DOM e ordem dos chips de navegação batem com o pedido, e clicar em cada chip ativa e leva pra seção certa."
     }
   ];
 

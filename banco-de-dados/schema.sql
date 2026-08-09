@@ -1676,3 +1676,21 @@ create policy eventos_cliente_escrita_admin on eventos_cliente
   for insert
   to authenticated
   with check (is_admin());
+
+-- ---------- 11) Auditoria da tela Financeiro: documentos.updated_at nunca
+-- era atualizado em nenhum UPDATE (ficava congelado na data de criação pra
+-- sempre, mesmo depois de marcar boleto como pago ou reanalisar um
+-- documento) — mesmo padrão de trigger simples já usado neste schema
+-- (definir_origem_documento, definir_periodo_referencia). ----------
+create or replace function atualizar_updated_at_documentos()
+returns trigger as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$ language plpgsql set search_path = '';
+
+drop trigger if exists trg_atualizar_updated_at_documentos on documentos;
+create trigger trg_atualizar_updated_at_documentos
+  before update on documentos
+  for each row execute function atualizar_updated_at_documentos();

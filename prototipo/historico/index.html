@@ -548,6 +548,11 @@
       pasta: "v101-2026-08-13",
       data: "13/08/2026",
       descricao: "Pedido: o gráfico 'Receita ao longo do tempo' já atualiza em tempo real (Supabase Realtime já escutava a tabela documentos desde antes — qualquer boleto pago em outra aba/dispositivo recalcula o gráfico em ~600ms), mas os pontos só mostravam o valor no hover — inútil em touch (mobile/tablet, onde não existe hover) e exigia ação extra até numa tela grande. Cada ponto agora mostra o valor formatado (R$) direto acima de si, sempre visível, sem precisar passar o mouse — mês sem pagamento mostra 'R$ 0,00' em cinza (estado real, não esconde), mês com valor mostra em preto/negrito. Aumentado o respiro no topo do gráfico (padT 14→28) pra o rótulo do ponto mais alto nunca cortar. Testado num harness isolado: 6 meses zerados + 1 com valor, e depois 6 meses todos com valores diferentes (incluindo um 'zigue-zague') — nenhum rótulo sobrepõe outro nem corta no topo, em claro e escuro."
+    },
+    {
+      pasta: "v102-2026-08-13",
+      data: "13/08/2026",
+      descricao: "Correção rápida do que a v101 acabou de introduzir: a Lorena reportou (com print) o valor do ÚLTIMO ponto do gráfico (o mais recente, sempre encostado na borda direita) vazando pra fora do card. Causa: o rótulo usava text-anchor='middle' fixo pra todos os pontos, então centralizava o texto no ponto — sem espaço nenhum sobrando à direita quando o ponto já está na borda, metade do texto saía do SVG (que tem overflow:visible de propósito, então em vez de cortar, vazava por cima de qualquer coisa ao lado). Corrigido: primeiro ponto agora alinha à esquerda (start), último ponto alinha à direita (end), pontos do meio continuam centralizados (middle) — onde sempre sobra espaço dos dois lados. Mesmo ajuste aplicado ao rótulo do mês embaixo do eixo, por consistência (mesmo risco, só menos visível por ser texto mais curto). Testado num harness estreito de propósito (400px, replicando o card apertado do print) com um vizinho ao lado simulando outro elemento da tela: valor do último ponto (R$ 2.000,00) agora fica inteiro dentro do card, sem vazar."
     }
   ];
 

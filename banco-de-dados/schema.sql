@@ -2012,6 +2012,14 @@ begin
     if new.status is null or new.status not in ('pago', 'nao_pago') then
       raise exception 'Boletos (categoria %) precisam de status "pago" ou "nao_pago"', v_categoria_nome;
     end if;
+    -- Bug real encontrado auditando o fluxo ponta a ponta (2026-08-13):
+    -- valor nunca foi exigido aqui, então um boleto podia ser gravado com
+    -- valor NULL — o documento existia e aparecia na lista, mas
+    -- Number(null)||0 no front fazia ele valer 0 em toda soma, sumindo dos
+    -- KPIs sem erro nenhum avisando ninguém.
+    if new.valor is null or new.valor <= 0 then
+      raise exception 'Boletos (categoria %) precisam de um valor maior que zero', v_categoria_nome;
+    end if;
   else
     if new.data_vencimento is not null then
       raise exception 'Documentos da categoria % não podem ter data_vencimento (só boletos têm vencimento)', v_categoria_nome;
@@ -2074,4 +2082,30 @@ $$;
 
 revoke all on function public.admin_definir_status_boleto(uuid, text) from public;
 revoke execute on function public.admin_definir_status_boleto(uuid, text) from anon;
+
+-- ---------- categorias.tipo_financeiro ----------
+-- Raiz de um bug real: "Receita mensal" e "Impostos pagos" (Visão geral +
+-- Financeiro) identificavam a categoria certa comparando o SLUG fixo
+-- ("boleto-honorarios" / "boleto-imposto") em vez de um dado estrutural.
+-- Uma 3ª categoria de boleto criada pela Lorena (eh_boleto=true) nunca
+-- entrava em nenhum dos dois KPIs porque nenhum slug hardcoded batia com
+-- ela. eh_boleto sozinho não resolve: diz "isso tem valor/vencimento/
+-- status", mas não diz se esse dinheiro é receita do escritório ou imposto
+-- pago em nome do cliente — são buckets contábeis diferentes, não dá pra
+-- inferir automaticamente.
+alter table categorias add column if not exists tipo_financeiro text;
+
+alter table categorias
+  add constraint categorias_tipo_financeiro_valido
+  check (tipo_financeiro is null or tipo_financeiro in ('receita', 'imposto'));
+
+update categorias set tipo_financeiro = 'receita' where slug = 'boleto-honorarios';
+update categorias set tipo_financeiro = 'imposto' where slug = 'boleto-imposto';
+
+-- Falha fechado: se eh_boleto=true, tipo_financeiro é obrigatório — nunca
+-- mais dá pra criar/editar uma categoria de boleto "muda" (sem dizer se é
+-- receita ou imposto) e ela silenciosamente não aparecer em KPI nenhum.
+alter table categorias
+  add constraint categorias_boleto_exige_tipo_financeiro
+  check (not eh_boleto or tipo_financeiro is not null);
 grant execute on function public.admin_definir_status_boleto(uuid, text) to authenticated;

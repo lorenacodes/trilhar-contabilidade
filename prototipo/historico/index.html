@@ -598,6 +598,11 @@
       pasta: "v111-2026-08-14",
       data: "14/08/2026",
       descricao: "Pedido direto da Lorena depois de tantas idas e voltas com o sticky do Financeiro/Detalhe do cliente: 'quero que tire todo o fixado da página'. Removido position:sticky de tudo — #admin-page-header (cabeçalho global), o subtítulo local do Financeiro, #financial-summary-row (KPIs), .docs-toolbar (busca/filtros), thead do Financeiro, e .detalhe-nav-sticky (nav por âncoras do Detalhe do cliente) — todos viram position:static, voltando a rolar normal junto com o resto da página. Removida também toda a máquina de JS que só existia pra sustentar isso: syncStickyOffsets(), os 4 ResizeObserver, a chamada em document.fonts.ready, e as 2 chamadas manuais em abrirDetalheCliente()/switchTab() (o hide/show do cabeçalho global dentro do Detalhe do cliente foi mantido — é uma decisão de UX separada, não depende de sticky). scroll-margin-top das seções e o rootMargin do scroll-spy do Detalhe do cliente simplificados de volta pro valor fixo original (56px), já que não precisam mais somar a altura de nenhum cabeçalho empilhado. .table-card do Financeiro volta a usar overflow-x:auto padrão (a restrição só existia por causa do sticky). Testado: rolando a página, título/KPIs/busca/cabeçalho da tabela sobem e desaparecem normalmente junto com o conteúdo, sem grudar em lugar nenhum — sem erro no console."
+    },
+    {
+      pasta: "v112-2026-08-14",
+      data: "14/08/2026",
+      descricao: "Pedido: tirar a mensagem 'Controle financeiro: honorários e impostos cobrados dos clientes.' do topo da aba Financeiro. Removido o parágrafo (#fin-subtitle) por completo do HTML, e junto a regra de CSS que só existia pra ele (era resquício da fase sticky, já sem função desde a v111). Testado: aba abre direto nos KPIs, logo abaixo do título 'Financeiro', com espaçamento normal (a margem que já vinha do cabeçalho global cobre o respiro, sem precisar de margem extra)."
     }
   ];
 

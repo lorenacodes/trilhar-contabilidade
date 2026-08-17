@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boas-vindas — Trilhar Contabilidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=85">
+<style>
+  .letter-page {
+    max-width: 680px;
+    margin: 40px auto;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 48px;
+  }
+  .letter-toolbar {
+    max-width: 680px;
+    margin: 0 auto 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .letter-header { display: flex; align-items: center; gap: 14px; margin-bottom: 32px; }
+  .letter-header .brand-mark { width: 48px; height: 48px; border-radius: 10px; }
+  .letter-title { font-size: 22px; font-weight: 800; margin: 0 0 6px; }
+  .letter-greeting { font-size: 15px; color: var(--text-secondary); margin: 0 0 24px; line-height: 1.6; }
+  .cred-box {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin: 24px 0;
+  }
+  .cred-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-default); }
+  .cred-row:last-child { border-bottom: none; }
+  .cred-label { font-size: 12px; color: var(--text-secondary); }
+  .cred-value { font-size: 14px; font-weight: 700; }
+  .role-pill {
+    display: inline-flex;
+    padding: 4px 12px;
+    border-radius: 100px;
+    background: var(--bg-surface-elevated);
+    color: var(--brand-navy);
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+  [data-theme="dark"] .role-pill { color: var(--brand-gold); }
+  .letter-footer { margin-top: 32px; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+  .letter-signature { margin-top: 28px; font-size: 13px; }
+  .letter-signature strong { display: block; font-size: 14px; }
+
+  @media print {
+    .letter-toolbar, .theme-toggle { display: none !important; }
+    body, .login-screen, .letter-page { background: #FFFFFF !important; }
+    .letter-page { border: none; box-shadow: none; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="letter-toolbar">
+  <button class="btn btn-secondary" onclick="window.close()">Fechar</button>
+  <button class="btn btn-primary" id="btn-print"></button>
+</div>
+
+<div class="letter-page">
+  <div class="letter-header">
+    <div class="brand-mark"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade" style="width:100%; height:100%; object-fit:contain;"></div>
+    <div>
+      <div class="brand-name" style="font-size:14px;">Trilhar Contabilidade</div>
+      <div class="brand-sub">SEU NEGÓCIO NO CAMINHO CERTO</div>
+    </div>
+  </div>
+
+  <span class="role-pill" id="role-pill">Administrador</span>
+
+  <h1 class="letter-title" id="letter-title">Bem-vindo(a), Nome</h1>
+  <p class="letter-greeting" id="letter-greeting">
+    Você foi cadastrado(a) no Painel Administrativo da Trilhar Contabilidade. Use os dados abaixo para acessar o sistema pela primeira vez.
+  </p>
+
+  <div class="cred-box">
+    <div class="cred-row"><span class="cred-label">E-mail de acesso</span><span class="cred-value" id="cred-email">—</span></div>
+    <div class="cred-row"><span class="cred-label">Senha provisória</span><span class="cred-value" id="cred-senha">—</span></div>
+    <div class="cred-row" id="cred-nivel-row"><span class="cred-label">Nível de acesso</span><span class="cred-value" id="cred-nivel">—</span></div>
+  </div>
+
+  <p class="letter-footer" id="letter-footer">
+    Por segurança, recomendamos alterar essa senha no primeiro acesso. Em caso de dúvidas, fale diretamente com a administração da Trilhar Contabilidade.
+  </p>
+
+  <div class="letter-signature">
+    <strong>Trilhar Contabilidade</strong>
+    Seu negócio no caminho certo.
+  </div>
+</div>
+
+<script src="js/app.js?v=82"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script>
+  // A senha temporária nunca trafega pela URL (ficaria no histórico do
+  // navegador) — quem abriu esta aba (admin.html) deixou os dados numa
+  // propriedade temporária da própria aba dele, acessível aqui via
+  // window.opener por serem a mesma origem. Lê uma vez só e apaga em
+  // seguida, tanto daqui quanto de lá.
+  const dadosRecebidos = (window.opener && window.opener.__dadosBoasVindas) || {};
+  try { if (window.opener) delete window.opener.__dadosBoasVindas; } catch (_e) { /* ignora */ }
+
+  const tipo = dadosRecebidos.tipo === "cliente" ? "cliente" : "administrador";
+  const nome = dadosRecebidos.nome || (tipo === "cliente" ? "Cliente" : "Colaborador(a)");
+  const email = dadosRecebidos.email || "—";
+  const senha = dadosRecebidos.senha || "—";
+  const nivel = dadosRecebidos.nivel || "Administrador";
+
+  document.getElementById("letter-title").textContent = "Bem-vindo(a), " + nome;
+
+  if (tipo === "cliente") {
+    document.getElementById("role-pill").textContent = "Cliente";
+    document.getElementById("letter-greeting").textContent =
+      "Sua conta no Portal do Cliente da Trilhar Contabilidade já está pronta. Use os dados abaixo para acessar pela primeira vez, enviar documentos e acompanhar seus boletos.";
+    document.getElementById("cred-nivel-row").style.display = "none";
+    document.getElementById("letter-footer").textContent =
+      "No primeiro acesso, o sistema vai pedir que você crie uma senha nova e pessoal. Em caso de dúvidas, fale diretamente com a Trilhar Contabilidade.";
+  } else {
+    document.getElementById("role-pill").textContent = nivel === "Colaborador" ? "Colaborador(a)" : "Administrador(a)";
+    document.getElementById("letter-greeting").textContent =
+      "Você é o(a) novo(a) " + (nivel === "Colaborador" ? "colaborador(a)" : "administrador(a)") +
+      " da Trilhar Contabilidade. Use os dados abaixo para acessar o painel administrativo pela primeira vez.";
+    document.getElementById("cred-nivel").textContent = nivel;
+  }
+  document.getElementById("cred-email").textContent = email;
+  document.getElementById("cred-senha").textContent = senha;
+
+  function carregarImagemComoDataUrl(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext("2d").drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  async function baixarPdf() {
+    const btn = document.getElementById("btn-print");
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = ICONS.spinner + " Gerando PDF...";
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const largura = doc.internal.pageSize.getWidth();
+    const NAVY = [40, 52, 92];
+    const GOLD_TEXT = [154, 122, 18];
+    const GOLD_BG = [252, 245, 224];
+    const TEXT = [22, 26, 43];
+    const MUTED = [91, 96, 114];
+    const LIGHT = [227, 231, 239];
+
+    doc.setFillColor(...NAVY);
+    doc.rect(0, 0, largura, 40, "F");
+    try {
+      // Variante com o "T" recolorido pra branco — a logo original tem o T
+      // em navy sólido, que fica invisível em cima do cabeçalho navy do PDF
+      // (mesmo bug de contraste do "T" navy sobre fundo escuro do app).
+      const logo = await carregarImagemComoDataUrl("img/logo-glyph-dark.png");
+      doc.addImage(logo, "PNG", 20, 9, 22, 22);
+    } catch (_e) { /* segue sem logo se não conseguir carregar a imagem */ }
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("TRILHAR CONTABILIDADE", 47, 19);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("SEU NEGÓCIO NO CAMINHO CERTO", 47, 25);
+
+    let y = 58;
+    doc.setFillColor(...GOLD_BG);
+    doc.roundedRect(20, y - 6, doc.getTextWidth(document.getElementById("role-pill").textContent) + 10, 8, 4, 4, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...GOLD_TEXT);
+    doc.text(document.getElementById("role-pill").textContent, 25, y - 0.5);
+
+    y += 12;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(19);
+    doc.setTextColor(...TEXT);
+    doc.text("Bem-vindo(a), " + nome + "!", 20, y);
+
+    y += 11;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(...MUTED);
+    const linhasGreeting = doc.splitTextToSize(document.getElementById("letter-greeting").textContent, largura - 40);
+    doc.text(linhasGreeting, 20, y);
+    y += linhasGreeting.length * 6 + 10;
+
+    const boxAltura = tipo === "cliente" ? 40 : 58;
+    doc.setFillColor(...LIGHT);
+    doc.roundedRect(20, y, largura - 40, boxAltura, 3, 3, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(...MUTED);
+    doc.text("E-MAIL DE ACESSO", 30, y + 12);
+    doc.text("SENHA PROVISÓRIA", 30, y + 31);
+    doc.setFont("courier", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(...TEXT);
+    doc.text(email, 30, y + 20);
+    doc.text(senha, 30, y + 39);
+    if (tipo !== "cliente") {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...MUTED);
+      doc.text("NÍVEL DE ACESSO", 30, y + 50);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...TEXT);
+      doc.text(nivel, 30, y + 56);
+    }
+    y += boxAltura + 14;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    const linhasFooter = doc.splitTextToSize(document.getElementById("letter-footer").textContent, largura - 40);
+    doc.text(linhasFooter, 20, y);
+    y += linhasFooter.length * 6 + 16;
+
+    // Assinatura logo depois do conteúdo (não fixa no rodapé da página) —
+    // como a carta é curta, deixar fixo lá embaixo sobrava um vão enorme
+    // de espaço em branco no meio da página.
+    doc.setDrawColor(...LIGHT);
+    doc.line(20, y, largura - 20, y);
+    y += 7;
+    doc.setFontSize(9);
+    doc.text("Trilhar Contabilidade — Seu negócio no caminho certo.", 20, y);
+
+    const nomeArquivo = "boas-vindas-" + sanitizarNomeArquivo(nome.toLowerCase().replace(/\s+/g, "-")) + ".pdf";
+    doc.save(nomeArquivo);
+
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+
+  document.getElementById("btn-print").innerHTML = ICONS.download + " Baixar PDF";
+  document.getElementById("btn-print").addEventListener("click", baixarPdf);
+</script>
+</body>
+</html>

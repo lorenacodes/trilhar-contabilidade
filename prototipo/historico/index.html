@@ -648,6 +648,11 @@
       pasta: "v121-2026-08-17",
       data: "17/08/2026",
       descricao: "Ajuste no painel 'Todo o histórico' (v120): a Lorena reportou que ficava mal formatado como painel lateral estreito (640px) — o conteúdo tem duas colunas lado a lado (categorias + lista agrupada por data) e a coluna da direita ficava cortada na borda. Trocado de painel lateral (.side-panel-wide) pra modal centralizado, reaproveitando o mesmo componente .config-panel (960px, cantos arredondados, cabeçalho fixo + corpo com scroll) já usado no painel de configurar categoria do admin — nenhuma classe CSS nova. Mesma lógica de abrir/fechar (.classList add/remove 'open'), só trocou o container. Verificado com harness isolado: modal abre centralizado (960px, exatamente no meio da tela em 1280px de largura), sem erro de console."
+    },
+    {
+      pasta: "v122-2026-08-17",
+      data: "17/08/2026",
+      descricao: "Pedido: a Lorena notou que documentos enviados não tinham como ser escondidos do cliente pela interface do admin — na verdade a coluna documentos.visivel_cliente já existia no banco e já dava pra mudar, mas só de dentro do painel inteiro de 'Analisar' (aberto pra revisar/aprovar/rejeitar um documento), então na prática ninguém achava essa opção. Adicionada uma ação direta no menu de ações de cada documento (o mesmo menu com Visualizar/Baixar/Excluir), na aba Documentos: 'Ocultar do cliente' quando visível, 'Mostrar ao cliente' quando oculto — clique único, sem abrir o painel de análise, com toast de confirmação. Reaproveita o ícone eyeOff (já existente desde o toggle de mostrar/ocultar senha) e a mesma coluna do banco que a análise já usava — nenhuma migração, nenhuma RLS nova. Escopo combinado com a Lorena: só documentos, não boletos (que continuam sem esse controle — sempre visíveis ao cliente, faz sentido pro propósito deles). Verificado com harness isolado (função menuAcoesHtml extraída e testada fora do fluxo de login): a ação aparece com o texto certo conforme o estado atual de visibilidade, e continua ausente no menu de boletos. Não testado ao vivo por falta de credencial de admin."
     }
   ];
 

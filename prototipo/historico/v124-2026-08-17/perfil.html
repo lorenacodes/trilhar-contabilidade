@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu Perfil — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=86">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main" style="max-width:640px;">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header">
+        <p class="eyebrow">Conta</p>
+        <h1 class="page-title">Meu perfil</h1>
+        <p class="page-subtitle">Suas informações cadastrais. Para alterações, contate a Trilhar Contabilidade.</p>
+      </div>
+
+      <div class="table-card" style="padding:var(--space-6);">
+        <div style="display:flex; align-items:center; gap:var(--space-4); margin-bottom:var(--space-6);">
+          <div class="avatar" style="width:56px; height:56px; font-size:var(--text-md);" id="perfil-avatar"></div>
+          <div>
+            <p style="margin:0; font-weight:var(--font-bold); font-size:var(--text-md);" id="perfil-nome"></p>
+            <p style="margin:0; font-size:var(--text-sm); color:var(--text-secondary);" id="perfil-desde"></p>
+          </div>
+        </div>
+
+        <div class="field"><label>Nome completo</label><input id="perfil-nome-input" disabled></div>
+        <div class="field"><label>E-mail</label><input id="perfil-email-input" disabled></div>
+        <div class="field"><label>Senha</label><input type="password" value="••••••••" disabled></div>
+
+        <button class="btn btn-secondary" style="width:100%;" onclick="showToast('Solicitação enviada à Trilhar Contabilidade')">Solicitar alteração de dados</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=82"></script>
+<script src="js/auth-guard.js?v=80"></script>
+<script>
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+
+  // guardCliente() já é a fonte única de verdade (busca users + clientes) —
+  // reaproveitada aqui como a própria função de recarregamento pro realtime,
+  // em vez de duplicar as duas queries. Também tem o efeito colateral certo
+  // se o admin desativar o cliente enquanto a tela está aberta: guardCliente
+  // detecta o status "inativo" e desloga sozinho, sem precisar de lógica extra.
+  async function carregarPerfil() {
+    const cliente = await guardCliente();
+    if (!cliente) return null;
+    document.getElementById("perfil-avatar").textContent = initials(cliente.nome);
+    document.getElementById("perfil-nome").textContent = cliente.nome;
+    document.getElementById("perfil-nome-input").value = cliente.nome;
+    document.getElementById("perfil-email-input").value = cliente.email;
+    const desde = new Date(cliente.created_at).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    document.getElementById("perfil-desde").textContent = "Cliente desde " + desde;
+    // Sidebar já existe (renderNav rodou no init) numa atualização vinda do
+    // realtime — reflete nome/iniciais atualizados ali também.
+    const nomeEl = document.getElementById("sidebar-user-nome");
+    const avatarEl = document.getElementById("sidebar-avatar");
+    if (nomeEl) nomeEl.textContent = cliente.nome;
+    if (avatarEl) avatarEl.textContent = initials(cliente.nome);
+    return cliente;
+  }
+
+  (async function init() {
+    const cliente = await carregarPerfil();
+    if (!cliente) return;
+
+    renderNav("perfil", cliente);
+    hideAuthOverlay();
+    iniciarRealtimeCliente(cliente.id, [
+      { table: "clientes", filter: "id=eq." + cliente.id },
+      { table: "users", filter: "id=eq." + cliente.userId }
+    ], carregarPerfil);
+  })();
+</script>
+</body>
+</html>

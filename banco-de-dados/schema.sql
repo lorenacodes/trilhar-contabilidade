@@ -2109,3 +2109,14 @@ alter table categorias
   add constraint categorias_boleto_exige_tipo_financeiro
   check (not eh_boleto or tipo_financeiro is not null);
 grant execute on function public.admin_definir_status_boleto(uuid, text) to authenticated;
+
+-- ---------- categorias.tamanho_maximo_mb: remove o limite obrigatório ----------
+-- Pedido explícito: a Lorena achou que um limite de tamanho de arquivo por
+-- categoria atrapalhava a experiência do usuário — quer deixar ilimitado.
+-- O gatilho validar_arquivo_documento() já tratava tamanho_maximo_mb IS NULL
+-- como "sem limite" (só o tipo de arquivo aceito continuava validado); só
+-- faltava a coluna permitir NULL. Todas as categorias existentes (não só as
+-- novas) ficam sem limite.
+alter table categorias alter column tamanho_maximo_mb drop not null;
+alter table categorias alter column tamanho_maximo_mb drop default;
+update categorias set tamanho_maximo_mb = null;

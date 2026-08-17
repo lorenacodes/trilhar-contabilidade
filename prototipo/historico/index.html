@@ -608,6 +608,11 @@
       pasta: "v113-2026-08-14",
       data: "14/08/2026",
       descricao: "A Lorena mandou print do campo 'Cliente' (busca) do painel de Upload de documento, apontando que deveria mostrar uma lista de clientes pra pesquisar — hoje o campo só renderiza resultados depois que o admin começa a digitar (deliberado, pra não jogar a lista inteira de uma vez), o que parecia vazio/quebrado até alguém adivinhar que precisava digitar primeiro. Corrigido: campo vazio, ao ganhar foco, mostra os 8 primeiros clientes em ordem alfabética (igual a um combobox comum) — digitar continua filtrando normalmente, mesmo limite de 8 resultados. Testado num harness isolado: foco no campo vazio abre a lista alfabética; digitar 'mar' filtra corretamente pra Marcos/Maria."
+    },
+    {
+      pasta: "v114-2026-08-14",
+      data: "14/08/2026",
+      descricao: "Pedido: 'Sair' (logout) só deve aparecer quando o admin clica no próprio ícone de perfil, igual ao 'Perfil da empresa' (v96) — antes era um botão separado, sempre visível abaixo do chip de usuário na sidebar, sem precisar clicar em nada. Movido pra dentro do dropdown do avatar, como último item, depois de um divisor — mesmo padrão dos outros itens (Alterar foto, Tema, Perfil da empresa). Removida a classe/estilo antigo .admin-sidebar-logout (inclusive as regras específicas de sidebar colapsada, que só existiam pra esse botão ficar só-ícone nesse modo — não fazem mais sentido dentro do dropdown, que já mostra texto completo independente do estado da sidebar). Testado num harness isolado: 'Sair' não aparece no estado padrão (só avatar/nome), aparece dentro do menu depois de abrir o dropdown, como último item."
     }
   ];
 

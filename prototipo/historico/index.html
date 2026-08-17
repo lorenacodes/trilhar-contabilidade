@@ -643,6 +643,11 @@
       pasta: "v120-2026-08-17",
       data: "17/08/2026",
       descricao: "Pedido: em Documentos, a seção 'Todo o histórico' (busca, abas Recentes/Nome/Tamanho, lista de categorias com contagem e a lista completa de documentos) ocupava a tela toda abaixo do checklist — a Lorena pediu pra virar informação extra, acessível ao clicar no próprio ícone do cliente (avatar), em vez de ficar sempre visível. A tela de Documentos agora mostra só o checklist (categorias pendentes/enviadas, ação de anexar). A seção inteira foi movida pra um painel lateral largo (.side-panel-wide, 640px — mesmo componente já usado no 'Mais filtros' de Boletos), com um novo item 'Ver todo o histórico' inserido no dropdown da conta (entre 'Meu perfil' e o tema), só nesta página — não faz parte do renderNav() compartilhado, porque esse conteúdo só existe em Documentos. Nenhuma lógica de busca/ordenação/filtro por categoria mudou, só o lugar onde os mesmos elementos (mesmos ids: doc-categories, doc-list, busca-input, ordenacao-chips) são renderizados. Verificado com harness isolado: item aparece na posição certa do menu, clique abre o painel e fecha o dropdown, X fecha o painel. Página real carrega sem erro de console."
+    },
+    {
+      pasta: "v121-2026-08-17",
+      data: "17/08/2026",
+      descricao: "Ajuste no painel 'Todo o histórico' (v120): a Lorena reportou que ficava mal formatado como painel lateral estreito (640px) — o conteúdo tem duas colunas lado a lado (categorias + lista agrupada por data) e a coluna da direita ficava cortada na borda. Trocado de painel lateral (.side-panel-wide) pra modal centralizado, reaproveitando o mesmo componente .config-panel (960px, cantos arredondados, cabeçalho fixo + corpo com scroll) já usado no painel de configurar categoria do admin — nenhuma classe CSS nova. Mesma lógica de abrir/fechar (.classList add/remove 'open'), só trocou o container. Verificado com harness isolado: modal abre centralizado (960px, exatamente no meio da tela em 1280px de largura), sem erro de console."
     }
   ];
 

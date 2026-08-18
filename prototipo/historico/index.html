@@ -718,6 +718,11 @@
       pasta: "v135-2026-08-17",
       data: "17/08/2026",
       descricao: "A Lorena perguntou onde ficava a opção de ocultar uma categoria inteira dos clientes (categorias.ativa) e, olhando o painel 'Configurar categoria', não achou — reparou (corretamente) que esse controle só existia como um botãozinho solto no card da categoria, fora do painel de edição, enquanto 'Quem pode anexar' (um campo relacionado) já morava dentro do painel. Pediu pra unificar. Adicionado um toggle 'Visível ao cliente (categoria ativa)' na aba Geral do painel 'Configurar categoria', logo abaixo de 'Quem pode anexar' — mesmo componente .filter-toggle já usado ali mesmo pra 'Categoria obrigatória', então nenhum CSS novo. openCategoryPanel() agora pré-preenche esse campo com o valor atual da categoria (ou marcado por padrão numa categoria nova), e o payload salvo por 'Salvar alterações'/'Criar categoria' passou a incluir categorias.ativa. O botão de atalho rápido no card (✕/✓) continua existindo do jeito que estava — os dois escrevem no mesmo campo, então nunca ficam dessincronizados; reabrir o painel sempre reflete o estado real do banco. Verificado com harness isolado: o checkbox pré-preenche certo pra categoria ativa/inativa/nova, e reflete clique manual corretamente. admin.html carrega sem erro de console."
+    },
+    {
+      pasta: "v136-2026-08-17",
+      data: "17/08/2026",
+      descricao: "Pedido: colocar o símbolo da empresa (logo) como favicon — o ícone que aparece na aba do navegador, ao lado do título da página. Nenhuma das 12 páginas de primeiro nível tinha um <link rel=\"icon\"> definido, então o navegador mostrava o ícone genérico padrão dele. Adicionado <link rel=\"icon\" type=\"image/png\" href=\"img/logo-glyph.png\"> no <head> de todas — reaproveitando o mesmo arquivo já usado como 'brand-mark' (o 'T' estilizado) em toda a plataforma, sem subir nenhuma imagem nova. Verificado: requisição do arquivo retorna 200 OK, sem erro de console em nenhuma página testada."
     }
   ];
 

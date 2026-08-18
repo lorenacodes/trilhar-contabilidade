@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentos — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=91">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header page-header-flex">
+        <div>
+          <p class="eyebrow">Documentos</p>
+          <h1 class="page-title">Seus documentos</h1>
+          <p class="page-subtitle">Veja o que falta enviar e acompanhe o que já foi analisado.</p>
+        </div>
+        <button class="btn btn-primary" onclick="window.location.href='enviar-documento.html'"></button>
+      </div>
+
+      <div id="checklist-wrap" style="display:flex; flex-direction:column; gap:28px; margin-bottom:36px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Painel: todo o histórico (acessível pelo ícone da conta, na sidebar) —
+     modal centralizado (mesmo componente do painel de configurar categoria
+     no admin), não painel lateral: o conteúdo tem duas colunas lado a lado
+     (categorias + lista) e ficava espremido/cortado na borda direita numa
+     faixa estreita deslizando da lateral. -->
+<div class="modal-overlay" id="panel-historico" onclick="if(event.target===this) closeHistorico()">
+  <div class="config-panel" style="max-height:82vh;">
+    <div class="config-panel-header">
+      <div><h3 class="panel-title" style="margin:0;">Todo o histórico</h3></div>
+      <button class="panel-close" onclick="closeHistorico()" id="historico-close-btn"></button>
+    </div>
+    <div style="padding:22px 26px; overflow-y:auto;">
+      <div class="docs-toolbar">
+        <div class="docs-search">
+          <span id="busca-icon"></span>
+          <input type="text" id="busca-input" placeholder="Buscar por nome do documento">
+        </div>
+      </div>
+      <div class="status-chip-row" id="ordenacao-chips" style="margin-top:14px;">
+        <button type="button" class="period-chip active" data-ordenar="recentes">Recentes</button>
+        <button type="button" class="period-chip" data-ordenar="nome">Nome</button>
+        <button type="button" class="period-chip" data-ordenar="tamanho">Tamanho</button>
+      </div>
+
+      <div class="documentos-layout" style="margin-top:20px;">
+        <div class="doc-categories" id="doc-categories"></div>
+        <div class="doc-main">
+          <div class="boleto-list" id="doc-list"></div>
+          <div id="empty-state" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pré-visualização — mostra o arquivo de verdade (PDF/imagem),
+     mesmo componente e lógica do painel do admin (.doc-viewer-panel,
+     renderizarArquivoNoPalco em app.js). -->
+<div class="modal-overlay" id="modal-preview">
+  <div class="config-panel doc-viewer-panel">
+    <div class="config-panel-header">
+      <div style="min-width:0;">
+        <h3 class="panel-title" id="preview-nome" style="margin:0;">Documento</h3>
+        <p class="hint" id="preview-meta" style="margin:4px 0 0;">—</p>
+      </div>
+      <button class="panel-close" id="preview-close-btn"></button>
+    </div>
+    <div id="preview-filetabs" class="doc-viewer-filetabs" style="display:none;"></div>
+    <div id="preview-viewer" class="doc-viewer-stage"></div>
+    <div class="config-panel-footer">
+      <button class="btn btn-secondary" id="preview-download-btn">Baixar</button>
+      <button class="btn btn-primary" onclick="document.getElementById('modal-preview').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=83"></script>
+<script src="js/auth-guard.js?v=80"></script>
+<script>
+  document.getElementById("busca-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.querySelector(".page-header-flex .btn-primary").innerHTML = ICONS.download + " Enviar documento";
+  document.getElementById("historico-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("preview-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("preview-close-btn").addEventListener("click", () => document.getElementById("modal-preview").classList.remove("open"));
+
+  function abrirHistorico() { document.getElementById("panel-historico").classList.add("open"); }
+  function closeHistorico() { document.getElementById("panel-historico").classList.remove("open"); }
+
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function formatBytes(bytes) {
+    if (!bytes) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+  function totalBytes(doc) {
+    return (doc.documento_arquivos || []).reduce((s, f) => s + (f.tamanho_bytes || 0), 0);
+  }
+  function metaTexto(arquivos) {
+    if (!arquivos || arquivos.length === 0) return "Sem arquivo anexado";
+    if (arquivos.length === 1) return arquivos[0].tipo_arquivo + (arquivos[0].tamanho_bytes ? " · " + formatBytes(arquivos[0].tamanho_bytes) : "");
+    return arquivos.map(f => f.tipo_arquivo).join(" + ");
+  }
+
+  let TODOS_DOCS = [];
+  let CATEGORIAS = [];
+  let CLIENTE = null;
+  let categoriaAtiva = "";
+  let ordenacao = "recentes";
+  let busca = "";
+  // Prazo de alerta de "vencendo" — mesmo valor configurado pelo admin em
+  // Configurações (dias_antecedencia_alerta). Sem isso, o cliente via o
+  // padrão fixo de 7 dias mesmo quando o admin configurava outro número,
+  // divergindo do que o painel administrativo mostrava pro mesmo documento.
+  let DIAS_ANTECEDENCIA_ALERTA = 7;
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+
+    renderNav("documentos", cliente);
+    // "Todo o histórico" (busca + lista completa por categoria) saiu da
+    // tela principal e virou um item a mais no menu da conta — só existe
+    // nesta página, por isso é inserido aqui em vez de fazer parte do
+    // renderNav() compartilhado pelas 5 telas do cliente.
+    const historicoItem = document.createElement("div");
+    historicoItem.className = "dropdown-item";
+    historicoItem.innerHTML = ICONS.doc + " Ver todo o histórico";
+    historicoItem.addEventListener("click", () => {
+      document.getElementById("user-panel").classList.remove("open");
+      abrirHistorico();
+    });
+    document.getElementById("sidebar-perfil-item").insertAdjacentElement("afterend", historicoItem);
+
+    CLIENTE = cliente;
+    await carregarCategorias();
+
+    const { data: config } = await sb.from("configuracoes_empresa").select("dias_antecedencia_alerta").limit(1).maybeSingle();
+    if (config && config.dias_antecedencia_alerta) DIAS_ANTECEDENCIA_ALERTA = config.dias_antecedencia_alerta;
+
+    await carregarDocumentos();
+    hideAuthOverlay();
+    iniciarRealtimeCliente(cliente.id, [
+      { table: "documentos", filter: "cliente_id=eq." + cliente.id },
+      { table: "categorias" }
+    ], async () => { await carregarCategorias(); await carregarDocumentos(); });
+  })();
+
+  async function carregarCategorias() {
+    const { data: categorias } = await sb.from("categorias")
+      .select("id, slug, nome, descricao, icone, ordem, grupo, obrigatoria, recorrente, frequencia, quem_pode_anexar, ativa, tipos_arquivo_aceitos, tamanho_maximo_mb")
+      .order("ordem", { ascending: true });
+    CATEGORIAS = (categorias || []).filter(categoriaVisivelParaCliente);
+  }
+
+  async function carregarDocumentos() {
+    const { data: docs } = await sb.from("documentos")
+      .select("id, nome, created_at, categoria_id, status_revisao, motivo_rejeicao, periodo_referencia, data_validade, categorias(slug, nome), documento_arquivos(id, tipo_arquivo, nome_original, storage_path, tamanho_bytes)")
+      .eq("cliente_id", CLIENTE.id)
+      .is("data_vencimento", null)
+      .order("created_at", { ascending: false });
+    TODOS_DOCS = docs || [];
+    renderChecklist();
+    renderCategorias();
+    renderLista();
+  }
+
+  /* Anexa direto no card da categoria, sem passar por enviar-documento.html —
+     mesmo padrão upload-antes-do-insert usado no resto do sistema (evita
+     documento "fantasma" se o Storage recusar o arquivo). */
+  async function anexarArquivoChecklist(categoriaId, file, btnEl) {
+    const categoria = CATEGORIAS.find(c => c.id === categoriaId);
+    const erroArquivo = validarArquivoParaCategoria(file, categoria);
+    if (erroArquivo) { showToast(erroArquivo); return; }
+
+    const original = btnEl.innerHTML;
+    btnEl.disabled = true;
+    btnEl.innerHTML = ICONS.spinner + " Enviando...";
+    try {
+      const docId = crypto.randomUUID();
+      const arquivoId = crypto.randomUUID();
+      const tipoArquivo = (file.name.split(".").pop() || "arquivo").toUpperCase();
+      const caminho = CLIENTE.id + "/" + docId + "/" + arquivoId + "-" + sanitizarNomeArquivo(file.name);
+      const { error: upErr } = await sb.storage.from("documentos").upload(caminho, file);
+      if (upErr) throw upErr;
+
+      const { data: docRow, error: docErr } = await sb.from("documentos")
+        .insert({ id: docId, cliente_id: CLIENTE.id, categoria_id: categoriaId, nome: file.name })
+        .select().single();
+      if (docErr) throw docErr;
+
+      const { error: arqErr } = await sb.from("documento_arquivos").insert({
+        id: arquivoId, documento_id: docRow.id, tipo_arquivo: tipoArquivo,
+        nome_original: file.name, storage_path: caminho, tamanho_bytes: file.size
+      });
+      if (arqErr) throw arqErr;
+
+      showToast("Documento enviado");
+      await carregarDocumentos();
+    } catch (err) {
+      console.error("Falha ao enviar documento:", err);
+      showToast("Não foi possível enviar " + file.name + ". Tente novamente.");
+      btnEl.disabled = false;
+      btnEl.innerHTML = original;
+    }
+  }
+
+  function renderChecklist() {
+    const wrap = document.getElementById("checklist-wrap");
+    wrap.innerHTML = "";
+
+    const grupos = [];
+    CATEGORIAS.forEach(cat => {
+      let grupo = grupos.find(g => g.nome === (cat.grupo || null));
+      if (!grupo) { grupo = { nome: cat.grupo || null, categorias: [] }; grupos.push(grupo); }
+      grupo.categorias.push(cat);
+    });
+    // Grupos nomeados primeiro (ex: "Documentos Mensais"), categorias sem
+    // grupo por último, cada um já vem ordenado por "ordem" (a query trouxe
+    // as categorias nessa ordem).
+    grupos.sort((a, b) => (a.nome ? 0 : 1) - (b.nome ? 0 : 1));
+
+    grupos.forEach(grupo => {
+      const secao = document.createElement("div");
+      if (grupo.nome) secao.innerHTML = `<p class="section-label" style="margin-bottom:14px;">${escapeHtml(grupo.nome)}</p>`;
+      const lista = document.createElement("div");
+      lista.style.display = "flex";
+      lista.style.flexDirection = "column";
+      lista.style.gap = "14px";
+
+      grupo.categorias.forEach(cat => {
+        const docsDaCategoria = TODOS_DOCS.filter(d => d.categoria_id === cat.id);
+        const { status, documento, motivoRejeicao } = statusParaCategoria(cat, docsDaCategoria);
+        const statusInfo = STATUS_DOCUMENTO_LABELS[status];
+        // Alerta de validade (ex: Contrato vencendo/vencido) só existe pra
+        // documento já aprovado com data_validade definida pelo admin — é
+        // um alerta a mais, não substitui o status de revisão em si.
+        const statusValidade = (status === "aprovado" && documento && documento.data_validade)
+          ? statusValidadeDocumento(documento.data_validade, DIAS_ANTECEDENCIA_ALERTA)
+          : null;
+        const vencido = statusValidade && statusValidade.cls === "danger";
+        const podeAnexar = status === "pendente" || status === "rejeitado" || vencido;
+        const textoBotao = (status === "rejeitado" || vencido) ? "Enviar novamente" : "Anexar";
+
+        const card = document.createElement("div");
+        card.className = "cat-group" + (status === "aprovado" && !vencido ? " sent" : (podeAnexar ? " pending" : ""));
+        card.innerHTML = `
+          <div class="cat-group-head">
+            <div class="cat-status-icon">${status === "aprovado" && !vencido ? ICONS.check : ICONS.dot}</div>
+            <span class="cat-group-name">${escapeHtml(cat.nome)}${cat.obrigatoria ? " (obrigatória)" : ""}</span>
+            <span class="status-badge ${statusInfo.cls}">${statusInfo.label}</span>
+            ${statusValidade ? `<span class="status-badge ${statusValidade.cls}">${vencido ? "Documento vencido" : statusValidade.label}</span>` : ""}
+            ${podeAnexar ? `<button type="button" class="cat-attach-btn">${ICONS.upload} ${textoBotao}</button><input type="file" class="cat-attach-input" style="display:none;">` : ""}
+          </div>
+          ${cat.descricao ? `<p class="hint" style="margin:0 0 10px;">${escapeHtml(cat.descricao)}</p>` : ""}
+          ${motivoRejeicao ? `<div class="cat-empty-row" style="color:var(--semantic-danger);">${ICONS.x} Motivo da rejeição: ${escapeHtml(motivoRejeicao)}</div>` : ""}
+          ${vencido ? `<div class="cat-empty-row" style="color:var(--semantic-danger);">${ICONS.x} Documento venceu — envie uma versão atualizada.</div>` : ""}
+        `;
+
+        if (podeAnexar) {
+          const attachBtn = card.querySelector(".cat-attach-btn");
+          const attachInput = card.querySelector(".cat-attach-input");
+          attachBtn.addEventListener("click", () => attachInput.click());
+          attachInput.addEventListener("change", function () {
+            if (!this.files || !this.files.length) return;
+            const file = this.files[0];
+            this.value = "";
+            anexarArquivoChecklist(cat.id, file, attachBtn);
+          });
+        }
+
+        lista.appendChild(card);
+      });
+      secao.appendChild(lista);
+      wrap.appendChild(secao);
+    });
+  }
+
+  function renderCategorias() {
+    const wrap = document.getElementById("doc-categories");
+    const total = TODOS_DOCS.length;
+    let html = `<div class="doc-cat-item${categoriaAtiva === "" ? " active" : ""}" data-cat="">Todos<span class="doc-cat-count">${total}</span></div>`;
+    CATEGORIAS.forEach(c => {
+      const qtd = TODOS_DOCS.filter(d => d.categoria_id === c.id).length;
+      html += `<div class="doc-cat-item${categoriaAtiva === c.id ? " active" : ""}" data-cat="${c.id}">${escapeHtml(c.nome)}<span class="doc-cat-count">${qtd}</span></div>`;
+    });
+    wrap.innerHTML = html;
+    wrap.querySelectorAll(".doc-cat-item").forEach(el => {
+      el.addEventListener("click", () => {
+        categoriaAtiva = el.dataset.cat;
+        renderCategorias();
+        renderLista();
+      });
+    });
+  }
+
+  // Grupos que o próprio usuário já abriu/fechou nesta sessão — preservado
+  // entre re-renders (nova busca, novo upload) pra não fechar de novo algo
+  // que a pessoa acabou de abrir. Inicializado com o padrão (ano/mês atual
+  // abertos, resto fechado) só na primeira vez que a lista é agrupada.
+  let GRUPOS_COLAPSADOS = null;
+
+  function inicializarColapsoPadrao(grupos) {
+    GRUPOS_COLAPSADOS = new Set();
+    grupos.forEach((grupoAno, iAno) => {
+      if (iAno > 0) GRUPOS_COLAPSADOS.add("ano:" + grupoAno.ano);
+      grupoAno.meses.forEach((grupoMes, iMes) => {
+        if (iAno > 0 || iMes > 0) GRUPOS_COLAPSADOS.add("mes:" + grupoMes.chave);
+      });
+    });
+  }
+
+  function criarLinhaDocumento(d) {
+    const row = document.createElement("div");
+    row.className = "drive-row";
+    row.style.cursor = "pointer";
+    row.innerHTML = `
+      <div class="drive-row-icon">${ICONS.doc}</div>
+      <div class="drive-row-main">
+        <p class="drive-row-nome">${escapeHtml(d.nome)}</p>
+        <div class="drive-row-meta">
+          <span class="drive-row-cat">${escapeHtml(d.categorias ? d.categorias.nome : "")}</span>
+          <span class="drive-row-date">${escapeHtml(metaTexto(d.documento_arquivos))} · ${new Date(d.created_at).toLocaleDateString("pt-BR")}</span>
+        </div>
+      </div>
+      <button class="icon-btn drive-row-kebab" title="Visualizar">${ICONS.eye}</button>
+    `;
+    row.addEventListener("click", () => abrirPreview(d));
+    return row;
+  }
+
+  // Cabeçalho colapsável (ano/mês) — dia não colapsa: quase sempre tem só
+  // 1-3 documentos, então esconder atrás de mais um clique só atrapalharia.
+  const NIVEL_PARA_CLASSE_CSS = { ano: "year", mes: "month", dia: "day" };
+  function criarCabecalhoGrupo(nivel, chave, titulo, total, corpoEl) {
+    const collapsedInicial = GRUPOS_COLAPSADOS.has(nivel + ":" + chave);
+    const header = document.createElement("div");
+    header.className = "date-group-header " + NIVEL_PARA_CLASSE_CSS[nivel] + (collapsedInicial ? " collapsed" : "");
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
+    header.setAttribute("aria-expanded", String(!collapsedInicial));
+    header.innerHTML = `<span class="date-group-chevron">${ICONS.chevron}</span><span>${escapeHtml(titulo)}</span><span class="date-group-count">${total} ${total === 1 ? "documento" : "documentos"}</span>`;
+    corpoEl.classList.toggle("collapsed", collapsedInicial);
+
+    function alternar() {
+      const key = nivel + ":" + chave;
+      const agoraColapsado = !header.classList.contains("collapsed");
+      header.classList.toggle("collapsed", agoraColapsado);
+      corpoEl.classList.toggle("collapsed", agoraColapsado);
+      header.setAttribute("aria-expanded", String(!agoraColapsado));
+      if (agoraColapsado) GRUPOS_COLAPSADOS.add(key); else GRUPOS_COLAPSADOS.delete(key);
+    }
+    header.addEventListener("click", alternar);
+    header.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(); } });
+    return header;
+  }
+
+  function renderListaAgrupada(visiveis) {
+    const list = document.getElementById("doc-list");
+    list.innerHTML = "";
+
+    const grupos = agruparPorData(visiveis, d => d.created_at);
+    if (!GRUPOS_COLAPSADOS) inicializarColapsoPadrao(grupos);
+
+    grupos.forEach(grupoAno => {
+      const anoWrap = document.createElement("div");
+      anoWrap.className = "date-year-group";
+      const anoBody = document.createElement("div");
+      anoBody.className = "date-group-body";
+      anoWrap.appendChild(criarCabecalhoGrupo("ano", grupoAno.ano, grupoAno.ano, grupoAno.total, anoBody));
+      anoWrap.appendChild(anoBody);
+
+      grupoAno.meses.forEach(grupoMes => {
+        const mesBody = document.createElement("div");
+        mesBody.className = "date-group-body month-body";
+        anoBody.appendChild(criarCabecalhoGrupo("mes", grupoMes.chave, grupoMes.nomeMes, grupoMes.total, mesBody));
+
+        grupoMes.dias.forEach(grupoDia => {
+          const diaBody = document.createElement("div");
+          diaBody.className = "date-group-body day-body";
+          const [anoStr, mesStr, diaStr] = grupoDia.chave.split("-");
+          const tituloDia = diaStr + " de " + NOMES_MESES_PT[parseInt(mesStr, 10) - 1].toLowerCase();
+          const headerDia = document.createElement("div");
+          headerDia.className = "date-group-header day";
+          headerDia.innerHTML = `<span>${escapeHtml(tituloDia)}</span><span class="date-group-count">${grupoDia.itens.length} ${grupoDia.itens.length === 1 ? "documento" : "documentos"}</span>`;
+          mesBody.appendChild(headerDia);
+          mesBody.appendChild(diaBody);
+          grupoDia.itens.forEach(d => diaBody.appendChild(criarLinhaDocumento(d)));
+        });
+
+        anoBody.appendChild(mesBody);
+      });
+
+      list.appendChild(anoWrap);
+    });
+  }
+
+  function renderListaFlat(visiveis) {
+    const list = document.getElementById("doc-list");
+    list.innerHTML = "";
+    visiveis.forEach(d => list.appendChild(criarLinhaDocumento(d)));
+  }
+
+  function renderLista() {
+    let visiveis = TODOS_DOCS.filter(d => {
+      if (categoriaAtiva && d.categoria_id !== categoriaAtiva) return false;
+      if (busca && !d.nome.toLowerCase().includes(busca)) return false;
+      return true;
+    });
+
+    const list = document.getElementById("doc-list");
+    const empty = document.getElementById("empty-state");
+
+    if (visiveis.length === 0) {
+      list.style.display = "none";
+      empty.style.display = "block";
+      empty.innerHTML = `
+        <div class="empty-state">
+          ${ICONS.empty}
+          <h3>${TODOS_DOCS.length === 0 ? "Nenhum documento por aqui ainda" : "Nenhum documento encontrado"}</h3>
+          <p>${TODOS_DOCS.length === 0 ? "Documentos enviados pela Trilhar ou por você aparecem aqui." : "Tente ajustar a busca ou a categoria."}</p>
+        </div>`;
+      return;
+    }
+
+    list.style.display = "block";
+    empty.style.display = "none";
+
+    // Buscando ou ordenando por nome/tamanho: o que a pessoa quer é achar
+    // um documento específico rápido, não navegar cronologicamente — nesses
+    // casos mostra lista simples, sem agrupar por data. Sem busca e com
+    // "Recentes" (o padrão), a organização por Ano > Mês > Dia é quem manda.
+    if (busca || ordenacao !== "recentes") {
+      if (ordenacao === "nome") visiveis = visiveis.slice().sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      else if (ordenacao === "tamanho") visiveis = visiveis.slice().sort((a, b) => totalBytes(b) - totalBytes(a));
+      else visiveis = visiveis.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      renderListaFlat(visiveis);
+    } else {
+      renderListaAgrupada(visiveis);
+    }
+  }
+
+  function abrirPreview(d) {
+    document.getElementById("preview-nome").textContent = d.nome;
+    document.getElementById("preview-meta").textContent = (d.categorias ? d.categorias.nome : "") + " · " + metaTexto(d.documento_arquivos) + " · Enviado em " + new Date(d.created_at).toLocaleDateString("pt-BR");
+
+    const arquivos = d.documento_arquivos || [];
+    const tabsWrap = document.getElementById("preview-filetabs");
+    tabsWrap.innerHTML = "";
+    tabsWrap.style.display = arquivos.length > 1 ? "flex" : "none";
+    arquivos.forEach((arq, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "period-chip" + (i === 0 ? " active" : "");
+      btn.textContent = arq.nome_original;
+      btn.addEventListener("click", () => {
+        tabsWrap.querySelectorAll(".period-chip").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderizarArquivoNoPalco(document.getElementById("preview-viewer"), arq, document.getElementById("preview-download-btn"));
+      });
+      tabsWrap.appendChild(btn);
+    });
+
+    if (arquivos.length) {
+      renderizarArquivoNoPalco(document.getElementById("preview-viewer"), arquivos[0], document.getElementById("preview-download-btn"));
+    } else {
+      document.getElementById("preview-viewer").innerHTML = `<div class="doc-viewer-empty">${ICONS.empty}<p>Nenhum arquivo anexado a este documento.</p></div>`;
+      document.getElementById("preview-download-btn").style.display = "none";
+    }
+    document.getElementById("modal-preview").classList.add("open");
+  }
+
+  document.querySelectorAll("#ordenacao-chips .period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#ordenacao-chips .period-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      ordenacao = chip.dataset.ordenar;
+      renderLista();
+    });
+  });
+
+  document.getElementById("busca-input").addEventListener("input", (e) => {
+    busca = e.target.value.trim().toLowerCase();
+    renderLista();
+  });
+</script>
+</body>
+</html>

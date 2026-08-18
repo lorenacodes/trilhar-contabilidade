@@ -703,6 +703,11 @@
       pasta: "v132-2026-08-17",
       data: "17/08/2026",
       descricao: "Ajuste na sub-aba nova 'Pendências de Documentos' (v131): a Lorena achou que destoava do resto do sistema — o selo de status vinha cinza neutro ('Não enviado'), enquanto em Pendências Financeiras um item vencido aparece em vermelho, chamando atenção de verdade. Achado o padrão certo já existente no próprio arquivo: na página de Detalhe do cliente, a mesma situação (categoria obrigatória sem nenhum documento enviado) já é chamada de 'Ausente' com destaque vermelho (status-badge danger) — só a visão global de Pendências de Documentos não seguia esse padrão. Trocado o selo cinza 'Não enviado' por vermelho 'Ausente', igual ao resto do sistema. Verificado: admin.html carrega sem erro de console."
+    },
+    {
+      pasta: "v133-2026-08-17",
+      data: "17/08/2026",
+      descricao: "Dois pedidos na aba Configurações: (1) 'Alertas de vencimento' era só uma seção (side-card) empilhada embaixo da grade de categorias, na mesma tela — virou sub-aba de verdade ('Categorias' / 'Alertas de vencimento'), mesmo padrão .status-chip-row/period-chip já usado em Clientes (switchConfigSubTab espelha switchClientesSubTab). Nenhum id de campo mudou (cat-filter-visivel, config-dias-antecedencia, btn-salvar-config etc.) — só a estrutura de wrapper ao redor, então toda a lógica de salvar/carregar categorias e alertas continua igual. (2) Os botões 'Novo cliente' e 'Upload de documento' no cabeçalho global não fazem sentido na tela de Configurações (não é uma tela sobre nenhum cliente específico) — a Lorena pediu pra tirar. O wrapper desses dois botões ganhou um id (admin-header-actions) e switchTab() esconde ele especificamente quando a aba ativa é 'configuracoes', mostra nas outras — mesmo padrão que já existia pra esconder o cabeçalho inteiro dentro do Detalhe do cliente, só que mirado nos botões em vez do cabeçalho todo (o título 'Configurações' continua aparecendo). Verificado com harness isolado (funções extraídas, sem precisar da massa de dados real): trocar de aba esconde/mostra os botões corretamente, trocar de sub-aba dentro de Configurações alterna os dois blocos e o estado 'active' dos chips corretamente. admin.html carrega sem erro de console."
     }
   ];
 

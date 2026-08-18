@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enviar Documento — Portal do Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=91">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main" style="max-width:760px;">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header">
+        <p class="eyebrow">Enviar Documento</p>
+        <h1 class="page-title">Enviar um documento</h1>
+        <p class="page-subtitle">Escolha a categoria e envie seus arquivos — a Trilhar recebe na hora.</p>
+      </div>
+
+      <div class="field">
+        <label>Categoria</label>
+        <div class="status-chip-row" id="categoria-chips"></div>
+      </div>
+
+      <div class="field">
+        <label>Arquivo(s)</label>
+        <div class="dropzone dropzone-inline" id="dropzone">
+          <input type="file" id="upload-file-input" multiple>
+          <div class="dropzone-icon" id="dropzone-icon"></div>
+          <div class="dropzone-text">
+            <p class="dropzone-title">Arraste arquivos aqui ou <span>clique para selecionar</span></p>
+            <p class="dropzone-hint">Cada arquivo é enviado como um documento separado</p>
+          </div>
+        </div>
+        <div id="upload-file-list" class="upload-file-list"></div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-enviar" style="width:100%;">Enviar</button>
+
+      <div class="page-header" style="margin-top:48px;">
+        <p class="section-label">Enviados por você</p>
+      </div>
+      <div class="boleto-list" id="recentes-list"></div>
+      <div id="recentes-empty" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=83"></script>
+<script src="js/auth-guard.js?v=80"></script>
+<script>
+  document.getElementById("dropzone-icon").innerHTML = ICONS.download;
+
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function formatBytes(bytes) {
+    if (!bytes) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  let CLIENTE = null;
+  let CATEGORIAS = [];
+  let categoriaSelecionada = null;
+  let selectedFiles = [];
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+    CLIENTE = cliente;
+
+    renderNav("enviar", cliente);
+
+    await carregarCategorias();
+
+    hideAuthOverlay();
+    carregarRecentes();
+    iniciarRealtimeCliente(cliente.id, [
+      { table: "categorias" },
+      { table: "documentos", filter: "cliente_id=eq." + cliente.id }
+    ], async () => { await carregarCategorias(); await carregarRecentes(); });
+  })();
+
+  async function carregarCategorias() {
+    const { data: categorias } = await sb.from("categorias")
+      .select("id, slug, nome, ordem, quem_pode_anexar, ativa, tipos_arquivo_aceitos, tamanho_maximo_mb")
+      .order("ordem", { ascending: true });
+    CATEGORIAS = (categorias || []).filter(categoriaVisivelParaCliente);
+    // Se a categoria escolhida foi desativada ou deixou de aceitar upload do
+    // cliente enquanto a tela estava aberta, limpa a seleção — a RLS já
+    // barraria o insert de qualquer forma, mas assim a UI nem deixa tentar
+    // enviar pra uma categoria que sumiu da lista.
+    if (categoriaSelecionada && !CATEGORIAS.some(c => c.id === categoriaSelecionada.id)) {
+      categoriaSelecionada = null;
+    }
+    renderCategoriaChips();
+  }
+
+  function renderCategoriaChips() {
+    const wrap = document.getElementById("categoria-chips");
+    const selecionadaId = categoriaSelecionada && categoriaSelecionada.id;
+    wrap.innerHTML = CATEGORIAS.map(c => `<button type="button" class="period-chip${c.id === selecionadaId ? " active" : ""}" data-cat="${c.id}">${escapeHtml(c.nome)}</button>`).join("");
+    wrap.querySelectorAll(".period-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        wrap.querySelectorAll(".period-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        categoriaSelecionada = CATEGORIAS.find(c => c.id === chip.dataset.cat);
+      });
+    });
+  }
+
+  function renderFileList() {
+    const wrap = document.getElementById("upload-file-list");
+    wrap.innerHTML = "";
+    selectedFiles.forEach((entry, idx) => {
+      const row = document.createElement("div");
+      row.className = "upload-file-item";
+      row.innerHTML = `
+        <div class="doc-icon">${ICONS.doc}</div>
+        <div class="upload-file-item-info"><p>${escapeHtml(entry.file.name)}</p><span>${escapeHtml(formatBytes(entry.file.size))} · ${escapeHtml(entry.status)}</span></div>
+        <button type="button" class="upload-file-remove" title="Remover">${ICONS.x}</button>
+      `;
+      row.querySelector(".upload-file-remove").addEventListener("click", () => {
+        selectedFiles.splice(idx, 1);
+        renderFileList();
+      });
+      wrap.appendChild(row);
+    });
+  }
+
+  function addFiles(fileList) {
+    Array.from(fileList).forEach(file => {
+      if (!selectedFiles.some(f => f.file.name === file.name && f.file.size === file.size)) {
+        selectedFiles.push({ file, status: "Aguardando" });
+      }
+    });
+    renderFileList();
+  }
+
+  const uploadFileInput = document.getElementById("upload-file-input");
+  const dropzone = document.getElementById("dropzone");
+  uploadFileInput.addEventListener("change", function () {
+    addFiles(this.files);
+    this.value = "";
+  });
+  ["dragenter", "dragover"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("drag-over"); });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("drag-over"); });
+  });
+  dropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+
+  document.getElementById("btn-enviar").addEventListener("click", async function () {
+    if (!categoriaSelecionada) { showToast("Escolha uma categoria primeiro."); return; }
+    if (selectedFiles.length === 0) { showToast("Selecione ao menos um arquivo."); return; }
+    for (const entry of selectedFiles) {
+      const erroArquivo = validarArquivoParaCategoria(entry.file, categoriaSelecionada);
+      if (erroArquivo) { showToast(entry.file.name + ": " + erroArquivo); return; }
+    }
+
+    const btn = this;
+    btn.disabled = true;
+    let enviados = 0;
+
+    for (const entry of selectedFiles) {
+      if (entry.status === "Concluído") { enviados++; continue; }
+      entry.status = "Enviando...";
+      renderFileList();
+      try {
+        // Upload pro Storage primeiro, documento no banco só depois — assim,
+        // se o Storage recusar o arquivo (por qualquer motivo), não sobra um
+        // documento "fantasma" sem arquivo nenhum anexado (bug real que
+        // aconteceu: nome de arquivo com acento fazia o Storage rejeitar
+        // com 400 DEPOIS que o documento já tinha sido criado no banco).
+        const docId = crypto.randomUUID();
+        const arquivoId = crypto.randomUUID();
+        const caminho = CLIENTE.id + "/" + docId + "/" + arquivoId + "-" + sanitizarNomeArquivo(entry.file.name);
+        const { error: upErr } = await sb.storage.from("documentos").upload(caminho, entry.file);
+        if (upErr) throw upErr;
+
+        const { data: docRow, error: docErr } = await sb.from("documentos")
+          .insert({ id: docId, cliente_id: CLIENTE.id, categoria_id: categoriaSelecionada.id, nome: entry.file.name })
+          .select()
+          .single();
+        if (docErr) throw docErr;
+
+        const tipoArquivo = (entry.file.name.split(".").pop() || "arquivo").toUpperCase();
+        const { error: arqErr } = await sb.from("documento_arquivos").insert({
+          id: arquivoId,
+          documento_id: docRow.id,
+          tipo_arquivo: tipoArquivo,
+          nome_original: entry.file.name,
+          storage_path: caminho,
+          tamanho_bytes: entry.file.size
+        });
+        if (arqErr) throw arqErr;
+
+        entry.status = "Concluído";
+        enviados++;
+      } catch (err) {
+        entry.status = "Erro";
+      }
+      renderFileList();
+    }
+
+    btn.disabled = false;
+    showToast(enviados + " de " + selectedFiles.length + " arquivo(s) enviado(s)");
+    if (enviados === selectedFiles.length) {
+      selectedFiles = [];
+      renderFileList();
+    }
+    carregarRecentes();
+  });
+
+  async function carregarRecentes() {
+    const { data } = await sb.from("documentos")
+      .select("id, nome, created_at, categorias(nome), documento_arquivos(id, tipo_arquivo, tamanho_bytes)")
+      .eq("cliente_id", CLIENTE.id)
+      .eq("origem", "cliente")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    const list = document.getElementById("recentes-list");
+    const empty = document.getElementById("recentes-empty");
+    const itens = data || [];
+
+    if (itens.length === 0) {
+      list.style.display = "none";
+      empty.style.display = "block";
+      empty.innerHTML = `<div class="empty-state">${ICONS.empty}<h3>Nenhum envio ainda</h3><p>Os documentos que você enviar aparecem aqui.</p></div>`;
+      return;
+    }
+
+    list.style.display = "block";
+    empty.style.display = "none";
+    list.innerHTML = "";
+    itens.forEach(d => {
+      const row = document.createElement("div");
+      row.className = "drive-row";
+      row.innerHTML = `
+        <div class="drive-row-icon">${ICONS.doc}</div>
+        <div class="drive-row-main">
+          <p class="drive-row-nome">${escapeHtml(d.nome)}</p>
+          <div class="drive-row-meta">
+            <span class="drive-row-cat">${escapeHtml(d.categorias ? d.categorias.nome : "")}</span>
+            <span class="drive-row-date">Enviado em ${new Date(d.created_at).toLocaleDateString("pt-BR")}</span>
+          </div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  }
+</script>
+</body>
+</html>

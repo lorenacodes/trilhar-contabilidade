@@ -723,6 +723,11 @@
       pasta: "v136-2026-08-17",
       data: "17/08/2026",
       descricao: "Pedido: colocar o símbolo da empresa (logo) como favicon — o ícone que aparece na aba do navegador, ao lado do título da página. Nenhuma das 12 páginas de primeiro nível tinha um <link rel=\"icon\"> definido, então o navegador mostrava o ícone genérico padrão dele. Adicionado <link rel=\"icon\" type=\"image/png\" href=\"img/logo-glyph.png\"> no <head> de todas — reaproveitando o mesmo arquivo já usado como 'brand-mark' (o 'T' estilizado) em toda a plataforma, sem subir nenhuma imagem nova. Verificado: requisição do arquivo retorna 200 OK, sem erro de console em nenhuma página testada."
+    },
+    {
+      pasta: "v137-2026-08-17",
+      data: "17/08/2026",
+      descricao: "A Lorena viu o favicon novo (v136) na aba do navegador e reportou dois problemas: 'esta muito pequeno' e o 'T' precisa ficar branco pra dar pra ver, porque o navy escuro do logo-glyph.png ficava praticamente invisivel contra a barra de abas escura do navegador dela. Investigacao de pixel (via Pillow): logo-glyph.png tem o 'T' em navy escuro (RGB ~30-60, quase preto) e some contra fundo escuro. Ja o arquivo logo-glyph-dark.png, usado ha tempos em boas-vindas.html pra gerar um PDF de boas-vindas, tinha o oposto: 'T' em branco puro (255,255,255) com detalhes em dourado, sobre fundo transparente -- ou seja, ja existia um logo pronto pra fundo escuro, so nao estava sendo usado como favicon. Troca simples: as 12 paginas de primeiro nivel passaram a apontar para img/logo-glyph-dark.png no lugar de logo-glyph.png -- nenhum arquivo de imagem novo, nenhuma edicao de pixel, so reaproveitar o que ja existia no repositorio. (O tamanho do icone na aba e controlado pelo proprio navegador, nao pelo site -- a sensacao de 'sumico' era mesmo a cor, nao o tamanho.) Verificado: composicao do PNG sobre fundo escuro confirma o 'T' branco e a seta dourada nitidamente visiveis, ao contrario do navy anterior."
     }
   ];
 

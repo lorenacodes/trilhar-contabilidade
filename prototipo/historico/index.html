@@ -783,6 +783,11 @@
       pasta: "v148-2026-08-21",
       data: "21/08/2026",
       descricao: "Pedido: aumentar a logo no cabecalho da barra lateral do admin (o 'T' ao lado de 'Trilhar Contabilidade / PAINEL ADMINISTRATIVO'). Estava no tamanho padrao de .brand-mark (34px), usado em varios lugares da plataforma -- adicionado um tamanho maior (44px) especifico pra .admin-sidebar-header .brand-mark, sem mexer no tamanho padrao usado em outros contextos (tela de login, cabecalho mobile, etc.). 44px cabe exatamente no espaco disponivel mesmo com a barra lateral recolhida (76px de largura, menos padding de cada lado). Verificado: regra CSS confirmada via getComputedStyle (44x44px, contra 34x34px antes). styles.css subiu pra v101."
+    },
+    {
+      pasta: "v149-2026-08-21",
+      data: "21/08/2026",
+      descricao: "Pedido: dar ao cliente a mesma opcao de trocar a propria senha que o admin ganhou (v138/v139), com o mesmo fluxo -- exigir a senha atual antes de liberar. Ate agora perfil.html so tinha um campo 'Senha' decorativo e desabilitado, com um botao generico 'Solicitar alteracao de dados' que so manda um toast (nao faz nada de verdade). Adicionado um botao 'Trocar senha' logo acima desse, abrindo um modal identico ao do admin: senha atual (obrigatoria) + nova senha com medidor de forca + confirmacao. Reautentica via sb.auth.signInWithPassword() usando cliente.email (retornado por guardCliente(), guardado em CLIENTE_ATUAL no carregamento da pagina) antes de chamar updateUser() -- exatamente a mesma logica de seguranca do admin, sem duplicar regras novas, só reaproveitando os mesmos componentes globais (senha-forca-bar, senha-criterios, modal-xl) que ja existiam em styles.css. Nenhum arquivo compartilhado (styles.css, app.js) precisou mudar -- só perfil.html. Verificado com harness isolado (extraido direto do perfil.html real, servido via HTTP): botao abre o modal, fica desabilitado sem senha atual, libera com senha atual + nova senha forte + confirmacao iguais, senha atual errada mostra erro e nao chama updateUser, senha atual certa chama signInWithPassword com o e-mail certo do cliente e so entao troca a senha, reabrir reseta os campos."
     }
   ];
 

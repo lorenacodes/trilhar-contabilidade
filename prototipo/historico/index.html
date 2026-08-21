@@ -768,6 +768,11 @@
       pasta: "v145-2026-08-21",
       data: "21/08/2026",
       descricao: "Ajuste rapido no cartao de vidro novo (v144): a Lorena pediu pra deixar o simbolo do logo maior dentro do cartao. .auth-glass-logo .brand-mark foi de 44px para 68px. Verificado com servidor local: logo visivelmente maior e proporcional ao resto do cartao, sem quebrar layout, sem erro de console. styles.css subiu pra v98."
+    },
+    {
+      pasta: "v146-2026-08-21",
+      data: "21/08/2026",
+      descricao: "A Lorena pediu pra centralizar o botao 'Entrar' -- achado o motivo real: quando o cartao de vidro (v144) trocou a classe do container de .login-card pra .auth-glass-card, a regra '.login-card .btn-primary { width: 100% }' parou de valer (ela dependia especificamente da classe antiga), entao o botao voltou ao tamanho natural do texto, alinhado a esquerda, em vez de ocupar a largura toda como os campos acima dele. Corrigido estendendo essa mesma regra pra tambem valer com .auth-glass-card. Verificado com servidor local: botao 'Entrar' ocupa 100% da largura do cartao e fica visualmente centralizado, igual aos campos de e-mail/senha, sem erro de console. styles.css subiu pra v99."
     }
   ];
 

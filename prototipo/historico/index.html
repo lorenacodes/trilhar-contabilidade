@@ -773,6 +773,11 @@
       pasta: "v146-2026-08-21",
       data: "21/08/2026",
       descricao: "A Lorena pediu pra centralizar o botao 'Entrar' -- achado o motivo real: quando o cartao de vidro (v144) trocou a classe do container de .login-card pra .auth-glass-card, a regra '.login-card .btn-primary { width: 100% }' parou de valer (ela dependia especificamente da classe antiga), entao o botao voltou ao tamanho natural do texto, alinhado a esquerda, em vez de ocupar a largura toda como os campos acima dele. Corrigido estendendo essa mesma regra pra tambem valer com .auth-glass-card. Verificado com servidor local: botao 'Entrar' ocupa 100% da largura do cartao e fica visualmente centralizado, igual aos campos de e-mail/senha, sem erro de console. styles.css subiu pra v99."
+    },
+    {
+      pasta: "v147-2026-08-21",
+      data: "21/08/2026",
+      descricao: "A Lorena reportou (com print de login preenchido por autofill do navegador) que o botao de mostrar/ocultar senha ficava invisivel. Causa: o autofill do Chrome ignora o CSS normal de background/color do campo e forca um fundo branco solido com texto preto por conta propria (comportamento do navegador, nao do site) -- nesse cartao de vidro escuro, isso deixava o campo branco enquanto o icone do olho continuava estilizado pra fundo escuro (cor clara), sumindo por falta de contraste. Corrigido com o truque padrao pra esse problema: :-webkit-autofill com um box-shadow inset gigante (simula um novo 'background' porque o autofill nao deixa sobrescrever background-color diretamente) na mesma cor do campo normal, mais -webkit-text-fill-color branco pro texto continuar legivel. Agora o campo autofillado mantem a mesma aparencia de vidro escuro, entao o icone do olho (e o resto) continua visivel. Verificado com servidor local: estado normal (sem autofill) segue identico, sem erro de console; o comportamento de autofill em si so pode ser reproduzido com credenciais salvas de verdade no navegador da Lorena -- pedido que ela confira apos o deploy. styles.css subiu pra v100."
     }
   ];
 

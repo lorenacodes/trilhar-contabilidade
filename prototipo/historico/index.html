@@ -758,6 +758,11 @@
       pasta: "v143-2026-08-21",
       data: "21/08/2026",
       descricao: "A Lorena reportou que a v142 ficou 'extremamente antiprofissional'. Perguntado o que especificamente incomodava, ela apontou a marca d'agua do logo gigante (o 'T' apagado em 10% de opacidade no canto do painel) -- removida por completo, junto com a regra CSS .auth-brand-watermark (desktop e mobile). Mantido o resto do que ja tinha sido validado antes dela ver essa versao: gradiente radial sutil no fundo, o traco dourado como assinatura, e a segunda linha da frase ('no caminho certo.') em dourado. Verificado com servidor local: as duas telas renderizam limpas em desktop, sem a marca d'agua, sem erro de console. styles.css subiu pra v96."
+    },
+    {
+      pasta: "v144-2026-08-21",
+      data: "21/08/2026",
+      descricao: "A Lorena mandou uma referencia visual (print de outro produto) mostrando um login com foto de fundo em tela cheia e um cartao de vidro (glassmorphism) flutuando com o formulario, e pediu algo parecido mas mais minimalista. Como nao ha banco de fotos licenciado da Trilhar Contabilidade pra usar como fundo, o padrao foi adaptado sem foto: o layout de duas colunas (painel de marca + painel de formulario lado a lado, das versoes v140-v143) foi substituido por um layout unico e centralizado -- fundo atmosferico em tela cheia (navy escuro com dois brilhos difusos e desfocados, um azulado e um dourado, simulando luz ambiente sem precisar de imagem nenhuma) com um cartao de vidro fosco (fundo translucido + blur/backdrop-filter, borda clara sutil, sombra) flutuando centralizado por cima, contendo logo + nome + rotulo de contexto + os campos de sempre. Compacto de proposito (sem o texto de marca ao lado, sem headline) pra ficar 'mais minimalista' como ela pediu. O botao de tema claro/escuro foi removido dessas duas telas porque o fundo agora e sempre escuro, invariavel de tema (era so identidade de marca) -- nas outras telas auxiliares (esqueci-senha etc.) o botao continua normal. Verificado com servidor local: DOM ocupa 100% da viewport (conferido via getBoundingClientRect em desktop 1280x800 e mobile 375x812 -- um bug visual da ferramenta de screenshot mostrou só um recorte parcial, mas o layout real está correto), sem erro de console. styles.css subiu pra v97."
     }
   ];
 

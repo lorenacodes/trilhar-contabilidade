@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boletos — Portal do Cliente</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=103">
+</head>
+<body>
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header">
+        <h1 class="page-title">Seus boletos</h1>
+        <p class="page-subtitle">Honorários e impostos — acompanhe, visualize e baixe.</p>
+      </div>
+
+      <div class="docs-toolbar">
+        <div class="docs-search">
+          <span id="busca-icon"></span>
+          <input type="text" id="busca-input" placeholder="Buscar por competência ou tipo">
+        </div>
+        <div class="dropdown-wrap">
+          <button class="btn btn-secondary" id="btn-mais-filtros">Mais filtros</button>
+          <div class="dropdown-panel filtros-dropdown" id="panel-filtros">
+            <div class="field">
+              <label>Tipo</label>
+              <div class="status-chip-row" id="tipo-chips">
+                <button type="button" class="period-chip active" data-tipo="">Todos</button>
+                <button type="button" class="period-chip" data-tipo="boleto-honorarios">Honorários</button>
+                <button type="button" class="period-chip" data-tipo="boleto-imposto">Imposto</button>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label>Período de vencimento</label>
+              <div class="filter-date-range">
+                <input type="date" id="filtro-data-de">
+                <span>até</span>
+                <input type="date" id="filtro-data-ate">
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary" id="btn-limpar-filtros" style="flex:1;">Limpar</button>
+              <button class="btn btn-primary" id="btn-aplicar-filtros" style="flex:1;">Aplicar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-chip-row" id="status-chips">
+        <button type="button" class="period-chip active" data-status="">Todos</button>
+        <button type="button" class="period-chip" data-status="nao_pago">Não pago</button>
+        <button type="button" class="period-chip" data-status="vencido">Vencido</button>
+        <button type="button" class="period-chip" data-status="vencendo">Vencendo</button>
+        <button type="button" class="period-chip" data-status="pago">Pago</button>
+      </div>
+
+      <div class="filter-bar-summary" id="filtro-resumo"></div>
+
+      <div class="boleto-list" id="boleto-list"></div>
+      <div id="empty-state" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pré-visualização — mostra o arquivo de verdade (PDF/imagem),
+     mesmo componente e lógica do painel do admin (.doc-viewer-panel,
+     renderizarArquivoNoPalco em app.js). -->
+<div class="modal-overlay" id="modal-preview">
+  <div class="config-panel doc-viewer-panel">
+    <div class="config-panel-header">
+      <div style="min-width:0;">
+        <h3 class="panel-title" id="preview-nome" style="margin:0;">Boleto</h3>
+        <p class="hint" id="preview-meta" style="margin:4px 0 0;">—</p>
+      </div>
+      <button class="panel-close" id="preview-close-btn"></button>
+    </div>
+    <div id="preview-filetabs" class="doc-viewer-filetabs" style="display:none;"></div>
+    <div id="preview-viewer" class="doc-viewer-stage"></div>
+    <div class="config-panel-footer">
+      <button class="btn btn-secondary" id="preview-download-btn">Baixar</button>
+      <button class="btn btn-primary" onclick="document.getElementById('modal-preview').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: avisar pagamento de um boleto — o cliente anexa o comprovante e a
+     Trilhar confirma manualmente (o status só muda de verdade quando o admin
+     confirma; isso aqui é só um aviso com prova anexada). -->
+<div class="modal-overlay" id="modal-avisar-pagamento">
+  <div class="modal modal-xl">
+    <h3 style="margin:0 0 4px;">Avisar pagamento</h3>
+    <p class="hint" id="avisar-pagamento-contexto" style="margin:0 0 18px;">—</p>
+
+    <div class="field">
+      <label>Comprovante de pagamento</label>
+      <div class="dropzone dropzone-inline" id="avisar-dropzone">
+        <input type="file" id="avisar-comprovante-input" accept=".pdf,.jpg,.jpeg,.png">
+        <div class="dropzone-icon" id="avisar-dropzone-icon"></div>
+        <div class="dropzone-text">
+          <p class="dropzone-title">Arraste o comprovante aqui ou <span>clique para selecionar</span></p>
+          <p class="dropzone-hint">PDF, JPG ou PNG</p>
+        </div>
+      </div>
+      <div id="avisar-arquivo-selecionado" class="hint" style="margin-top:8px; display:none;"></div>
+    </div>
+    <p class="field-error" id="avisar-pagamento-erro"></p>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancelar-avisar-pagamento">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-avisar-pagamento" disabled>Avisar pagamento</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=83"></script>
+<script src="js/auth-guard.js?v=80"></script>
+<script>
+  document.getElementById("busca-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  document.getElementById("preview-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  document.getElementById("preview-close-btn").addEventListener("click", () => document.getElementById("modal-preview").classList.remove("open"));
+
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function tipoBoleto(nomeCategoria) {
+    return (nomeCategoria || "").replace(/^Boleto\s*-\s*/i, "");
+  }
+  function competencia(iso) {
+    const label = new Date(iso).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  function formatMoeda(valor) {
+    return (valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  let TODOS_BOLETOS = [];
+  let filtroStatus = "";
+  let filtroTipo = "";
+  let filtroBusca = "";
+  // Mesmo prazo configurado pelo admin em Configurações (dias_antecedencia_alerta)
+  // — sem isso, "vencendo" aqui ficava sempre nos 7 dias padrão de statusBoleto(),
+  // divergindo do que o admin configurou (documentos.html já buscava isso certo).
+  let DIAS_ANTECEDENCIA_ALERTA = 7;
+  let CLIENTE_ATUAL = null;
+  let recarregarBoletos = async () => {};
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+    CLIENTE_ATUAL = cliente;
+
+    renderNav("boletos", cliente);
+
+    const { data: config } = await sb.from("configuracoes_empresa").select("dias_antecedencia_alerta").limit(1).maybeSingle();
+    if (config && config.dias_antecedencia_alerta) DIAS_ANTECEDENCIA_ALERTA = config.dias_antecedencia_alerta;
+
+    async function carregarBoletos() {
+      const { data } = await sb.from("documentos")
+        .select("id, nome, valor, data_vencimento, status, pago_em, created_at, pagamento_informado_em, comprovante_nome_original, categorias(slug, nome), documento_arquivos(id, tipo_arquivo, nome_original, storage_path, tamanho_bytes)")
+        .eq("cliente_id", cliente.id)
+        .not("data_vencimento", "is", null)
+        .order("data_vencimento", { ascending: true });
+      TODOS_BOLETOS = data || [];
+      renderLista();
+    }
+    recarregarBoletos = carregarBoletos;
+
+    await carregarBoletos();
+    hideAuthOverlay();
+    iniciarRealtimeCliente(cliente.id, [{ table: "documentos", filter: "cliente_id=eq." + cliente.id }], carregarBoletos);
+  })();
+
+  function passaFiltro(b) {
+    if (filtroStatus) {
+      const st = statusBoleto(b, DIAS_ANTECEDENCIA_ALERTA);
+      if (filtroStatus === "pago" && b.status !== "pago") return false;
+      if (filtroStatus === "nao_pago" && b.status !== "nao_pago") return false;
+      if (filtroStatus === "vencido" && !(st && st.cls === "danger")) return false;
+      if (filtroStatus === "vencendo" && !(st && st.cls === "warning")) return false;
+    }
+    // b.categorias pode vir null se a categoria foi desativada depois do
+    // envio (RLS agora só libera categoria ativa pro cliente) — o boleto em
+    // si continua sendo do cliente, só a categoria não é mais "visível"; sem
+    // essa checagem o .slug/.nome quebrava a lista inteira, não só essa linha.
+    if (filtroTipo && (!b.categorias || b.categorias.slug !== filtroTipo)) return false;
+    const de = document.getElementById("filtro-data-de").value;
+    const ate = document.getElementById("filtro-data-ate").value;
+    if (de && b.data_vencimento < de) return false;
+    if (ate && b.data_vencimento > ate) return false;
+    if (filtroBusca && !(competencia(b.data_vencimento).toLowerCase().includes(filtroBusca) || tipoBoleto(b.categorias && b.categorias.nome).toLowerCase().includes(filtroBusca))) return false;
+    return true;
+  }
+
+  function criarLinhaBoleto(b) {
+    const st = statusBoleto(b, DIAS_ANTECEDENCIA_ALERTA);
+    const row = document.createElement("div");
+    row.className = "boleto-row";
+    // Avisar pagamento só faz sentido pra boleto ainda não pago; se o cliente
+    // já avisou (pagamento_informado_em) e o admin ainda não confirmou, mostra
+    // um selo em vez do botão, pra não parecer que nada aconteceu ao clicar.
+    const podeAvisar = b.status === "nao_pago";
+    const jaAvisou = !!b.pagamento_informado_em;
+    row.innerHTML = `
+      <div class="boleto-row-icon">${ICONS.card}</div>
+      <div class="boleto-row-main">
+        <p class="boleto-row-competencia">${escapeHtml(competencia(b.data_vencimento))}</p>
+        <p class="boleto-row-tipo">${escapeHtml(tipoBoleto(b.categorias && b.categorias.nome))}</p>
+      </div>
+      <div class="boleto-row-valor"><span class="moeda">R$</span>${formatMoeda(b.valor)}</div>
+      <div class="boleto-row-vencimento">${new Date(b.data_vencimento).toLocaleDateString("pt-BR")}</div>
+      <div class="boleto-row-status">
+        ${st ? `<span class="badge ${st.cls}">${st.label}</span>` : ""}
+        ${podeAvisar && jaAvisou ? `<span class="badge neutral" style="margin-top:4px;" title="Aguardando a Trilhar confirmar o pagamento">Pagamento avisado</span>` : ""}
+      </div>
+      <div class="boleto-row-actions">
+        ${podeAvisar ? `<button class="icon-btn boleto-avisar-btn" title="${jaAvisou ? "Avisar pagamento novamente" : "Avisar que paguei"}">${ICONS.upload}</button>` : ""}
+        <button class="icon-btn boleto-ver-btn" title="Visualizar">${ICONS.eye}</button>
+        <button class="icon-btn boleto-baixar-btn" title="Baixar">${ICONS.download}</button>
+      </div>
+    `;
+    row.querySelector(".boleto-ver-btn").addEventListener("click", () => abrirPreview(b));
+    row.querySelector(".boleto-baixar-btn").addEventListener("click", (e) => {
+      const arquivo = b.documento_arquivos && b.documento_arquivos[0];
+      if (arquivo) downloadFile(e.currentTarget, arquivo.storage_path, arquivo.nome_original);
+      else showToast("Nenhum arquivo anexado a este boleto.");
+    });
+    const avisarBtn = row.querySelector(".boleto-avisar-btn");
+    if (avisarBtn) avisarBtn.addEventListener("click", () => abrirModalAvisarPagamento(b));
+    return row;
+  }
+
+  // Mesmo padrão de colapso do documentos.html — grupos que a pessoa já
+  // abriu/fechou nesta sessão continuam preservados entre re-renders.
+  let GRUPOS_COLAPSADOS_BOLETO = null;
+  function inicializarColapsoPadraoBoleto(grupos) {
+    GRUPOS_COLAPSADOS_BOLETO = new Set();
+    grupos.forEach((grupoAno, iAno) => {
+      if (iAno > 0) GRUPOS_COLAPSADOS_BOLETO.add("ano:" + grupoAno.ano);
+      grupoAno.meses.forEach((grupoMes, iMes) => {
+        if (iAno > 0 || iMes > 0) GRUPOS_COLAPSADOS_BOLETO.add("mes:" + grupoMes.chave);
+      });
+    });
+  }
+
+  const NIVEL_PARA_CLASSE_CSS = { ano: "year", mes: "month", dia: "day" };
+  function criarCabecalhoGrupoBoleto(nivel, chave, titulo, total, corpoEl) {
+    const collapsedInicial = GRUPOS_COLAPSADOS_BOLETO.has(nivel + ":" + chave);
+    const header = document.createElement("div");
+    header.className = "date-group-header " + NIVEL_PARA_CLASSE_CSS[nivel] + (collapsedInicial ? " collapsed" : "");
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
+    header.setAttribute("aria-expanded", String(!collapsedInicial));
+    header.innerHTML = `<span class="date-group-chevron">${ICONS.chevron}</span><span>${escapeHtml(titulo)}</span><span class="date-group-count">${total} ${total === 1 ? "boleto" : "boletos"}</span>`;
+    corpoEl.classList.toggle("collapsed", collapsedInicial);
+
+    function alternar() {
+      const key = nivel + ":" + chave;
+      const agoraColapsado = !header.classList.contains("collapsed");
+      header.classList.toggle("collapsed", agoraColapsado);
+      corpoEl.classList.toggle("collapsed", agoraColapsado);
+      header.setAttribute("aria-expanded", String(!agoraColapsado));
+      if (agoraColapsado) GRUPOS_COLAPSADOS_BOLETO.add(key); else GRUPOS_COLAPSADOS_BOLETO.delete(key);
+    }
+    header.addEventListener("click", alternar);
+    header.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(); } });
+    return header;
+  }
+
+  function renderListaAgrupada(visiveis) {
+    const list = document.getElementById("boleto-list");
+    list.innerHTML = "";
+
+    // Agrupa por data de VENCIMENTO (não upload) — é a data que importa pra
+    // um boleto: "qual boleto é de julho" se refere a quando ele vence, não
+    // a quando foi cadastrado no sistema. chaveDataPura (não chaveDataLocal)
+    // porque data_vencimento é DATE pura, sem fuso horário embutido.
+    const grupos = agruparPorData(visiveis, b => b.data_vencimento, chaveDataPura);
+    if (!GRUPOS_COLAPSADOS_BOLETO) inicializarColapsoPadraoBoleto(grupos);
+
+    grupos.forEach(grupoAno => {
+      const anoWrap = document.createElement("div");
+      anoWrap.className = "date-year-group";
+      const anoBody = document.createElement("div");
+      anoBody.className = "date-group-body";
+      anoWrap.appendChild(criarCabecalhoGrupoBoleto("ano", grupoAno.ano, grupoAno.ano, grupoAno.total, anoBody));
+      anoWrap.appendChild(anoBody);
+
+      grupoAno.meses.forEach(grupoMes => {
+        const mesBody = document.createElement("div");
+        mesBody.className = "date-group-body month-body";
+        anoBody.appendChild(criarCabecalhoGrupoBoleto("mes", grupoMes.chave, grupoMes.nomeMes + " de " + grupoAno.ano, grupoMes.total, mesBody));
+
+        grupoMes.dias.forEach(grupoDia => {
+          const diaBody = document.createElement("div");
+          diaBody.className = "date-group-body day-body";
+          const [, mesStr, diaStr] = grupoDia.chave.split("-");
+          const tituloDia = diaStr + " de " + NOMES_MESES_PT[parseInt(mesStr, 10) - 1].toLowerCase();
+          const headerDia = document.createElement("div");
+          headerDia.className = "date-group-header day";
+          headerDia.innerHTML = `<span>${escapeHtml(tituloDia)}</span><span class="date-group-count">${grupoDia.itens.length} ${grupoDia.itens.length === 1 ? "boleto" : "boletos"}</span>`;
+          mesBody.appendChild(headerDia);
+          mesBody.appendChild(diaBody);
+          grupoDia.itens.forEach(b => diaBody.appendChild(criarLinhaBoleto(b)));
+        });
+
+        anoBody.appendChild(mesBody);
+      });
+
+      list.appendChild(anoWrap);
+    });
+  }
+
+  function renderListaFlat(visiveis) {
+    const list = document.getElementById("boleto-list");
+    list.innerHTML = "";
+    visiveis.forEach(b => list.appendChild(criarLinhaBoleto(b)));
+  }
+
+  function renderLista() {
+    const visiveis = TODOS_BOLETOS.filter(passaFiltro);
+    const list = document.getElementById("boleto-list");
+    const empty = document.getElementById("empty-state");
+
+    if (visiveis.length === 0) {
+      list.style.display = "none";
+      empty.style.display = "block";
+      empty.innerHTML = `
+        <div class="empty-state">
+          ${ICONS.empty}
+          <h3>${TODOS_BOLETOS.length === 0 ? "Nenhum boleto por aqui ainda" : "Nenhum boleto encontrado"}</h3>
+          <p>${TODOS_BOLETOS.length === 0 ? "Quando a Trilhar emitir um boleto pra você, ele aparece aqui automaticamente." : "Tente ajustar a busca ou os filtros."}</p>
+        </div>`;
+      return;
+    }
+
+    list.style.display = "block";
+    empty.style.display = "none";
+
+    // Igual documentos.html: com qualquer filtro/busca ativo, o que a pessoa
+    // quer é achar um boleto específico — lista simples, ordenada por
+    // vencimento. Sem filtro nenhum, a organização por Ano > Mês > Dia manda.
+    const semFiltroAtivo = !filtroStatus && !filtroTipo && !filtroBusca
+      && !document.getElementById("filtro-data-de").value && !document.getElementById("filtro-data-ate").value;
+
+    if (semFiltroAtivo) {
+      renderListaAgrupada(visiveis);
+    } else {
+      renderListaFlat(visiveis);
+    }
+  }
+
+  function abrirPreview(b) {
+    const st = statusBoleto(b, DIAS_ANTECEDENCIA_ALERTA);
+    document.getElementById("preview-nome").textContent = competencia(b.data_vencimento) + " · " + tipoBoleto(b.categorias && b.categorias.nome);
+    document.getElementById("preview-meta").textContent = "R$ " + formatMoeda(b.valor) + " · Vencimento em " + new Date(b.data_vencimento).toLocaleDateString("pt-BR") + (st ? " · " + st.label : "");
+
+    const arquivos = b.documento_arquivos || [];
+    const tabsWrap = document.getElementById("preview-filetabs");
+    tabsWrap.innerHTML = "";
+    tabsWrap.style.display = arquivos.length > 1 ? "flex" : "none";
+    arquivos.forEach((arq, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "period-chip" + (i === 0 ? " active" : "");
+      btn.textContent = arq.nome_original;
+      btn.addEventListener("click", () => {
+        tabsWrap.querySelectorAll(".period-chip").forEach(bt => bt.classList.remove("active"));
+        btn.classList.add("active");
+        renderizarArquivoNoPalco(document.getElementById("preview-viewer"), arq, document.getElementById("preview-download-btn"));
+      });
+      tabsWrap.appendChild(btn);
+    });
+
+    if (arquivos.length) {
+      renderizarArquivoNoPalco(document.getElementById("preview-viewer"), arquivos[0], document.getElementById("preview-download-btn"));
+    } else {
+      document.getElementById("preview-viewer").innerHTML = `<div class="doc-viewer-empty">${ICONS.empty}<p>Nenhum arquivo anexado a este boleto.</p></div>`;
+      document.getElementById("preview-download-btn").style.display = "none";
+    }
+    document.getElementById("modal-preview").classList.add("open");
+  }
+
+  document.querySelectorAll("#status-chips .period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#status-chips .period-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      filtroStatus = chip.dataset.status;
+      renderLista();
+    });
+  });
+
+  document.querySelectorAll("#tipo-chips .period-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#tipo-chips .period-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      filtroTipo = chip.dataset.tipo;
+      renderLista();
+    });
+  });
+
+  document.getElementById("busca-input").addEventListener("input", (e) => {
+    filtroBusca = e.target.value.trim().toLowerCase();
+    renderLista();
+  });
+
+  document.getElementById("filtro-data-de").addEventListener("change", renderLista);
+  document.getElementById("filtro-data-ate").addEventListener("change", renderLista);
+
+  document.getElementById("btn-mais-filtros").addEventListener("click", () => {
+    toggleDropdown("panel-filtros");
+  });
+  document.getElementById("btn-aplicar-filtros").addEventListener("click", () => {
+    document.getElementById("panel-filtros").classList.remove("open");
+  });
+
+  document.getElementById("btn-limpar-filtros").addEventListener("click", () => {
+    filtroTipo = "";
+    document.getElementById("filtro-data-de").value = "";
+    document.getElementById("filtro-data-ate").value = "";
+    document.querySelectorAll("#tipo-chips .period-chip").forEach(c => c.classList.remove("active"));
+    document.querySelector('#tipo-chips .period-chip[data-tipo=""]').classList.add("active");
+    renderLista();
+  });
+
+  // ---------- Avisar pagamento (com comprovante) ----------
+  document.getElementById("avisar-dropzone-icon").innerHTML = ICONS.upload;
+
+  let boletoParaAvisar = null;
+  let comprovanteSelecionado = null;
+  const avisarInput = document.getElementById("avisar-comprovante-input");
+  const avisarDropzone = document.getElementById("avisar-dropzone");
+  const avisarBtnConfirmar = document.getElementById("btn-confirmar-avisar-pagamento");
+  const avisarErro = document.getElementById("avisar-pagamento-erro");
+  const avisarArquivoSelecionado = document.getElementById("avisar-arquivo-selecionado");
+
+  function selecionarComprovante(file) {
+    comprovanteSelecionado = file || null;
+    if (comprovanteSelecionado) {
+      avisarArquivoSelecionado.textContent = comprovanteSelecionado.name;
+      avisarArquivoSelecionado.style.display = "block";
+    } else {
+      avisarArquivoSelecionado.style.display = "none";
+    }
+    avisarBtnConfirmar.disabled = !comprovanteSelecionado;
+  }
+
+  avisarInput.addEventListener("change", function () {
+    selecionarComprovante(this.files[0]);
+  });
+  ["dragenter", "dragover"].forEach(evt => {
+    avisarDropzone.addEventListener(evt, (e) => { e.preventDefault(); avisarDropzone.classList.add("drag-over"); });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    avisarDropzone.addEventListener(evt, (e) => { e.preventDefault(); avisarDropzone.classList.remove("drag-over"); });
+  });
+  avisarDropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files.length) selecionarComprovante(e.dataTransfer.files[0]);
+  });
+
+  function abrirModalAvisarPagamento(b) {
+    boletoParaAvisar = b;
+    avisarInput.value = "";
+    selecionarComprovante(null);
+    avisarErro.classList.remove("show");
+    document.getElementById("avisar-pagamento-contexto").textContent =
+      tipoBoleto(b.categorias && b.categorias.nome) + " — " + competencia(b.data_vencimento) + " — R$ " + formatMoeda(b.valor);
+    document.getElementById("modal-avisar-pagamento").classList.add("open");
+  }
+
+  document.getElementById("btn-cancelar-avisar-pagamento").addEventListener("click", () => {
+    document.getElementById("modal-avisar-pagamento").classList.remove("open");
+  });
+
+  avisarBtnConfirmar.addEventListener("click", async () => {
+    if (!comprovanteSelecionado || !boletoParaAvisar || !CLIENTE_ATUAL) return;
+    avisarBtnConfirmar.disabled = true;
+    const original = avisarBtnConfirmar.textContent;
+    avisarBtnConfirmar.innerHTML = ICONS.spinner + " Enviando...";
+    avisarBtnConfirmar.classList.add("btn-loading");
+    avisarErro.classList.remove("show");
+
+    const nomeSanitizado = sanitizarNomeArquivo(comprovanteSelecionado.name);
+    const caminho = CLIENTE_ATUAL.id + "/comprovantes/" + boletoParaAvisar.id + "-" + Date.now() + "-" + nomeSanitizado;
+
+    const { error: erroUpload } = await sb.storage.from("documentos").upload(caminho, comprovanteSelecionado);
+    if (erroUpload) {
+      avisarErro.textContent = "Não foi possível enviar o comprovante. Tente novamente.";
+      avisarErro.classList.add("show");
+      avisarBtnConfirmar.classList.remove("btn-loading");
+      avisarBtnConfirmar.textContent = original;
+      avisarBtnConfirmar.disabled = false;
+      return;
+    }
+
+    const { error: erroRpc } = await sb.rpc("cliente_informar_pagamento", {
+      p_documento_id: boletoParaAvisar.id,
+      p_comprovante_storage_path: caminho,
+      p_comprovante_nome_original: comprovanteSelecionado.name,
+    });
+
+    avisarBtnConfirmar.classList.remove("btn-loading");
+    if (erroRpc) {
+      avisarErro.textContent = "Não foi possível registrar o aviso. Tente novamente.";
+      avisarErro.classList.add("show");
+      avisarBtnConfirmar.textContent = original;
+      avisarBtnConfirmar.disabled = false;
+      return;
+    }
+
+    document.getElementById("modal-avisar-pagamento").classList.remove("open");
+    showToast("Pagamento avisado. A Trilhar vai confirmar em breve.");
+    await recarregarBoletos();
+  });
+</script>
+</body>
+</html>

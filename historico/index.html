@@ -19,7 +19,7 @@
       </div>
     </div>
     <div class="topbar-actions">
-      <a href="../index.html" class="btn btn-secondary">Voltar ao protótipo atual</a>
+      <a href="../" class="btn btn-secondary">Voltar ao protótipo atual</a>
     </div>
   </div>
 
@@ -818,6 +818,11 @@
       pasta: "v155-2026-08-23",
       data: "23/08/2026",
       descricao: "Pedido: nao deixar o cliente anexar um boleto do zero pelo portal -- boleto so pode existir se o admin lancar. Motivo real do pedido: uma categoria de teste no banco (Categoria de Teste) estava marcada como eh_boleto=true E quem_pode_anexar=ambos, o que na pratica deixava o cliente criar um documento com valor/vencimento proprio pela tela de Enviar Documento, quase um boleto fantasma sem o escritorio ter lancado nada. Corrigido em duas camadas (nao so a tela, o banco tambem): (1) RLS -- a politica documentos_cliente_insere_permitido, que ja limitava insercao do cliente a categorias ativas com quem_pode_anexar cliente/ambos, ganhou mais uma condicao: eh_boleto = false. Mesmo que uma categoria futura seja configurada errado (boleto + aberta pro cliente), o banco recusa o insert de qualquer forma -- essa e a garantia de verdade, nao so a tela. (2) UI -- categoriaVisivelParaCliente() (app.js, compartilhada por documentos.html e enviar-documento.html) agora tambem exclui categorias eh_boleto, entao a opcao nem aparece pro cliente escolher; os dois arquivos passaram a buscar eh_boleto na consulta de categorias (faltava antes). O cliente continua podendo responder a um boleto que ja existe avisando o pagamento com comprovante (v154) -- so nao pode mais criar um boleto novo do nada. Verificado: teste unitario da funcao categoriaVisivelParaCliente cobrindo os 4 casos (categoria de boleto aberta ao cliente, documento comum, boleto so-admin, categoria inativa) passou nos 4; a policy de RLS foi conferida direto no banco (with_check contem eh_boleto = false); nenhum novo aviso de seguranca no advisor do Supabase; enviar-documento.html carrega sem erro de console."
+    },
+    {
+      pasta: "v156-2026-08-24",
+      data: "24/08/2026",
+      descricao: "Depois de mover o site pra raiz do repositorio (pra tirar o /prototipo/ da URL do dominio proprio), a Lorena notou que os links entre paginas ainda mostravam a extensao .html na barra de enderecos (ex.: trilharcontabilidadese.com.br/admin.html), o que ela achou pouco profissional. O GitHub Pages ja serve o mesmo arquivo tanto em /pagina quanto em /pagina.html por padrao -- nao precisa renomear nada, nenhum arquivo .html foi apagado ou renomeado. Só os links internos foram trocados pra apontar pro endereco sem extensao: hrefs estaticos (menu lateral, 'Esqueci minha senha', 'Voltar', etc.), os window.location.href/replace de navegacao e redirecionamento (login, logout, primeiro acesso, convite de administrador) e o link de recuperacao de senha que o Supabase manda por e-mail. Os guards de autenticacao (auth-guard.js) que comparavam location.pathname.endsWith('primeiro-acesso.html') foram ajustados pra uma funcao paginaAtual() que ignora a extensao, pra continuar funcionando tanto se alguem entrar pelo link antigo com .html quanto pelo novo sem. Nada de logica de negocio mudou, so os caminhos usados pra navegar de uma pagina pra outra."
     }
   ];
 

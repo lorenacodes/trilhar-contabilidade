@@ -823,6 +823,11 @@
       pasta: "v156-2026-08-24",
       data: "24/08/2026",
       descricao: "Depois de mover o site pra raiz do repositorio (pra tirar o /prototipo/ da URL do dominio proprio), a Lorena notou que os links entre paginas ainda mostravam a extensao .html na barra de enderecos (ex.: trilharcontabilidadese.com.br/admin.html), o que ela achou pouco profissional. O GitHub Pages ja serve o mesmo arquivo tanto em /pagina quanto em /pagina.html por padrao -- nao precisa renomear nada, nenhum arquivo .html foi apagado ou renomeado. Só os links internos foram trocados pra apontar pro endereco sem extensao: hrefs estaticos (menu lateral, 'Esqueci minha senha', 'Voltar', etc.), os window.location.href/replace de navegacao e redirecionamento (login, logout, primeiro acesso, convite de administrador) e o link de recuperacao de senha que o Supabase manda por e-mail. Os guards de autenticacao (auth-guard.js) que comparavam location.pathname.endsWith('primeiro-acesso.html') foram ajustados pra uma funcao paginaAtual() que ignora a extensao, pra continuar funcionando tanto se alguem entrar pelo link antigo com .html quanto pelo novo sem. Nada de logica de negocio mudou, so os caminhos usados pra navegar de uma pagina pra outra."
+    },
+    {
+      pasta: "v157-2026-08-24",
+      data: "24/08/2026",
+      descricao: "Pedido: nome, sobrenome, razão social e nome fantasia no cadastro de cliente (e o nome do administrador) devem sair sempre em caixa alta, pra manter um padrão único de escrita nesses campos -- sem depender da pessoa que está digitando lembrar de usar maiúsculas. Adicionado aplicarCaixaAlta(input) no admin.html: converte o valor pra maiúsculas a cada tecla digitada, preservando a posição do cursor (senão o cursor pularia pro final a cada letra). Aplicado nos campos cliente-nome-input, cliente-sobrenome-input, cliente-razao-input, cliente-fantasia-input e administrador-nome-input. Também rodado um UPDATE único no banco pra colocar em caixa alta os nomes que já existiam antes dessa mudança (tabelas clientes e users) -- os 3 clientes e 2 administradores já cadastrados. Verificado com harness isolado: digitar 'ludmilla santos' no campo de nome resulta em 'LUDMILLA SANTOS' na hora."
     }
   ];
 

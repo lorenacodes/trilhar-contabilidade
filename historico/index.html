@@ -828,6 +828,11 @@
       pasta: "v157-2026-08-24",
       data: "24/08/2026",
       descricao: "Pedido: nome, sobrenome, razão social e nome fantasia no cadastro de cliente (e o nome do administrador) devem sair sempre em caixa alta, pra manter um padrão único de escrita nesses campos -- sem depender da pessoa que está digitando lembrar de usar maiúsculas. Adicionado aplicarCaixaAlta(input) no admin.html: converte o valor pra maiúsculas a cada tecla digitada, preservando a posição do cursor (senão o cursor pularia pro final a cada letra). Aplicado nos campos cliente-nome-input, cliente-sobrenome-input, cliente-razao-input, cliente-fantasia-input e administrador-nome-input. Também rodado um UPDATE único no banco pra colocar em caixa alta os nomes que já existiam antes dessa mudança (tabelas clientes e users) -- os 3 clientes e 2 administradores já cadastrados. Verificado com harness isolado: digitar 'ludmilla santos' no campo de nome resulta em 'LUDMILLA SANTOS' na hora."
+    },
+    {
+      pasta: "v158-2026-09-01",
+      data: "01/09/2026",
+      descricao: "Pedido: ao convidar um administrador não dava pra escolher o nível de acesso (proprietário ou administrador comum) -- todo mundo entrava sempre como \"administrador\", só o dono original da conta era proprietário (decisão antiga do projeto, sem tela pra isso). Agora o painel \"Convidar administrador\" ganhou um seletor de nível, mas com uma regra de segurança: só quem já é proprietário vê essa opção -- um administrador comum convidando alguém não vê o campo (o convite sempre sai como \"administrador\", igual antes). Importante: essa regra é checada nos dois lados, não só escondendo o campo. No servidor (edge function admin-convidar-administrador), o nível de quem está chamando é resolvido de novo por uma função do banco (admin_atual(), que agora também devolve o nível) -- se alguém tentar forçar nivel:\"proprietario\" direto na chamada sem ser proprietário de verdade, o servidor recusa com 403, mesmo que a tela mostrasse o campo escondido. Verificado com harness isolado (painel extraído direto do admin.html real): abrir o painel como proprietário mostra o seletor com \"Administrador\" marcado por padrão; clicar em \"Proprietário\" troca a seleção corretamente; abrir como administrador comum esconde o campo e mantém o nível padrão \"administrador\"."
     }
   ];
 

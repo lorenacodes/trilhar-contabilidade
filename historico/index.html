@@ -903,6 +903,11 @@
       pasta: "v172-2026-09-06",
       data: "06/09/2026",
       descricao: "Reforço do tom de preenchimento dos cards no tema claro (v170): com um print real do painel em produção, a Lorena mostrou que os KPIs, Alertas, Próximos vencimentos e Resumo financeiro ainda liam como branco puro a olho nu -- a mistura de navy estava sutil demais (4-11%) pra ser percebida sem inspecionar o CSS. Aumentado pra 8-19% (stat-card, com o degradê mantido) e 8% (side-card/table-card), e a borda/hover na mesma proporção -- ainda dentro do mesmo princípio (navy neutro, não dourado; card claramente diferente de branco sem virar bloco colorido). Mesmo escopo de sempre (`:root:not([data-theme=\"dark\"]) .client-portal`), tema escuro e admin inalterados. Verificado com harness isolado, antes/depois lado a lado: agora perceptível à primeira vista, tema escuro idêntico ao de antes."
+    },
+    {
+      pasta: "v173-2026-09-06",
+      data: "06/09/2026",
+      descricao: "Pedido com print de referência: redesenhar o card 'Alertas' do Início (cliente). Cada item deixou de ser uma linha simples (ponto + frase única + nome do boleto) e virou um mini-cartão com contorno na cor da gravidade (âmbar = vencendo, vermelho = vencido) e fundo com a mesma cor bem diluída -- título curto em negrito ('Boleto vencido' / 'Vencimento próximo', com um ponto colorido do lado) e, embaixo, uma frase com o dado de verdade (categoria + data formatada por extenso tipo 18/08/2026, ou nome do boleto + data) em vez da antiga contagem relativa ('venceu há N dias'). O cabeçalho do card ganhou um contador 'N pendentes'/'N pendente' no canto direito (vermelho se tiver algum vencido, âmbar se só tiver vencendo) -- soma vencidos+vencendo de verdade, não só os até 5 itens exibidos na lista. Mesmo escopo de sempre (`.client-portal`, tema claro e escuro cobertos, admin inalterado -- .attention-item também é usado lá, mas só recebeu essa nova aparência dentro do portal do cliente). Nenhum dado novo: mesmas informações (categoria, nome, data de vencimento) já disponíveis no boleto, só reorganizadas e reformatadas. Verificado com harness isolado nos dois temas: cartões com contorno/fundo tingidos e legíveis, contador certo (2 pendentes, vermelho, com 1 vencido + 1 vencendo), clique no card continua levando pra Boletos."
     }
   ];
 

@@ -898,6 +898,11 @@
       pasta: "v171-2026-09-06",
       data: "06/09/2026",
       descricao: "Ajuste pontual de texto no cartão hero do Início (cliente): a Lorena apontou que o eyebrow 'Bem-vindo de volta' soava genérico/clichê de dashboard gerado por IA. Trocado por 'Resumo de hoje' -- mais específico ao que o cartão de fato mostra logo abaixo (saudação + total em aberto + hora da última atualização), sem alterar layout, cor ou qualquer outra coisa do redesign das versões anteriores."
+    },
+    {
+      pasta: "v172-2026-09-06",
+      data: "06/09/2026",
+      descricao: "Reforço do tom de preenchimento dos cards no tema claro (v170): com um print real do painel em produção, a Lorena mostrou que os KPIs, Alertas, Próximos vencimentos e Resumo financeiro ainda liam como branco puro a olho nu -- a mistura de navy estava sutil demais (4-11%) pra ser percebida sem inspecionar o CSS. Aumentado pra 8-19% (stat-card, com o degradê mantido) e 8% (side-card/table-card), e a borda/hover na mesma proporção -- ainda dentro do mesmo princípio (navy neutro, não dourado; card claramente diferente de branco sem virar bloco colorido). Mesmo escopo de sempre (`:root:not([data-theme=\"dark\"]) .client-portal`), tema escuro e admin inalterados. Verificado com harness isolado, antes/depois lado a lado: agora perceptível à primeira vista, tema escuro idêntico ao de antes."
     }
   ];
 

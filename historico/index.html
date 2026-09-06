@@ -913,6 +913,11 @@
       pasta: "v174-2026-09-06",
       data: "06/09/2026",
       descricao: "Bug real encontrado pela Lorena num print logo depois da v173: o novo card de alerta (título + descrição empilhados) estava com todo o conteúdo centralizado, não alinhado à esquerda -- ficava estranho, um card de aviso não devia parecer um cartão de convite. Causa: a regra-base .attention-item (não escopada, também usada por outras telas) já definia align-items:center pensando no layout ANTIGO (ponto + texto lado a lado numa linha só); o novo .client-portal .attention-item mudou pra flex-direction:column mas não redeclarou align-items, então o :center antigo continuava valendo por cascata (nenhuma das duas regras conflitava em 'quem vence', só faltava a propriedade nova sobrescrever a antiga). Corrigido com align-items:stretch + text-align:left na regra escopada. Verificado com harness isolado nos dois temas: título e descrição agora alinhados à esquerda, ponto colorido no lugar certo, resto do cartão (cor de contorno/fundo, contador no cabeçalho) inalterado."
+    },
+    {
+      pasta: "v175-2026-09-06",
+      data: "06/09/2026",
+      descricao: "Mesma crítica de novo, dessa vez na saudação do hero do Início: 'Olá, Felipe' fixo também soava genérico de dashboard/IA (mesmo espírito do 'Bem-vindo de volta' trocado na v171). Trocado por saudação de acordo com o horário -- 'Bom dia'/'Boa tarde'/'Boa noite' + primeiro nome (função nova saudacaoPorHorario(), baseada em new Date().getHours()) -- é o padrão que apps de banco/fintech de verdade usam (não um texto inventado), continua pessoal (usa o primeiro nome) sem repetir a mesma palavra toda vez que a pessoa abre a tela. Sem mudança de layout/cor, só o texto que já existia ali."
     }
   ];
 

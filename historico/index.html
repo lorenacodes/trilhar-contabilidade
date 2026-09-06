@@ -893,6 +893,11 @@
       pasta: "v170-2026-09-06",
       data: "06/09/2026",
       descricao: "Continuação direta da v169: a Lorena reforçou o pedido original que não tinha ficado 100% resolvido -- no tema claro, os cards do Portal do Cliente (.stat-card, .side-card, .table-card do Perfil) continuavam usando --bg-surface puro (#FFFFFF) ao lado de um canvas bem claro (#E3E7EF), o que ainda lia como 'sem cor própria' mesmo já tendo contraste técnico suficiente. Adicionada uma camada de cor só pro tema claro (`:root:not([data-theme=\"dark\"]) .client-portal ...`, mesmo escopo do resto do redesign -- não mexe no admin nem no tema escuro, que já resolvia isso com tokens de verdade escuros): branco com uma pitada de navy (color-mix 4-11% de --brand-navy) em vez de branco puro, incluindo o degradê que o .stat-card já tinha (mantido, só com a base tingida) e o hover de linha/item (boleto, alerta, vencimento) também ganhando o mesmo tom em vez de branco chapado. Dourado não entra aqui -- pedido explícito da v169 de não abusar da cor continua valendo, o preenchimento novo é neutro-navy, não dourado. Verificado com harness isolado: card do KPI, hero, side-cards e barra de progresso todos com fundo visivelmente diferente de branco puro lado a lado com o canvas, tema escuro capturado antes/depois idêntico (a regra nem se aplica lá)."
+    },
+    {
+      pasta: "v171-2026-09-06",
+      data: "06/09/2026",
+      descricao: "Ajuste pontual de texto no cartão hero do Início (cliente): a Lorena apontou que o eyebrow 'Bem-vindo de volta' soava genérico/clichê de dashboard gerado por IA. Trocado por 'Resumo de hoje' -- mais específico ao que o cartão de fato mostra logo abaixo (saudação + total em aberto + hora da última atualização), sem alterar layout, cor ou qualquer outra coisa do redesign das versões anteriores."
     }
   ];
 

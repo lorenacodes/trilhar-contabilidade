@@ -943,6 +943,11 @@
       pasta: "v180-2026-09-06",
       data: "06/09/2026",
       descricao: "Mais um passo na mesma direção da v179: mesmo com a estrutura já certa (2 KPIs numa coluna estreita ao lado do hero), a coluna de 320px ainda deixava os cards mais largos do que a referência. Reduzida pra 260px (.client-hero-row, grid 1fr/260px) -- cada card de KPI cai de ~150px pra ~125px de largura real. Nessa largura o padding e o texto padrão do .stat-card não cabiam bem, então .client-hero-side-kpis .stat-card ganhou um ajuste fino só pra esses 2 cards: padding menor (14px 12px em vez de 18px 20px), rótulo menor (9.5px em vez de 10.5px) e valor menor (22px em vez de 26px) -- ainda legível, só compacto o suficiente pra caber em 125px sem quebrar feio. Verificado com harness isolado nos dois temas (card medido via getBoundingClientRect: 125px de largura, rótulo 'VENCENDO EM 7 DIAS' legível em duas linhas) e em 375px (mobile): os 2 KPIs empilham em coluna única abaixo de 480px como já previa a v179, sem overflow horizontal."
+    },
+    {
+      pasta: "v181-2026-09-06",
+      data: "06/09/2026",
+      descricao: "A Lorena corrigiu o diagnóstico da v180: os KPIs não precisavam de MENOS espaço, precisavam de MAIS -- o problema real era o hero ('esse retângulo azul enorme') ocupando espaço demais, sobrando pouco pros cards ao lado, que aí sim ficavam 'amassados'. .client-hero-row trocou de grid-template-columns: 1fr 260px (coluna dos KPIs fixa e pequena, hero pegando todo o resto) pra 2fr 1fr (proporção relativa, mais parecida com a referência) -- hero encolhe, coluna dos KPIs cresce de verdade. Com mais espaço sobrando, o ajuste fino de fonte/padding da v180 (feito só pra caber em 125px) deixou de ser necessário e foi revertido -- .client-hero-side-kpis .stat-card volta a usar o padding/tipografia padrão do .stat-card comum, sem overrides. Verificado com harness isolado numa tela larga (1900px, a mesma faixa do print da Lorena): card de KPI saltou de 125px pra ~247px de largura real, rótulo 'VENCENDO EM 7 DIAS' cabe numa linha só sem precisar do ajuste fino; conferido nos dois temas e em 375px (mobile) que a coluna ainda empilha certo sem overflow horizontal."
     }
   ];
 

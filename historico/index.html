@@ -918,6 +918,11 @@
       pasta: "v175-2026-09-06",
       data: "06/09/2026",
       descricao: "Mesma crítica de novo, dessa vez na saudação do hero do Início: 'Olá, Felipe' fixo também soava genérico de dashboard/IA (mesmo espírito do 'Bem-vindo de volta' trocado na v171). Trocado por saudação de acordo com o horário -- 'Bom dia'/'Boa tarde'/'Boa noite' + primeiro nome (função nova saudacaoPorHorario(), baseada em new Date().getHours()) -- é o padrão que apps de banco/fintech de verdade usam (não um texto inventado), continua pessoal (usa o primeiro nome) sem repetir a mesma palavra toda vez que a pessoa abre a tela. Sem mudança de layout/cor, só o texto que já existia ali."
+    },
+    {
+      pasta: "v176-2026-09-06",
+      data: "06/09/2026",
+      descricao: "A Lorena também não gostou da saudação por horário da v175 -- perguntado direto o que ela queria no lugar em vez de tentar adivinhar de novo (resposta: nome da empresa/cliente). Título do hero agora mostra a identidade do próprio negócio do cliente em vez de cumprimentar a pessoa: nome fantasia (nomeExibicaoCliente(), novo) pra pessoa jurídica -- é o nome 'do dia a dia' que o próprio cliente reconhece, mais do que a razão social formal --, com razão social como plano B se não tiver fantasia cadastrado, e o nome completo mesmo pra pessoa física (não existe nome fantasia nesse caso). Sem saudação nenhuma na frente agora ('Gracioli Comércio e Serviços LTDA', não 'Bom dia, Gracioli...'). Verificado com harness isolado: nome de empresa longo cabe no cartão hero sem quebrar feio nem estourar largura."
     }
   ];
 

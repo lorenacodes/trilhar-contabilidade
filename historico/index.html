@@ -923,6 +923,11 @@
       pasta: "v176-2026-09-06",
       data: "06/09/2026",
       descricao: "A Lorena também não gostou da saudação por horário da v175 -- perguntado direto o que ela queria no lugar em vez de tentar adivinhar de novo (resposta: nome da empresa/cliente). Título do hero agora mostra a identidade do próprio negócio do cliente em vez de cumprimentar a pessoa: nome fantasia (nomeExibicaoCliente(), novo) pra pessoa jurídica -- é o nome 'do dia a dia' que o próprio cliente reconhece, mais do que a razão social formal --, com razão social como plano B se não tiver fantasia cadastrado, e o nome completo mesmo pra pessoa física (não existe nome fantasia nesse caso). Sem saudação nenhuma na frente agora ('Gracioli Comércio e Serviços LTDA', não 'Bom dia, Gracioli...'). Verificado com harness isolado: nome de empresa longo cabe no cartão hero sem quebrar feio nem estourar largura."
+    },
+    {
+      pasta: "v177-2026-09-06",
+      data: "06/09/2026",
+      descricao: "A Lorena mandou print comparando o painel real com a referência: gostou do primeiro KPI mas achou os 4 cards muito largos, esticados, diferente da referência (cards estreitos/compactos). Causa: .stats-row (base, compartilhada com o admin) usa grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) -- o '1fr' deixa cada card crescer até preencher toda a largura disponível, e como o Início tem bastante espaço livre (só 4 KPIs numa linha, sem nada ao lado como no admin), cada card esticava bem além do necessário. Adicionado .client-portal .stats-row com teto de 230px por coluna (repeat(auto-fit, minmax(180px, 230px))) -- cards compactos, do jeito que a referência mostra, sem tocar no .stats-row do admin. Cuidado extra: essa regra só entra a partir de 641px de largura (dentro de @media (min-width:641px)) -- abaixo disso já existem duas regras de mobile pro mesmo .stats-row (2 colunas em 640px, 1 coluna em 420px) com a mesma especificidade de seletor (uma classe cada); sem essa guarda, a regra nova (duas classes, sempre mais específica) ia vencer e quebrar o empilhamento mobile que já funcionava. Verificado com harness isolado: 4 KPIs numa linha só, compactos, em vez de esticados lado a lado ocupando a largura toda; conferido também em 375px que o empilhamento em coluna do mobile continua intacto (scrollWidth = clientWidth, sem regressão)."
     }
   ];
 

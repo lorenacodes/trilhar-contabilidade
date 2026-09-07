@@ -1028,6 +1028,11 @@
       pasta: "v197-2026-09-07",
       data: "07/09/2026",
       descricao: "Pedido: 'aumente mais esse detalhamento', sobre o painel 'Todo o histórico' (o mesmo que a v194 passou a abrir filtrado por categoria, com data de envio e recebimento). Ele reaproveitava o .config-panel padrão de formulário (960px, altura limitada a 82vh por um estilo inline) -- pequeno demais pra um painel cujo conteúdo é a lista de documentos em si, não um formulário curto. Ganhou uma classe própria, .historico-panel (1200px, 88vh, mesmo raciocínio de tamanho que a v195 já tinha aplicado ao modal de pré-visualização), e o miolo com a busca/filtros/lista ganhou flex:1 + min-height:0 pra ocupar de verdade a altura extra em vez de sobrar espaço em branco embaixo da lista. No mobile (<=900px) continua ocupando a tela inteira, igual já era. Verificado com harness isolado: painel visivelmente maior num viewport de 1000px, miolo cresce até preencher a altura disponível, sem overflow em 375px (mobile)."
+    },
+    {
+      pasta: "v198-2026-09-07",
+      data: "07/09/2026",
+      descricao: "Pedido: 'quero que tire esse filtro rápido de tamanho', no painel 'Todo o histórico'. O chip 'Tamanho' (ordenar por tamanho total do arquivo) saiu de lá, deixando só 'Recentes' e 'Nome'. Junto saiu o código que ficava só a serviço desse chip e não tinha mais nenhum outro uso: a opção 'tamanho' no switch de ordenação e a função totalBytes() (somava os bytes dos arquivos de um documento). Verificado: sem chip 'Tamanho' na tela, sem erro no console, ordenação por 'Recentes'/'Nome' continua funcionando normal."
     }
   ];
 

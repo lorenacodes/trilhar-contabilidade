@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Início — Portal do Cliente</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=135">
+</head>
+<body class="client-portal">
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header page-header-flex">
+        <div>
+          <p class="page-eyebrow">Painel do cliente</p>
+          <h1 class="page-title" style="margin:0;">Visão geral financeira</h1>
+        </div>
+        <a href="boletos" class="btn btn-primary">Ver boletos</a>
+      </div>
+
+      <div class="client-hero-row">
+        <div class="client-hero">
+          <div class="client-hero-top">
+            <p class="client-hero-eyebrow">Resumo de hoje</p>
+            <h2 class="page-title" id="page-title">Olá</h2>
+            <p class="page-subtitle" id="page-subtitle">Carregando...</p>
+          </div>
+          <div class="client-hero-footer">
+            <div>
+              <p class="client-hero-total-label">Total em aberto</p>
+              <p class="client-hero-total-value" id="hero-total-aberto">R$ 0,00</p>
+            </div>
+            <div class="client-hero-updated">
+              Última movimentação
+              <strong id="hero-atualizado">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="client-hero-side">
+          <div class="client-hero-side-kpis" id="kpi-row"></div>
+          <div class="side-card" style="margin-bottom:0;">
+            <div class="side-card-head"><h3>Resumo financeiro</h3></div>
+            <div id="resumo-financeiro" class="resumo-financeiro"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="client-two-col">
+        <div class="side-card" style="margin-bottom:0;">
+          <div class="side-card-head with-count"><h3>Alertas</h3><span class="alertas-pendentes-badge" id="alertas-count"></span></div>
+          <div id="alertas-list" class="attention-list"></div>
+        </div>
+        <div class="side-card" style="margin-bottom:0;">
+          <div class="side-card-head"><h3>Próximos vencimentos</h3></div>
+          <div id="upcoming-list" class="due-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=87"></script>
+<script src="js/auth-guard.js?v=81"></script>
+<script>
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function tipoBoleto(nomeCategoria) {
+    return (nomeCategoria || "").replace(/^Boleto\s*-\s*/i, "");
+  }
+  function competencia(iso) {
+    const d = new Date(iso);
+    const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  function diasAte(iso) {
+    return Math.round((new Date(iso) - new Date()) / 86400000);
+  }
+  function formatMoeda(valor) {
+    return (valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  // "Última movimentação" no hero é o horário do ÚLTIMO EVENTO REAL em
+  // QUALQUER documento do cliente — não só boletos (data_vencimento
+  // preenchida), documento comum também conta (envio, aprovação, rejeição).
+  // Não é a hora em que a tela foi aberta — bug real corrigido antes: usava
+  // new Date() sempre, então mesmo sem nada acontecer há dias o card dizia
+  // "Hoje, HH:MM". Como o realtime chama recarregarUltimaMovimentacao() de
+  // novo assim que o admin mexe em qualquer documento (boleto ou não), o
+  // valor mais recente entre os campos abaixo já é, na prática, o instante
+  // exato do evento — só não pode ser "agora" fixo.
+  function ultimaMovimentacao(documentos) {
+    let max = null;
+    documentos.forEach(d => {
+      [d.created_at, d.pago_em, d.status_alterado_em, d.pagamento_informado_em, d.revisado_em].forEach(campo => {
+        if (!campo) return;
+        const dt = new Date(campo);
+        if (!max || dt > max) max = dt;
+      });
+    });
+    return max;
+  }
+  function formatDataHora(data) {
+    const hoje = new Date();
+    const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (data.toDateString() === hoje.toDateString()) return "Hoje, " + hora;
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
+    if (data.toDateString() === ontem.toDateString()) return "Ontem, " + hora;
+    return data.toLocaleDateString("pt-BR") + ", " + hora;
+  }
+  // "Olá, Nome" (e depois "Bom dia/Boa tarde, Nome") soavam genéricos demais
+  // pra Lorena — trocado pelo nome de identidade do próprio cliente: nome
+  // fantasia (o nome "do dia a dia" do negócio) pra pessoa jurídica, razão
+  // social como plano B se não tiver fantasia cadastrado, e o nome completo
+  // mesmo pra pessoa física (não existe "nome fantasia" nesse caso).
+  function nomeExibicaoCliente(cliente) {
+    if (cliente.tipoPessoa === "juridica") return cliente.nomeFantasia || cliente.razaoSocial || cliente.nome;
+    return cliente.nome;
+  }
+
+  // Mesmo prazo configurado pelo admin em Configurações (dias_antecedencia_alerta)
+  // — sem isso, "vencendo" aqui ficava sempre nos 7 dias fixos (documentos.html
+  // já buscava isso certo, boletos.html e dashboard.html não).
+  let DIAS_ANTECEDENCIA_ALERTA = 7;
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+
+    renderNav("dashboard", cliente);
+    document.getElementById("page-title").textContent = nomeExibicaoCliente(cliente);
+
+    async function buscarBoletos() {
+      const { data: boletos } = await sb.from("documentos")
+        .select("id, nome, valor, data_vencimento, status, pago_em, created_at, status_alterado_em, pagamento_informado_em, categorias(slug, nome)")
+        .eq("cliente_id", cliente.id)
+        .not("data_vencimento", "is", null)
+        .order("data_vencimento", { ascending: true });
+      return boletos || [];
+    }
+    // Consulta separada e enxuta (só os campos de data) com TODO documento
+    // do cliente, boleto ou não — "Última movimentação" precisa enxergar
+    // envio/aprovação/rejeição de documento comum também, não só boleto.
+    async function buscarUltimaMovimentacao() {
+      const { data } = await sb.from("documentos")
+        .select("created_at, pago_em, status_alterado_em, pagamento_informado_em, revisado_em")
+        .eq("cliente_id", cliente.id);
+      return ultimaMovimentacao(data || []);
+    }
+    async function carregarBoletos() {
+      const [boletos, momento] = await Promise.all([buscarBoletos(), buscarUltimaMovimentacao()]);
+      render(boletos, momento);
+    }
+
+    // Config, boletos e última movimentação não dependem um do outro —
+    // buscar em paralelo em vez de sequencial corta voltas de rede inteiras
+    // do carregamento da tela.
+    const [{ data: config }, boletos, momentoInicial] = await Promise.all([
+      sb.from("configuracoes_empresa").select("dias_antecedencia_alerta").limit(1).maybeSingle(),
+      buscarBoletos(),
+      buscarUltimaMovimentacao()
+    ]);
+    if (config && config.dias_antecedencia_alerta) DIAS_ANTECEDENCIA_ALERTA = config.dias_antecedencia_alerta;
+    render(boletos, momentoInicial);
+    hideAuthOverlay();
+    iniciarRealtimeCliente(cliente.id, [{ table: "documentos", filter: "cliente_id=eq." + cliente.id }], carregarBoletos);
+  })();
+
+  function render(boletos, momentoUltimaMovimentacao) {
+    const naoPagos = boletos.filter(b => b.status === "nao_pago");
+    const vencidos = naoPagos.filter(b => diasAte(b.data_vencimento) < 0);
+    const vencendoSemana = naoPagos.filter(b => diasAte(b.data_vencimento) >= 0 && diasAte(b.data_vencimento) <= DIAS_ANTECEDENCIA_ALERTA);
+    const valorTotalAberto = naoPagos.reduce((s, b) => s + Number(b.valor || 0), 0);
+
+    document.getElementById("page-subtitle").textContent = naoPagos.length > 0
+      ? "Você tem " + naoPagos.length + " boleto" + (naoPagos.length > 1 ? "s" : "") + " em aberto."
+      : "Nenhum boleto em aberto no momento.";
+    document.getElementById("hero-total-aberto").innerHTML = "R$ " + realceDecimais(formatMoeda(valorTotalAberto));
+    document.getElementById("hero-atualizado").textContent = momentoUltimaMovimentacao ? formatDataHora(momentoUltimaMovimentacao) : "—";
+
+    renderKpis(naoPagos, vencidos, vencendoSemana, valorTotalAberto);
+    renderAlertas(vencidos, vencendoSemana);
+    renderUpcoming(naoPagos);
+    renderResumoFinanceiro(boletos, naoPagos, valorTotalAberto);
+  }
+
+  function renderKpis(naoPagos, vencidos, vencendoSemana, valorTotalAberto) {
+    const row = document.getElementById("kpi-row");
+    const vencidosAtivo = vencidos.length > 0;
+    const vencendoAtivo = !vencidosAtivo && vencendoSemana.length > 0;
+
+    // Mesmo componente .stat-card já usado na Visão geral do admin (ícone +
+    // label + valor + tendência). Só os 2 KPIs de gravidade ficam aqui, ao
+    // lado do hero (referência aprovada pela Lorena) — "Boletos em aberto"
+    // e "Valor total em aberto" saíram de cards próprios, mas a informação
+    // continua visível: a contagem está na frase logo abaixo do título do
+    // hero ("Você tem N boletos...") e o valor total no rodapé do próprio
+    // hero (#hero-total-aberto) — nenhum dado sumiu, só não duplica mais
+    // em card separado.
+    row.innerHTML = `
+      <div class="stat-card${vencendoAtivo ? " attention" : ""}">
+        <div class="stat-top"><div class="stat-icon-chip stat-icon-chip-warning">${ICONS.bell}</div></div>
+        <p class="stat-label">Vencendo em ${DIAS_ANTECEDENCIA_ALERTA} dias</p>
+        <p class="stat-value">${vencendoSemana.length}</p>
+        <p class="stat-trend">Próximos ${DIAS_ANTECEDENCIA_ALERTA} dias</p>
+      </div>
+      <div class="stat-card${vencidosAtivo ? " attention danger" : ""}">
+        <div class="stat-top"><div class="stat-icon-chip stat-icon-chip-danger">${ICONS.bell}</div></div>
+        <p class="stat-label">Vencidos</p>
+        <p class="stat-value">${vencidos.length}</p>
+        <p class="stat-trend">${vencidos.length > 0 ? "Requer atenção" : "Nenhum vencido"}</p>
+      </div>
+    `;
+  }
+
+  function renderAlertas(vencidos, vencendoSemana) {
+    const list = document.getElementById("alertas-list");
+    const countEl = document.getElementById("alertas-count");
+    const totalPendentes = vencidos.length + vencendoSemana.length;
+    countEl.textContent = totalPendentes > 0 ? totalPendentes + (totalPendentes === 1 ? " pendente" : " pendentes") : "";
+    countEl.className = "alertas-pendentes-badge" + (vencidos.length > 0 ? " danger" : "");
+
+    const itens = [...vencidos, ...vencendoSemana].slice(0, 5);
+    if (itens.length === 0) {
+      list.innerHTML = '<p class="attention-empty">Nenhum alerta no momento — tudo em dia.</p>';
+      return;
+    }
+    list.innerHTML = "";
+    itens.forEach(b => {
+      const dias = diasAte(b.data_vencimento);
+      // b.categorias pode vir null (categoria desativada depois do envio —
+      // RLS só libera categoria ativa pro cliente); sem essa checagem quebra
+      // o dashboard inteiro, não só esse alerta.
+      const nomeCategoria = tipoBoleto(b.categorias && b.categorias.nome);
+      const dataFormatada = new Date(b.data_vencimento).toLocaleDateString("pt-BR");
+      const vencido = dias < 0;
+      const titulo = vencido ? "Boleto vencido" : "Vencimento próximo";
+      const descricao = vencido
+        ? nomeCategoria + " venceu em " + dataFormatada + " — " + b.nome
+        : b.nome + " vence em " + dataFormatada + "."
+      const el = document.createElement("div");
+      el.className = "attention-item" + (vencido ? " danger" : "");
+      el.innerHTML = `
+        <div class="attention-item-head"><span class="dot-icon"></span><strong>${escapeHtml(titulo)}</strong></div>
+        <p class="attention-item-desc">${escapeHtml(descricao)}</p>
+      `;
+      el.addEventListener("click", () => window.location.href = "boletos");
+      list.appendChild(el);
+    });
+  }
+
+  function renderUpcoming(naoPagos) {
+    const list = document.getElementById("upcoming-list");
+    const futuros = naoPagos.slice(0, 5);
+    if (futuros.length === 0) {
+      list.innerHTML = '<p class="upcoming-empty">Nenhum boleto programado.</p>';
+      return;
+    }
+    list.innerHTML = "";
+    futuros.forEach(b => {
+      const st = statusBoleto(b, DIAS_ANTECEDENCIA_ALERTA);
+      const dias = diasAte(b.data_vencimento);
+      const quando = dias < 0 ? "Vencido" : dias === 0 ? "Hoje" : "Em " + dias + " dias";
+      const d = new Date(b.data_vencimento);
+      const dia = d.toLocaleDateString("pt-BR", { day: "2-digit" });
+      const mes = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+      const classeSeveridade = st && st.cls === "danger" ? " danger" : st && st.cls === "warning" ? " urgent" : "";
+      const item = document.createElement("div");
+      item.className = "due-item" + classeSeveridade;
+      item.innerHTML = `
+        <div class="due-item-date"><strong>${dia}</strong><span>${mes}</span></div>
+        <div class="due-item-info"><p>${escapeHtml(tipoBoleto(b.categorias && b.categorias.nome))}</p><span>${escapeHtml(b.nome)}</span></div>
+        <span class="due-item-badge">${quando}</span>
+      `;
+      item.addEventListener("click", () => window.location.href = "boletos");
+      list.appendChild(item);
+    });
+  }
+
+  function renderResumoFinanceiro(boletos, naoPagos, valorTotalAberto) {
+    const hoje = new Date();
+    const pagoEsteMes = boletos
+      .filter(b => b.status === "pago" && b.pago_em && new Date(b.pago_em).getMonth() === hoje.getMonth() && new Date(b.pago_em).getFullYear() === hoje.getFullYear())
+      .reduce((s, b) => s + Number(b.valor || 0), 0);
+
+    const honorarios = naoPagos.filter(b => b.categorias && b.categorias.slug === "boleto-honorarios").reduce((s, b) => s + Number(b.valor || 0), 0);
+    const imposto = naoPagos.filter(b => b.categorias && b.categorias.slug === "boleto-imposto").reduce((s, b) => s + Number(b.valor || 0), 0);
+
+    const ultimo = boletos.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+    // Barra de proporção pago-este-mês vs. total do mês (pago + em aberto) —
+    // só decorativa, não substitui nenhuma das linhas acima, é o mesmo dado
+    // de "Pago este mês" e "Total em aberto" já mostrados, só com uma
+    // segunda leitura visual.
+    const baseProgresso = pagoEsteMes + valorTotalAberto;
+    const pctPago = baseProgresso > 0 ? Math.round((pagoEsteMes / baseProgresso) * 100) : 0;
+
+    document.getElementById("resumo-financeiro").innerHTML = `
+      <div class="resumo-linha"><span>Pago este mês</span><strong>R$ ${formatMoeda(pagoEsteMes)}</strong></div>
+      <div class="resumo-linha"><span>Em aberto — Honorários</span><strong>R$ ${formatMoeda(honorarios)}</strong></div>
+      <div class="resumo-linha"><span>Em aberto — Imposto</span><strong>R$ ${formatMoeda(imposto)}</strong></div>
+      <div class="resumo-linha total"><span>Total em aberto</span><strong>R$ ${formatMoeda(valorTotalAberto)}</strong></div>
+      <div class="resumo-progress"><div class="resumo-progress-bar" style="width:${pctPago}%"></div></div>
+      ${ultimo ? `<p class="resumo-nota">Último boleto recebido: ${escapeHtml(ultimo.nome)}</p>` : ""}
+    `;
+  }
+</script>
+</body>
+</html>

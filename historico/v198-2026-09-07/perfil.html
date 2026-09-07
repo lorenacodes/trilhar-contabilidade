@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu Perfil — Portal do Cliente</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=135">
+</head>
+<body class="client-portal">
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main" style="max-width:640px;">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header">
+        <h1 class="page-title">Meu perfil</h1>
+        <p class="page-subtitle">Seus dados cadastrais na Trilhar Contabilidade. Alterações passam pelo seu contador.</p>
+      </div>
+
+      <div class="perfil-hero">
+        <div class="perfil-header">
+          <div class="avatar" id="perfil-avatar"></div>
+          <div>
+            <p class="perfil-header-nome" id="perfil-nome"></p>
+            <p class="perfil-header-status" id="perfil-desde"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card" style="padding:var(--space-6);">
+        <p class="perfil-fields-title">Dados cadastrais</p>
+        <div class="perfil-fields" style="margin-bottom:var(--space-6);">
+          <div class="field"><label>Nome completo</label><input id="perfil-nome-input" disabled></div>
+          <div class="field"><label>E-mail</label><input id="perfil-email-input" disabled></div>
+          <div class="field" id="perfil-empresa-field" style="display:none;"><label>Empresa</label><input id="perfil-empresa-input" disabled></div>
+          <div class="field" id="perfil-documento-field" style="display:none;"><label id="perfil-documento-label">CPF</label><input id="perfil-documento-input" disabled></div>
+          <div class="field" id="perfil-telefone-field" style="display:none;"><label>Telefone</label><input id="perfil-telefone-input" disabled></div>
+          <div class="field"><label>Senha</label><input type="password" value="••••••••" disabled></div>
+        </div>
+
+        <button class="btn btn-secondary" style="width:100%; margin-bottom:var(--space-3);" id="btn-abrir-trocar-senha">Trocar senha</button>
+        <button class="btn btn-secondary" style="width:100%;" onclick="showToast('Solicitação enviada à Trilhar Contabilidade')">Solicitar alteração de dados</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: trocar senha do cliente logado -->
+<div class="modal-overlay" id="modal-trocar-senha">
+  <div class="modal modal-xl">
+    <h3 style="margin:0 0 4px;">Trocar senha</h3>
+    <p class="hint" style="margin:0 0 18px;">Confirme sua senha atual e defina uma nova senha para sua conta.</p>
+
+    <div class="field">
+      <label class="required">Senha atual</label>
+      <input type="password" id="ts-senha-atual" placeholder="••••••••">
+    </div>
+    <p class="field-error" id="ts-senha-atual-erro"></p>
+
+    <div class="field" style="margin-top:20px;">
+      <label class="required">Nova senha</label>
+      <input type="password" id="ts-nova-senha" placeholder="••••••••">
+    </div>
+    <div class="senha-forca-bar" id="ts-forca-bar">
+      <div class="senha-forca-bar-seg"></div>
+      <div class="senha-forca-bar-seg"></div>
+      <div class="senha-forca-bar-seg"></div>
+      <div class="senha-forca-bar-seg"></div>
+    </div>
+    <p class="senha-forca-label" id="ts-forca-label"></p>
+    <ul class="senha-criterios" id="ts-senha-criterios"></ul>
+
+    <div class="field" style="margin-top:20px;">
+      <label class="required">Confirmar nova senha</label>
+      <input type="password" id="ts-confirmar-senha" placeholder="••••••••">
+    </div>
+    <p class="field-error" id="ts-senha-erro"></p>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancelar-trocar-senha">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-trocar-senha" disabled>Salvar nova senha</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=87"></script>
+<script src="js/auth-guard.js?v=81"></script>
+<script>
+  function initials(nome) {
+    return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  // Mesmas máscaras já usadas no admin (cadastro/edição de cliente) —
+  // copiadas aqui porque só existiam no script inline de admin.html, não
+  // em app.js (compartilhado com o cliente).
+  function somenteDigitos(v) { return (v || "").replace(/\D/g, ""); }
+  function mascararCPF(v) {
+    let d = somenteDigitos(v).slice(0, 11);
+    d = d.replace(/(\d{3})(\d)/, "$1.$2");
+    d = d.replace(/(\d{3})(\d)/, "$1.$2");
+    d = d.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    return d;
+  }
+  function mascararCNPJ(v) {
+    let d = somenteDigitos(v).slice(0, 14);
+    d = d.replace(/(\d{2})(\d)/, "$1.$2");
+    d = d.replace(/(\d{3})(\d)/, "$1.$2");
+    d = d.replace(/(\d{3})(\d)/, "$1/$2");
+    d = d.replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    return d;
+  }
+  function mascararTelefone(v) {
+    let d = somenteDigitos(v).slice(0, 11);
+    d = d.replace(/(\d{2})(\d)/, "($1) $2");
+    d = d.length > 10 ? d.replace(/(\d{5})(\d{1,4})$/, "$1-$2") : d.replace(/(\d{4})(\d{1,4})$/, "$1-$2");
+    return d;
+  }
+
+  let CLIENTE_ATUAL = null;
+
+  // guardCliente() já é a fonte única de verdade (busca users + clientes) —
+  // reaproveitada aqui como a própria função de recarregamento pro realtime,
+  // em vez de duplicar as duas queries. Também tem o efeito colateral certo
+  // se o admin desativar o cliente enquanto a tela está aberta: guardCliente
+  // detecta o status "inativo" e desloga sozinho, sem precisar de lógica extra.
+  async function carregarPerfil() {
+    const cliente = await guardCliente();
+    if (!cliente) return null;
+    CLIENTE_ATUAL = cliente;
+    document.getElementById("perfil-avatar").textContent = initials(cliente.nome);
+    document.getElementById("perfil-nome").textContent = cliente.nome;
+    document.getElementById("perfil-nome-input").value = cliente.nome;
+    document.getElementById("perfil-email-input").value = cliente.email;
+
+    // Empresa, CPF/CNPJ e telefone só aparecem quando o cliente de fato tem
+    // esse dado cadastrado — nada de campo vazio/inventado. tipoPessoa
+    // decide se mostra CNPJ (jurídica) ou CPF (física); nome fantasia é
+    // preferido à razão social por ser o nome "do dia a dia" da empresa.
+    const empresaField = document.getElementById("perfil-empresa-field");
+    const empresa = cliente.tipoPessoa === "juridica" ? (cliente.nomeFantasia || cliente.razaoSocial) : null;
+    empresaField.style.display = empresa ? "" : "none";
+    if (empresa) document.getElementById("perfil-empresa-input").value = empresa;
+
+    const docField = document.getElementById("perfil-documento-field");
+    if (cliente.tipoPessoa === "juridica" && cliente.cnpj) {
+      document.getElementById("perfil-documento-label").textContent = "CNPJ";
+      document.getElementById("perfil-documento-input").value = mascararCNPJ(cliente.cnpj);
+      docField.style.display = "";
+    } else if (cliente.cpf) {
+      document.getElementById("perfil-documento-label").textContent = "CPF";
+      document.getElementById("perfil-documento-input").value = mascararCPF(cliente.cpf);
+      docField.style.display = "";
+    } else {
+      docField.style.display = "none";
+    }
+
+    const telField = document.getElementById("perfil-telefone-field");
+    telField.style.display = cliente.telefone ? "" : "none";
+    if (cliente.telefone) document.getElementById("perfil-telefone-input").value = mascararTelefone(cliente.telefone);
+
+    const desde = new Date(cliente.created_at).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    document.getElementById("perfil-desde").textContent = "Cliente desde " + desde;
+    // Sidebar já existe (renderNav rodou no init) numa atualização vinda do
+    // realtime — reflete nome/iniciais atualizados ali também.
+    const nomeEl = document.getElementById("sidebar-user-nome");
+    const avatarEl = document.getElementById("sidebar-avatar");
+    if (nomeEl) nomeEl.textContent = cliente.nome;
+    if (avatarEl) avatarEl.textContent = initials(cliente.nome);
+    return cliente;
+  }
+
+  (async function init() {
+    const cliente = await carregarPerfil();
+    if (!cliente) return;
+
+    renderNav("perfil", cliente);
+    hideAuthOverlay();
+    iniciarRealtimeCliente(cliente.id, [
+      { table: "clientes", filter: "id=eq." + cliente.id },
+      { table: "users", filter: "id=eq." + cliente.userId }
+    ], carregarPerfil);
+  })();
+
+  // ---------- Trocar senha (cliente logado) — mesmo fluxo do admin ----------
+  const CRITERIOS_SENHA_CLIENTE = [
+    { key: "tamanho", texto: "Pelo menos 8 caracteres (ideal 12+)" },
+    { key: "maiuscula", texto: "Uma letra maiúscula" },
+    { key: "minuscula", texto: "Uma letra minúscula" },
+    { key: "numero", texto: "Um número" },
+    { key: "especial", texto: "Um caractere especial" },
+    { key: "naoComum", texto: "Não ser uma senha muito comum" }
+  ];
+  document.getElementById("ts-senha-criterios").innerHTML = CRITERIOS_SENHA_CLIENTE.map(c =>
+    `<li class="senha-criterio" data-c="${c.key}">${ICONS.check}<span>${c.texto}</span></li>`
+  ).join("");
+
+  const tsSenhaAtual = document.getElementById("ts-senha-atual");
+  const tsSenhaAtualErro = document.getElementById("ts-senha-atual-erro");
+  const tsNovaSenha = document.getElementById("ts-nova-senha");
+  const tsConfirmar = document.getElementById("ts-confirmar-senha");
+  const tsBtnSalvar = document.getElementById("btn-salvar-trocar-senha");
+  const tsErro = document.getElementById("ts-senha-erro");
+
+  function atualizarForcaTrocarSenha() {
+    const resultado = avaliarForcaSenha(tsNovaSenha.value);
+    document.querySelectorAll("#ts-forca-bar .senha-forca-bar-seg").forEach((seg, i) => {
+      seg.className = "senha-forca-bar-seg" + (i < resultado.pontos && resultado.label ? " on " + resultado.cls : "");
+    });
+    const label = document.getElementById("ts-forca-label");
+    label.textContent = resultado.label;
+    label.className = "senha-forca-label" + (resultado.cls ? " " + resultado.cls : "");
+
+    document.querySelectorAll("#ts-senha-criterios .senha-criterio").forEach(li => {
+      li.classList.toggle("ok", !!resultado.criterios[li.dataset.c]);
+    });
+
+    const senhasIguais = tsNovaSenha.value.length > 0 && tsNovaSenha.value === tsConfirmar.value;
+    if (tsConfirmar.value.length > 0 && !senhasIguais) {
+      tsErro.textContent = "As senhas não coincidem.";
+      tsErro.classList.add("show");
+    } else {
+      tsErro.classList.remove("show");
+    }
+
+    tsBtnSalvar.disabled = !(tsSenhaAtual.value.length > 0 && resultado.valida && senhasIguais);
+  }
+  tsSenhaAtual.addEventListener("input", () => {
+    tsSenhaAtualErro.classList.remove("show");
+    atualizarForcaTrocarSenha();
+  });
+  tsNovaSenha.addEventListener("input", atualizarForcaTrocarSenha);
+  tsConfirmar.addEventListener("input", atualizarForcaTrocarSenha);
+
+  function resetarModalTrocarSenha() {
+    tsSenhaAtual.value = "";
+    tsNovaSenha.value = "";
+    tsConfirmar.value = "";
+    tsErro.classList.remove("show");
+    tsSenhaAtualErro.classList.remove("show");
+    atualizarForcaTrocarSenha();
+  }
+
+  document.getElementById("btn-abrir-trocar-senha").addEventListener("click", () => {
+    resetarModalTrocarSenha();
+    document.getElementById("modal-trocar-senha").classList.add("open");
+  });
+  document.getElementById("btn-cancelar-trocar-senha").addEventListener("click", () => {
+    document.getElementById("modal-trocar-senha").classList.remove("open");
+  });
+
+  tsBtnSalvar.addEventListener("click", async () => {
+    tsBtnSalvar.disabled = true;
+    const original = tsBtnSalvar.textContent;
+    tsBtnSalvar.innerHTML = ICONS.spinner + " Verificando...";
+    tsBtnSalvar.classList.add("btn-loading");
+    tsSenhaAtualErro.classList.remove("show");
+
+    const { error: erroLogin } = await sb.auth.signInWithPassword({
+      email: CLIENTE_ATUAL.email,
+      password: tsSenhaAtual.value
+    });
+
+    if (erroLogin) {
+      tsBtnSalvar.classList.remove("btn-loading");
+      tsSenhaAtualErro.textContent = "Senha atual incorreta.";
+      tsSenhaAtualErro.classList.add("show");
+      tsBtnSalvar.textContent = original;
+      atualizarForcaTrocarSenha();
+      return;
+    }
+
+    tsBtnSalvar.innerHTML = ICONS.spinner + " Salvando...";
+    const { error } = await sb.auth.updateUser({ password: tsNovaSenha.value });
+
+    tsBtnSalvar.classList.remove("btn-loading");
+    if (error) {
+      showToast("Não foi possível trocar a senha. Tente novamente.");
+      tsBtnSalvar.textContent = original;
+      atualizarForcaTrocarSenha();
+      return;
+    }
+
+    document.getElementById("modal-trocar-senha").classList.remove("open");
+    showToast("Senha alterada com sucesso.");
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Cliente — Trilhar Contabilidade</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=137">
+</head>
+<body>
+<div class="auth-atmosphere">
+  <div class="auth-glass-card login-graphic">
+    <div class="auth-glass-logo">
+      <div class="brand-mark"><img src="img/logo-glyph-dark.png" alt="Trilhar Contabilidade"></div>
+      <div class="brand-name">Trilhar Contabilidade</div>
+    </div>
+
+    <div class="auth-type-toggle" id="auth-type-toggle">
+      <button type="button" class="auth-type-option" data-tipo="cliente">Cliente</button>
+      <button type="button" class="auth-type-option" data-tipo="administrador">Administrador</button>
+    </div>
+    <p class="auth-type-caption" id="auth-type-caption"></p>
+
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="login-email" placeholder="seuemail@exemplo.com">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <div class="password-field-wrap">
+        <input type="password" id="login-password" placeholder="••••••••">
+        <button type="button" class="password-toggle-btn" data-password-toggle="login-password"></button>
+      </div>
+    </div>
+    <p class="field-error" id="login-error"></p>
+
+    <button class="btn btn-primary" id="login-btn">Entrar</button>
+
+    <div class="auth-divider">ou</div>
+
+    <button type="button" class="btn btn-google" id="google-login-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.87 2.7-6.62z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.83.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+      </svg>
+      Continuar com Google
+    </button>
+
+    <div class="login-footnote">
+      Acesso fornecido pela Trilhar Contabilidade.<br>
+      <a href="esqueci-senha">Esqueci minha senha</a>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=87"></script>
+<script>
+  // Tela única com seletor Cliente/Administrador no topo (substitui as duas
+  // páginas separadas de antes, index.html + admin-login.html) — pedido:
+  // o tipo de acesso tinha pouco destaque (link pequeno no rodapé) e devia
+  // ficar "impossível de ignorar" sem virar uma etapa a mais antes do login.
+  // admin-login.html continua existindo só como um redirecionamento (pra
+  // quem tem o link salvo ou é mandado pra lá pelo auth-guard) que cai
+  // aqui já com "Administrador" selecionado.
+  //
+  // Login com Google (2026-09-01): a regra crítica é que o Google NUNCA
+  // decide se alguém é cliente ou administrador — ele só prova "esse é o
+  // dono desse e-mail". Quem decide o tipo é sempre a tabela "users" no
+  // Supabase, exatamente como já acontecia no login por senha. Por isso
+  // handleLogin() (senha) e validarSessaoEProsseguir() (chamada tanto pela
+  // senha quanto pela volta do Google) terminam na MESMA checagem: existe
+  // uma linha em "users" com esse auth_user_id? o tipo bate com o que a
+  // pessoa escolheu no seletor? o status é "ativo"? Não existe nenhum
+  // gatilho no banco que crie uma linha em "users" sozinho quando alguém
+  // autentica pela primeira vez (checado antes de implementar isso) — ou
+  // seja, um e-mail do Google que nunca foi cadastrado pelo escritório
+  // autentica no Supabase Auth (isso o Google sempre permite), mas cai sem
+  // NENHUM acesso real: a política de segurança de cada tabela (RLS) só
+  // libera dado pra quem tem uma linha correspondente em "users", e essa
+  // linha só é criada pelo painel administrativo. O signOut() imediato
+  // abaixo é só pra não deixar uma sessão autenticada-mas-sem-acesso
+  // pendurada no navegador — a segurança de verdade já está garantida
+  // mesmo sem ele.
+  const TIPO_TEXTOS = {
+    cliente: {
+      caption: "Acesse seus documentos e informações",
+      placeholderEmail: "seuemail@exemplo.com",
+      destinoPrimeiroAcesso: "primeiro-acesso",
+      destinoPainel: "dashboard",
+    },
+    administrador: {
+      caption: "Gerencie clientes e operações do sistema",
+      placeholderEmail: "seuemail@trilharcontabilidade.com",
+      destinoPrimeiroAcesso: "primeiro-acesso",
+      destinoPainel: "admin",
+    },
+  };
+  const MSG_NAO_CADASTRADO = "Este e-mail não está autorizado. Entre em contato com a empresa.";
+  const MSG_TIPO_ERRADO = "Este acesso não corresponde ao tipo de conta.";
+  const MSG_INATIVO = "Este e-mail não tem permissão para acessar o sistema. Fale com a Trilhar Contabilidade.";
+  const CHAVE_TIPO_LEMBRADO = "portal_tipo_acesso";
+  const CHAVE_OAUTH_PENDENTE = "portal_oauth_pendente";
+
+  let tipoAtual = "cliente";
+  function aplicarTipoAcesso(tipo) {
+    tipoAtual = tipo;
+    document.querySelectorAll("#auth-type-toggle .auth-type-option").forEach(btn => btn.classList.toggle("active", btn.dataset.tipo === tipo));
+    document.getElementById("auth-type-caption").textContent = TIPO_TEXTOS[tipo].caption;
+    document.getElementById("login-email").placeholder = TIPO_TEXTOS[tipo].placeholderEmail;
+    try { localStorage.setItem(CHAVE_TIPO_LEMBRADO, tipo); } catch (_) {}
+  }
+  document.querySelectorAll("#auth-type-toggle .auth-type-option").forEach(btn => {
+    btn.addEventListener("click", () => aplicarTipoAcesso(btn.dataset.tipo));
+  });
+
+  let tipoLembrado = "cliente";
+  try { if (localStorage.getItem(CHAVE_TIPO_LEMBRADO) === "administrador") tipoLembrado = "administrador"; } catch (_) {}
+  aplicarTipoAcesso(tipoLembrado);
+
+  const loginBtn = document.getElementById("login-btn");
+  const googleBtn = document.getElementById("google-login-btn");
+  const loginError = document.getElementById("login-error");
+  const GOOGLE_BTN_HTML = googleBtn.innerHTML;
+
+  function showLoginError(msg) {
+    loginError.textContent = msg;
+    loginError.classList.add("show");
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("erro") === "sem_permissao") {
+    showLoginError(MSG_INATIVO);
+  } else if (params.get("senha_redefinida") === "1") {
+    showToast("Senha redefinida com sucesso. Faça login com a nova senha.");
+  }
+
+  // Único ponto de decisão "essa sessão pode entrar?" — usado tanto depois
+  // do login por senha quanto na volta do redirecionamento do Google.
+  // tipoAtual é lido do seletor (ou lembrado do localStorage), nunca do
+  // que o Google devolve — é sempre a tabela "users" que manda.
+  async function validarSessaoEProsseguir() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return false;
+
+    const { data: usuario, error: usuarioError } = await sb
+      .from("users")
+      .select("tipo, status, primeiro_acesso")
+      .eq("auth_user_id", session.user.id)
+      .maybeSingle();
+
+    if (usuarioError || !usuario) {
+      await sb.auth.signOut();
+      showLoginError(MSG_NAO_CADASTRADO);
+      return false;
+    }
+    if (usuario.tipo !== tipoAtual) {
+      await sb.auth.signOut();
+      showLoginError(MSG_TIPO_ERRADO);
+      return false;
+    }
+    if (usuario.status !== "ativo") {
+      await sb.auth.signOut();
+      showLoginError(MSG_INATIVO);
+      return false;
+    }
+
+    const destino = TIPO_TEXTOS[tipoAtual];
+    window.location.href = usuario.primeiro_acesso ? destino.destinoPrimeiroAcesso : destino.destinoPainel;
+    return true;
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    loginError.classList.remove("show");
+
+    if (!email || !password) {
+      showLoginError("Preencha e-mail e senha.");
+      return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.classList.add("btn-loading");
+    const original = loginBtn.textContent;
+    loginBtn.innerHTML = ICONS.spinner + " Entrando...";
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      showLoginError("E-mail ou senha incorretos.");
+      loginBtn.disabled = false;
+      loginBtn.classList.remove("btn-loading");
+      loginBtn.textContent = original;
+      return;
+    }
+
+    const ok = await validarSessaoEProsseguir();
+    if (!ok) {
+      loginBtn.disabled = false;
+      loginBtn.classList.remove("btn-loading");
+      loginBtn.textContent = original;
+    }
+  }
+
+  loginBtn.addEventListener("click", handleLogin);
+  document.getElementById("login-password").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleLogin();
+  });
+
+  // ---------- Login com Google ----------
+  googleBtn.addEventListener("click", async () => {
+    loginError.classList.remove("show");
+    googleBtn.disabled = true;
+    googleBtn.innerHTML = ICONS.spinner + " Redirecionando...";
+    // Marca que uma volta do Google é esperada — é o que diferencia "acabei
+    // de voltar do redirecionamento" de "esta aba já tinha uma sessão
+    // válida de outra hora", que não deve disparar essa validação sozinha
+    // (senão um F5 numa sessão antiga podia derrubar alguém sem motivo).
+    try { sessionStorage.setItem(CHAVE_OAUTH_PENDENTE, "1"); } catch (_) {}
+
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + "/",
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    if (error) {
+      try { sessionStorage.removeItem(CHAVE_OAUTH_PENDENTE); } catch (_) {}
+      showLoginError("Não foi possível continuar com o Google. Tente novamente.");
+      googleBtn.disabled = false;
+      googleBtn.innerHTML = GOOGLE_BTN_HTML;
+    }
+    // Se não deu erro, a página está navegando pro Google — nada mais a
+    // fazer aqui, o resto acontece quando ela voltar.
+  });
+
+  (async function tratarRetornoDoGoogle() {
+    let voltandoDoGoogle = false;
+    try { voltandoDoGoogle = sessionStorage.getItem(CHAVE_OAUTH_PENDENTE) === "1"; } catch (_) {}
+    if (!voltandoDoGoogle) return;
+    try { sessionStorage.removeItem(CHAVE_OAUTH_PENDENTE); } catch (_) {}
+
+    googleBtn.disabled = true;
+    googleBtn.innerHTML = ICONS.spinner + " Confirmando...";
+    const ok = await validarSessaoEProsseguir();
+    if (!ok) {
+      googleBtn.disabled = false;
+      googleBtn.innerHTML = GOOGLE_BTN_HTML;
+    }
+  })();
+</script>
+</body>
+</html>

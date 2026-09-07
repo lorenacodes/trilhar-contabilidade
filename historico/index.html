@@ -1023,6 +1023,11 @@
       pasta: "v196-2026-09-07",
       data: "07/09/2026",
       descricao: "Pedido: 'tem que deixar claro os documentos que são obrigatórios'. O marcador de categoria obrigatória era só texto solto '(obrigatória)' colado no nome, mesmo peso e cor do resto -- ao lado de um badge de status colorido (Pendente/Aprovado/etc), passava despercebido numa lista com várias categorias. Virou um selo próprio, .badge-obrigatorio: pill dourado (mesmo tom do --brand-gold da marca, com fundo tingido igual aos outros status-badge, não sólido -- não repete o bug do fundo mostarda da v190) com o texto 'OBRIGATÓRIO' em maiúsculas, separado do badge de status pra não se confundir com ele. Verificado com harness isolado: selo legível nos dois temas (claro e escuro), sem overflow em 375px (mobile) -- quebra de linha limpa junto com o nome da categoria."
+    },
+    {
+      pasta: "v197-2026-09-07",
+      data: "07/09/2026",
+      descricao: "Pedido: 'aumente mais esse detalhamento', sobre o painel 'Todo o histórico' (o mesmo que a v194 passou a abrir filtrado por categoria, com data de envio e recebimento). Ele reaproveitava o .config-panel padrão de formulário (960px, altura limitada a 82vh por um estilo inline) -- pequeno demais pra um painel cujo conteúdo é a lista de documentos em si, não um formulário curto. Ganhou uma classe própria, .historico-panel (1200px, 88vh, mesmo raciocínio de tamanho que a v195 já tinha aplicado ao modal de pré-visualização), e o miolo com a busca/filtros/lista ganhou flex:1 + min-height:0 pra ocupar de verdade a altura extra em vez de sobrar espaço em branco embaixo da lista. No mobile (<=900px) continua ocupando a tela inteira, igual já era. Verificado com harness isolado: painel visivelmente maior num viewport de 1000px, miolo cresce até preencher a altura disponível, sem overflow em 375px (mobile)."
     }
   ];
 

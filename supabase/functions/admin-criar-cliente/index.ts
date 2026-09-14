@@ -6,13 +6,21 @@
 // de quem chamou), valida CPF/CNPJ/endereço de novo aqui (nunca confiar só
 // no que o front-end validou), e só então usa a service_role pra criar a conta.
 //
-// Envio de e-mail de convite DESATIVADO temporariamente (o Resend está em
-// modo sandbox e só entrega pro próprio dono da conta — nenhum convite real
-// estava chegando no cliente). Em vez de convidar por e-mail, a conta já
-// nasce com uma senha temporária gerada aqui no servidor (nunca no
-// navegador) e ativa (email_confirm: true, sem precisar clicar em nada).
-// A senha temporária volta na resposta só pra esta chamada poder gerar o
-// PDF de boas-vindas — não fica salva em lugar nenhum depois disso.
+// A conta já nasce com uma senha temporária gerada aqui no servidor (nunca
+// no navegador) e ativa (email_confirm: true, sem precisar clicar em nada).
+// Essa senha volta na resposta só pra esta chamada poder gerar o PDF de
+// boas-vindas (entrega alternativa/imediata, pro admin entregar em mãos se
+// quiser) — não fica salva em lugar nenhum depois disso.
+//
+// Além do PDF, também disparamos o e-mail de acesso de verdade (SMTP via
+// Resend, domínio próprio configurado no Supabase — confirmado funcionando
+// em 2026-09-14) usando o mesmo fluxo de "recuperar senha" que já existe
+// pro resto do sistema (resetPasswordForEmail), em vez de reativar o antigo
+// inviteUserByEmail: assim o cliente cai direto em redefinir-senha.html, a
+// mesma tela já testada e funcionando, sem precisar de uma página nova só
+// pra esse fluxo. Falha no envio do e-mail não desfaz a criação do cliente
+// (que já teve sucesso) — só fica registrada no log; o PDF continua
+// funcionando como caminho de entrega alternativo.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -175,6 +183,7 @@ Deno.serve(async (req) => {
     const cnpj = somenteDigitos(body.cnpj || "");
     const email = String(body.email || "").trim().toLowerCase();
     const telefone = somenteDigitos(body.telefone || "");
+    const redirectTo = String(body.redirectTo || "").trim();
 
     const enderecoCep = somenteDigitos(body.enderecoCep || "");
     const enderecoRua = String(body.enderecoRua || "").trim();
@@ -278,12 +287,22 @@ Deno.serve(async (req) => {
     });
     if (eventoErro) console.error("Falha ao registrar evento de criação:", eventoErro);
 
+    // Melhor esforço: o cliente já foi criado com sucesso, então uma falha
+    // aqui não desfaz nada — só fica registrada no log. O PDF de boas-vindas
+    // (gerado com a senha temporária retornada abaixo) continua sendo a
+    // entrega garantida mesmo se este e-mail não sair.
+    const { error: emailError } = await adminClient.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectTo || undefined,
+    });
+    if (emailError) console.error("Falha ao enviar e-mail de acesso ao cliente:", emailError.message);
+
     return jsonResponse({
       success: true,
       clienteId: clienteRow.id,
       email,
       nome: nomeCompleto,
       senhaTemporaria,
+      emailEnviado: !emailError,
     }, 200);
   } catch (_err) {
     return jsonResponse({ error: "Erro inesperado ao cadastrar cliente" }, 500);

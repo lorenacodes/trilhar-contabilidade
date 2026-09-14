@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enviar Documento — Portal do Cliente</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+</head>
+<body>
+<script>
+  // "Enviar Documento" virou redundante com "Documentos" (2026-09-04): lá,
+  // cada categoria já tem seu próprio botão de anexar, em qualquer status —
+  // não só nos casos pendentes/rejeitados como antes. As duas telas faziam
+  // quase a mesma coisa por caminhos diferentes, e "Documentos" é a versão
+  // melhor porque mostra o status junto. Esta página continua existindo só
+  // como redirecionamento (link salvo, atalho de tela inicial no celular
+  // etc.) — quem cai aqui vai direto pra "Documentos".
+  window.location.replace("documentos" + window.location.search);
+</script>
+</body>
+</html>

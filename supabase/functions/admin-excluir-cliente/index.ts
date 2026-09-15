@@ -130,14 +130,26 @@ Deno.serve(async (req) => {
     if (cliente.user_id) {
       await adminClient.from("users").delete().eq("id", cliente.user_id);
     }
+    // Bug real encontrado em produção (2026-09-15): esta chamada podia falhar
+    // silenciosamente (sem log, sem afetar a resposta) deixando a conta de
+    // Auth órfã -- clientes/users já apagados, mas o e-mail continuava
+    // "ocupado" no Supabase Auth, impedindo recadastrar esse mesmo e-mail
+    // depois (createUser rejeita e-mail duplicado). Agora registra o erro e
+    // avisa no retorno, pra não sumir de novo sem ninguém perceber.
+    let authDeletionOk = true;
     if (authUserId) {
-      await adminClient.auth.admin.deleteUser(authUserId);
+      const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(authUserId);
+      if (deleteAuthError) {
+        authDeletionOk = false;
+        console.error("Falha ao excluir conta de Auth do cliente:", deleteAuthError.message);
+      }
     }
 
     return jsonResponse({
       success: true,
       documentosExcluidos: (documentos || []).length,
       arquivosExcluidos: storagePaths.length,
+      authDeletionOk,
     }, 200);
   } catch (_err) {
     return jsonResponse({ error: "Erro inesperado ao excluir cliente" }, 500);

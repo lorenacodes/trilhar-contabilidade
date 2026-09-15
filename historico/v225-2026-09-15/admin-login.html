@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acesso Administrativo — Trilhar Contabilidade</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+</head>
+<body>
+<script>
+  // A tela de login virou uma só (index.html), com seletor Cliente/
+  // Administrador no topo em vez de duas páginas separadas. Este arquivo
+  // continua existindo só pra quem tem o link antigo salvo (ou é mandado
+  // pra cá pelo auth-guard, que ainda redireciona pra "admin-login" em
+  // várias situações) — marca "Administrador" como lembrado e manda pra
+  // tela única já com esse lado selecionado, preservando ?erro=... etc.
+  try { localStorage.setItem("portal_tipo_acesso", "administrador"); } catch (_) {}
+  window.location.replace("/" + window.location.search);
+</script>
+</body>
+</html>

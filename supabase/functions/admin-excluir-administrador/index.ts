@@ -136,11 +136,20 @@ Deno.serve(async (req) => {
     if (administrador.user_id) {
       await adminClient.from("users").delete().eq("id", administrador.user_id);
     }
+    // Mesmo bug real encontrado em admin-excluir-cliente (2026-09-15): sem
+    // checar o erro aqui, uma falha na API de Auth deixa a conta órfã --
+    // administradores/users já apagados, mas o e-mail continua "ocupado" no
+    // Supabase Auth, travando um recadastro futuro com esse mesmo e-mail.
+    let authDeletionOk = true;
     if (authUserId) {
-      await adminClient.auth.admin.deleteUser(authUserId);
+      const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(authUserId);
+      if (deleteAuthError) {
+        authDeletionOk = false;
+        console.error("Falha ao excluir conta de Auth do administrador:", deleteAuthError.message);
+      }
     }
 
-    return jsonResponse({ success: true }, 200);
+    return jsonResponse({ success: true, authDeletionOk }, 200);
   } catch (_err) {
     return jsonResponse({ error: "Erro inesperado ao excluir administrador" }, 500);
   }

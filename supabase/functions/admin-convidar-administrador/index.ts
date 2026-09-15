@@ -1,8 +1,13 @@
 // Convida um novo administrador (Auth + users + administradores). Mesmo
 // motivo do admin-criar-cliente: criar conta de Auth exige a service_role
-// key, que nunca pode ir pro navegador. Sem niveis/RBAC de proposito (por
-// decisao do projeto) -- todo convidado entra como "administrador"; so o
-// dono original da conta fica "proprietario", atribuido fora deste fluxo.
+// key, que nunca pode ir pro navegador. Todo convidado entra como
+// "administrador"; so o dono original da conta fica "proprietario",
+// atribuido fora deste fluxo.
+//
+// Só o proprietário pode convidar novos administradores (is_proprietario(),
+// não is_admin()) -- decisão explícita da Lorena na auditoria de segurança
+// pré-lançamento (2026-09-14): antes qualquer administrador comum podia
+// criar outros administradores, sem nenhum controle de quem entra na equipe.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -67,9 +72,9 @@ Deno.serve(async (req) => {
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: souAdmin, error: adminCheckError } = await callerClient.rpc("is_admin");
-    if (adminCheckError || !souAdmin) {
-      return jsonResponse({ error: "Apenas administradores podem convidar outros administradores" }, 403);
+    const { data: souProprietario, error: propCheckError } = await callerClient.rpc("is_proprietario");
+    if (propCheckError || !souProprietario) {
+      return jsonResponse({ error: "Apenas o proprietário pode convidar outros administradores" }, 403);
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);

@@ -3707,12 +3707,6 @@
       ? '<span class="status-tag active"><span class="status-dot"></span>Ativo</span>'
       : '<span class="status-tag inactive"><span class="status-dot"></span>Inativo</span>';
 
-    // Excluir cliente é restrito a proprietário (mesma régua de categorias e
-    // de excluir administrador) -- a Edge Function já valida isso de novo no
-    // servidor, não é só esconder botão.
-    document.getElementById("detalhe-excluir-btn").style.display =
-      (ADMIN_ATUAL && ADMIN_ATUAL.nivel === "proprietario") ? "" : "none";
-
     const statusBtn = document.getElementById("detalhe-status-btn");
     if (c.status === "ativo") {
       statusBtn.textContent = "Desativar";
@@ -6052,13 +6046,10 @@
   });
 
   // ---------- Aba Administradores (lista + convite) ----------
-  // Convidar administrador também é restrito a proprietário (pedido da
-  // Lorena na auditoria de segurança pré-lançamento -- antes qualquer
-  // administrador comum podia convidar outros) -- a Edge Function já valida
-  // isso de novo no servidor, não é só esconder botão. O nível
-  // (administrador/proprietário) continua sendo escolhido dentro do convite,
-  // só que agora só quem abre o painel já é proprietário mesmo. Ainda não
-  // existe tela pra trocar o nível de alguém depois de já convidado.
+  // O nível (administrador/proprietário) é escolhido no convite -- só quem
+  // já é proprietário vê essa opção (edge function valida isso de novo no
+  // servidor, não é só esconder botão). Ainda não existe tela pra trocar o
+  // nível de alguém depois de já convidado.
   function renderAdministradores() {
     const tbody = document.getElementById("administradores-tbody");
     tbody.innerHTML = "";
@@ -6066,7 +6057,6 @@
     // categorias) e nunca aparece na própria linha — autoexclusão também é
     // bloqueada no servidor, mas nem mostrar o botão já evita a tentativa.
     const souProprietario = ADMIN_ATUAL && ADMIN_ATUAL.nivel === "proprietario";
-    document.getElementById("btn-novo-administrador").style.display = souProprietario ? "" : "none";
     ADMINISTRADORES.forEach(a => {
       const statusTag = a.status === "ativo"
         ? `<span class="status-tag active"><span class="status-dot"></span>Ativo</span>`

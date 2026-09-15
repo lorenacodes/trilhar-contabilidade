@@ -5,6 +5,11 @@
 // removidos ANTES de apagar as linhas do banco, senão sobra arquivo órfão
 // no bucket sem nenhum registro apontando pra ele (documentos/documento_arquivos
 // já têm ON DELETE CASCADE a partir de clientes, mas isso não alcança o Storage).
+//
+// Só o proprietário pode chamar isso (is_proprietario(), não is_admin()) —
+// decisão explícita da Lorena na auditoria de segurança pré-lançamento
+// (2026-09-14): é uma ação irreversível que apaga o histórico inteiro de um
+// cliente, mesma régua já usada pra excluir administrador.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -69,9 +74,9 @@ Deno.serve(async (req) => {
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: souAdmin, error: adminCheckError } = await callerClient.rpc("is_admin");
-    if (adminCheckError || !souAdmin) {
-      return jsonResponse({ error: "Apenas administradores podem excluir clientes" }, 403);
+    const { data: souProprietario, error: propCheckError } = await callerClient.rpc("is_proprietario");
+    if (propCheckError || !souProprietario) {
+      return jsonResponse({ error: "Apenas o proprietário pode excluir clientes" }, 403);
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);

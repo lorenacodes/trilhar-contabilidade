@@ -50,8 +50,27 @@
         </div>
 
         <button class="btn btn-secondary" style="width:100%; margin-bottom:var(--space-3);" id="btn-abrir-trocar-senha">Trocar senha</button>
-        <button class="btn btn-secondary" style="width:100%;" onclick="showToast('Solicitação enviada à Trilhar Contabilidade')">Solicitar alteração de dados</button>
+        <button class="btn btn-secondary" style="width:100%;" id="btn-abrir-solicitar-alteracao">Solicitar alteração de dados</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pedir alteração de dados cadastrais -- o pedido é gravado de verdade
+     (tabela solicitacoes_alteracao) e aparece no painel do admin. Antes o
+     botão só mostrava um aviso de "enviada" sem mandar nada pra ninguém. -->
+<div class="modal-overlay" id="modal-solicitar-alteracao">
+  <div class="modal modal-xl">
+    <h3 style="margin:0 0 4px;">Solicitar alteração de dados</h3>
+    <p class="hint" style="margin:0 0 18px;">Conte o que precisa ser corrigido (nome, telefone, endereço, e-mail etc.). A Trilhar Contabilidade vai receber o pedido e fazer a alteração.</p>
+    <div class="field">
+      <label class="required">O que precisa mudar?</label>
+      <textarea id="sa-mensagem" rows="5" maxlength="1000" placeholder="Ex.: meu telefone mudou para (79) 99999-9999" style="width:100%; resize:vertical;"></textarea>
+    </div>
+    <p class="field-error" id="sa-erro"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancelar-solicitar-alteracao">Cancelar</button>
+      <button class="btn btn-primary" id="btn-enviar-solicitar-alteracao">Enviar pedido</button>
     </div>
   </div>
 </div>
@@ -192,6 +211,48 @@
       { table: "users", filter: "id=eq." + cliente.userId }
     ], carregarPerfil);
   })();
+
+  // ---------- Solicitar alteração de dados ----------
+  const saMensagem = document.getElementById("sa-mensagem");
+  const saErro = document.getElementById("sa-erro");
+  const saBtn = document.getElementById("btn-enviar-solicitar-alteracao");
+  document.getElementById("btn-abrir-solicitar-alteracao").addEventListener("click", () => {
+    saMensagem.value = "";
+    saErro.classList.remove("show");
+    document.getElementById("modal-solicitar-alteracao").classList.add("open");
+    saMensagem.focus();
+  });
+  document.getElementById("btn-cancelar-solicitar-alteracao").addEventListener("click", () => {
+    document.getElementById("modal-solicitar-alteracao").classList.remove("open");
+  });
+  saBtn.addEventListener("click", async () => {
+    const mensagem = saMensagem.value.trim();
+    if (mensagem.length < 3) {
+      saErro.textContent = "Descreva o que precisa ser alterado.";
+      saErro.classList.add("show");
+      return;
+    }
+    if (!CLIENTE_ATUAL) return;
+    saBtn.disabled = true;
+    const original = saBtn.textContent;
+    saBtn.innerHTML = ICONS.spinner + " Enviando...";
+    saErro.classList.remove("show");
+
+    const { error } = await sb.from("solicitacoes_alteracao").insert({ cliente_id: CLIENTE_ATUAL.id, mensagem });
+    saBtn.disabled = false;
+    saBtn.textContent = original;
+    if (error) {
+      console.error("Falha ao enviar solicitação de alteração:", error);
+      // Mais de 5 pedidos em aberto é barrado pelo banco (policy de insert).
+      saErro.textContent = error.code === "42501"
+        ? "Você já tem pedidos em aberto aguardando a Trilhar. Aguarde o retorno antes de enviar outro."
+        : "Não foi possível enviar o pedido. Tente novamente.";
+      saErro.classList.add("show");
+      return;
+    }
+    document.getElementById("modal-solicitar-alteracao").classList.remove("open");
+    showToast("Pedido enviado. A Trilhar Contabilidade vai retornar sobre a alteração.");
+  });
 
   // ---------- Trocar senha (cliente logado) — mesmo fluxo do admin ----------
   const CRITERIOS_SENHA_CLIENTE = [

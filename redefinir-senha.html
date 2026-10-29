@@ -130,6 +130,13 @@
       return;
     }
 
+    // Quem entra pelo e-mail de acesso de um cadastro novo acabou de criar a
+    // própria senha aqui -- isso JÁ é o primeiro acesso. Sem marcar como
+    // concluído, o primeiro login logo depois mandava a pessoa pra tela
+    // "primeiro-acesso" pedir uma senha nova DE NOVO (duas vezes seguidas).
+    // Pra quem só esqueceu a senha, a flag já é false e a chamada é inofensiva.
+    await sb.rpc("marcar_primeiro_acesso_concluido");
+
     const { data: { session } } = await sb.auth.getSession();
     const { data: usuario } = await sb.from("users").select("tipo").eq("auth_user_id", session.user.id).maybeSingle();
     await sb.auth.signOut();

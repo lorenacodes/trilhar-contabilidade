@@ -302,11 +302,18 @@
       grupo.categorias.forEach(cat => {
         const docsDaCategoria = TODOS_DOCS.filter(d => d.categoria_id === cat.id);
         const { status, documento, motivoRejeicao } = statusParaCategoria(cat, docsDaCategoria);
-        const statusInfo = STATUS_DOCUMENTO_LABELS[status];
+        // A etapa de aprovação/rejeição foi removida do sistema, então todo
+        // documento enviado fica em "enviado" pra sempre -- e esse é o estado
+        // FINAL. Antes ele aparecia em amarelo ("alerta") e a categoria nunca
+        // ganhava o check de concluída: o cliente mandava o documento e a tela
+        // seguia parecendo incompleta. "enviado" passa a valer como concluído
+        // (verde, com check), igual "aprovado" valia.
+        const concluido = status === "aprovado" || status === "enviado";
+        const statusInfo = status === "enviado" ? { label: "Enviado", cls: "ok" } : STATUS_DOCUMENTO_LABELS[status];
         // Alerta de validade (ex: Contrato vencendo/vencido) só existe pra
-        // documento já aprovado com data_validade definida pelo admin — é
+        // documento já concluído com data_validade definida pelo admin — é
         // um alerta a mais, não substitui o status de revisão em si.
-        const statusValidade = (status === "aprovado" && documento && documento.data_validade)
+        const statusValidade = (concluido && documento && documento.data_validade)
           ? statusValidadeDocumento(documento.data_validade, DIAS_ANTECEDENCIA_ALERTA)
           : null;
         const vencido = statusValidade && statusValidade.cls === "danger";
@@ -325,10 +332,10 @@
           : "Anexar mais um arquivo";
 
         const card = document.createElement("div");
-        card.className = "cat-group" + (status === "aprovado" && !vencido ? " sent" : (precisaAtencao ? " pending" : ""));
+        card.className = "cat-group" + (concluido && !vencido ? " sent" : (precisaAtencao ? " pending" : ""));
         card.innerHTML = `
           <div class="cat-group-head">
-            <div class="cat-status-icon">${status === "aprovado" && !vencido ? ICONS.check : ICONS.dot}</div>
+            <div class="cat-status-icon">${concluido && !vencido ? ICONS.check : ICONS.dot}</div>
             <span class="cat-group-name">${escapeHtml(cat.nome)}</span>
             ${cat.obrigatoria ? `<span class="badge-obrigatorio">Obrigatório</span>` : ""}
             <span class="status-badge ${statusInfo.cls}">${statusInfo.label}</span>

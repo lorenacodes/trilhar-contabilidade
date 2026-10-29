@@ -1247,6 +1247,18 @@
   </div>
 </div>
 
+<!-- Modal: pedidos de alteração de dados feitos pelos clientes (Perfil) -->
+<div class="modal-overlay" id="modal-solicitacoes">
+  <div class="modal modal-xl">
+    <h3 style="margin:0 0 4px;">Pedidos de alteração de dados</h3>
+    <p class="hint" style="margin:0 0 14px;">Pedidos feitos pelos clientes no Perfil. Faça a alteração no cadastro do cliente e marque como resolvido.</p>
+    <div id="solicitacoes-lista" style="display:flex; flex-direction:column; gap:12px; max-height:60vh; overflow:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-solicitacoes').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal "Analisar documento" (aprovar/rejeitar) removido -- pedido
      explícito: essa etapa de revisão não é necessária no momento, nem
      no admin nem no cliente. O toggle "Ocultar do cliente"/"Mostrar ao
@@ -2306,6 +2318,7 @@
   let DOCUMENTOS = [];
   let ADMINISTRADORES = [];
   let EVENTOS_CLIENTE = [];
+  let SOLICITACOES = [];
   let CONFIG_EMPRESA = { nome: "Trilhar Contabilidade", nome_fantasia: "", email_contato: "", telefone: "", endereco: "", dias_antecedencia_alerta: 7, alerta_boletos_ativo: true };
 
   function categoriaPorId(id) { return CATEGORIAS.find(c => c.id === id); }
@@ -2427,7 +2440,7 @@
   }
 
   async function carregarDados() {
-    const [catRes, cliRes, docRes, adminRes, configRes, eventosRes] = await Promise.all([
+    const [catRes, cliRes, docRes, adminRes, configRes, eventosRes, solicRes] = await Promise.all([
       sb.from("categorias").select("*").order("ordem", { ascending: true }),
       sb.from("clientes").select("id, tipo_pessoa, nome, sobrenome, razao_social, nome_fantasia, cpf, cnpj, telefone, endereco_cep, endereco_rua, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, created_at, users(nome, email, status)").order("created_at", { ascending: false }),
       sb.from("documentos")
@@ -2441,10 +2454,11 @@
         .order("created_at", { ascending: false }),
       sb.from("administradores").select("id, nivel, created_at, users(nome, email, status)").order("created_at", { ascending: true }),
       sb.from("configuracoes_empresa").select("*").limit(1).maybeSingle(),
-      sb.from("eventos_cliente").select("id, cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo, created_at").order("created_at", { ascending: false })
+      sb.from("eventos_cliente").select("id, cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo, created_at").order("created_at", { ascending: false }),
+      sb.from("solicitacoes_alteracao").select("id, cliente_id, mensagem, created_at").eq("status", "aberta").order("created_at", { ascending: true })
     ]);
 
-    if (catRes.error || cliRes.error || docRes.error || adminRes.error || configRes.error || eventosRes.error) {
+    if (catRes.error || cliRes.error || docRes.error || adminRes.error || configRes.error || eventosRes.error || solicRes.error) {
       showToast("Erro ao carregar dados do painel. Recarregue a página.");
       return;
     }
@@ -2487,6 +2501,7 @@
       status: (a.users && a.users.status) || "ativo"
     }));
     EVENTOS_CLIENTE = eventosRes.data || [];
+    SOLICITACOES = solicRes.data || [];
 
     renderTudo();
   }
@@ -2507,7 +2522,7 @@
     realtimeDebounceTimer = setTimeout(carregarDados, 600);
   }
   function iniciarRealtimeSync() {
-    const TABELAS_SINCRONIZADAS = ["categorias", "clientes", "documentos", "administradores", "configuracoes_empresa", "eventos_cliente"];
+    const TABELAS_SINCRONIZADAS = ["categorias", "clientes", "documentos", "administradores", "configuracoes_empresa", "eventos_cliente", "solicitacoes_alteracao"];
     let canal = sb.channel("admin-realtime-sync");
     TABELAS_SINCRONIZADAS.forEach(tabela => {
       canal = canal.on("postgres_changes", { event: "*", schema: "public", table: tabela }, agendarRefetchRealtime);
@@ -2922,6 +2937,58 @@
     renderAtencaoDoDia(boletosVencendo, variacaoReceita);
   }
 
+  // ---------- Pedidos de alteração de dados (vindos do Perfil do cliente) ----------
+  function renderSolicitacoes() {
+    const lista = document.getElementById("solicitacoes-lista");
+    lista.innerHTML = "";
+    if (SOLICITACOES.length === 0) {
+      lista.innerHTML = '<p class="attention-empty">Nenhum pedido em aberto.</p>';
+      return;
+    }
+    SOLICITACOES.forEach(s => {
+      const c = clientePorId(s.cliente_id);
+      const item = document.createElement("div");
+      item.className = "attention-item";
+      item.style.cursor = "default";
+      item.innerHTML = `
+        <div class="attention-item-head"><strong></strong></div>
+        <p class="hint" style="margin:2px 0 6px;"></p>
+        <p class="attention-item-desc" style="white-space:pre-wrap;"></p>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button type="button" class="btn btn-secondary solic-abrir">Abrir cliente</button>
+          <button type="button" class="btn btn-primary solic-resolver">Marcar como resolvido</button>
+        </div>`;
+      item.querySelector("strong").textContent = c ? c.nome : "Cliente";
+      item.querySelector(".hint").textContent = "Pedido em " + new Date(s.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      item.querySelector(".attention-item-desc").textContent = s.mensagem;
+      item.querySelector(".solic-abrir").addEventListener("click", () => {
+        document.getElementById("modal-solicitacoes").classList.remove("open");
+        if (c) openDetalhe(c.id);
+      });
+      const btnResolver = item.querySelector(".solic-resolver");
+      btnResolver.addEventListener("click", async () => {
+        btnResolver.disabled = true;
+        const { error } = await sb.from("solicitacoes_alteracao")
+          .update({ status: "resolvida", resolvida_em: new Date().toISOString(), resolvida_por: ADMIN_ATUAL.id })
+          .eq("id", s.id);
+        if (error) {
+          console.error("Falha ao resolver pedido:", error);
+          showToast("Não foi possível marcar como resolvido. Tente novamente.");
+          btnResolver.disabled = false;
+          return;
+        }
+        showToast("Pedido marcado como resolvido");
+        await carregarDados();
+        renderSolicitacoes();
+      });
+      lista.appendChild(item);
+    });
+  }
+  function abrirSolicitacoes() {
+    renderSolicitacoes();
+    document.getElementById("modal-solicitacoes").classList.add("open");
+  }
+
   // ---------- Visão geral: faixa "Atenção do dia" ----------
   // Reaproveita dado que renderKpis() já calculou -- boletosVencendo (só
   // filtra os que vencem HOJE, dias===0, de dentro da janela de alerta que
@@ -2955,6 +3022,26 @@
         titulo: boletosHoje + (boletosHoje === 1 ? " boleto" : " boletos"),
         sub: "vencendo hoje",
         onClick: () => switchTab("financeiro")
+      });
+    }
+    // Coisas que o CLIENTE fez e esperam resposta do escritório -- antes não
+    // apareciam em lugar nenhum da Visão geral (o admin só descobria se
+    // fosse procurar boleto por boleto / cliente por cliente).
+    const pagamentosAvisados = DOCUMENTOS.filter(d => isBoletoCategoria(categoriaPorId(d.categoria_id)) && d.status !== "pago" && d.pagamentoInformadoEm).length;
+    if (pagamentosAvisados > 0) {
+      itens.push({
+        icon: ICONS.upload, cls: "stat-icon-chip-warning",
+        titulo: pagamentosAvisados + (pagamentosAvisados === 1 ? " pagamento" : " pagamentos"),
+        sub: "avisado pelo cliente, confirmar",
+        onClick: () => switchTab("financeiro")
+      });
+    }
+    if (SOLICITACOES.length > 0) {
+      itens.push({
+        icon: ICONS.user, cls: "stat-icon-chip-navy",
+        titulo: SOLICITACOES.length + (SOLICITACOES.length === 1 ? " pedido" : " pedidos"),
+        sub: "de alteração de dados",
+        onClick: abrirSolicitacoes
       });
     }
     if (receitaCaiu) {

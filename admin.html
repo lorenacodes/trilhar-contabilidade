@@ -444,7 +444,7 @@
             </div>
             <div class="stat-card">
               <div class="stat-top"><div class="stat-icon-chip stat-icon-chip-success" id="fin-icon-recebido"></div></div>
-              <p class="stat-label">Recebido</p>
+              <p class="stat-label">Recebido (honorários)</p>
               <p class="stat-value" id="fin-value-recebido">R$ 0,00</p>
               <p class="stat-trend" id="fin-trend-recebido">—</p>
               <p class="stat-period" id="fin-periodo-recebido">—</p>
@@ -1092,6 +1092,10 @@
           <option value="pago">Pago</option>
         </select>
       </div>
+      <div class="field" id="pago-em-field" style="display:none;">
+        <label class="required">Data do pagamento</label>
+        <input type="date" id="pago-em-input">
+      </div>
       <div class="field">
         <label class="required">Arquivo(s)</label>
         <div class="dropzone" id="dropzone">
@@ -1220,6 +1224,25 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" id="btn-cancelar-envio-oculto">Cancelar</button>
       <button class="btn btn-primary" id="btn-confirmar-envio-oculto">Enviar mesmo assim</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: data real do pagamento, ao marcar um boleto como Pago. O gráfico e
+     os totais por mês usam essa data -- antes era sempre o dia do clique, e
+     vários boletos marcados juntos caíam todos no mesmo dia/mês. -->
+<div class="modal-overlay" id="modal-data-pagamento">
+  <div class="modal modal-sm">
+    <h3 style="margin:0 0 4px;">Data do pagamento</h3>
+    <p class="hint" id="data-pagamento-contexto" style="margin:0 0 14px;">—</p>
+    <div class="field">
+      <label class="required">Quando o cliente pagou?</label>
+      <input type="date" id="data-pagamento-input">
+      <p class="field-error" id="data-pagamento-erro"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancelar-data-pagamento">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-data-pagamento">Marcar como pago</button>
     </div>
   </div>
 </div>
@@ -2305,6 +2328,56 @@
   // documento por documento, não na categoria). Retorna uma Promise<bool>
   // (true = "enviar mesmo assim", false = cancelou) pra poder ser usada com
   // await tanto no upload genérico quanto no anexo rápido do Detalhe.
+  // Hoje no fuso local (AAAA-MM-DD) -- toISOString() usaria UTC e viraria o
+  // dia seguinte à noite.
+  function hojeISOLocal() {
+    const h = new Date();
+    return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0") + "-" + String(h.getDate()).padStart(2, "0");
+  }
+  // Data "AAAA-MM-DD" -> timestamp pra gravar em pago_em: hoje = agora; dia
+  // passado = meio-dia local (nunca escorrega de mês por fuso).
+  function pagoEmDeData(dataStr) {
+    if (!dataStr) return null;
+    if (dataStr === hojeISOLocal()) return new Date().toISOString();
+    const meioDia = dataLocalDe(dataStr);
+    meioDia.setHours(12, 0, 0, 0);
+    return meioDia.toISOString();
+  }
+  // Abre o modal de data do pagamento. Resolve com "AAAA-MM-DD" ou null se
+  // cancelou. Não aceita data futura (o banco recusa também).
+  function pedirDataPagamento(nomeBoleto) {
+    const modal = document.getElementById("modal-data-pagamento");
+    const input = document.getElementById("data-pagamento-input");
+    const erro = document.getElementById("data-pagamento-erro");
+    const btnOk = document.getElementById("btn-confirmar-data-pagamento");
+    const btnCancel = document.getElementById("btn-cancelar-data-pagamento");
+    document.getElementById("data-pagamento-contexto").textContent = nomeBoleto;
+    input.max = hojeISOLocal();
+    input.value = hojeISOLocal();
+    erro.classList.remove("show");
+    erro.textContent = "";
+    return new Promise(resolve => {
+      function limpar() {
+        modal.classList.remove("open");
+        btnOk.removeEventListener("click", onOk);
+        btnCancel.removeEventListener("click", onCancel);
+      }
+      function onOk() {
+        if (!input.value || input.value > hojeISOLocal()) {
+          erro.textContent = input.value ? "A data do pagamento não pode ser no futuro." : "Informe a data do pagamento.";
+          erro.classList.add("show");
+          return;
+        }
+        limpar();
+        resolve(input.value);
+      }
+      function onCancel() { limpar(); resolve(null); }
+      btnOk.addEventListener("click", onOk);
+      btnCancel.addEventListener("click", onCancel);
+      modal.classList.add("open");
+    });
+  }
+
   function confirmarEnvioOculto(motivoHtml) {
     const modal = document.getElementById("modal-confirm-envio-oculto");
     const btnConfirmar = document.getElementById("btn-confirmar-envio-oculto");
@@ -4893,6 +4966,16 @@
     statusSelect.addEventListener("click", (e) => e.stopPropagation());
     statusSelect.addEventListener("change", async (e) => {
       const novoStatus = e.target.value;
+      // Ao marcar como Pago, pergunta o dia real do pagamento (padrão: hoje).
+      // Cancelar desfaz a troca do seletor sem tocar no banco.
+      let dataPagamento = null;
+      if (novoStatus === "pago") {
+        dataPagamento = await pedirDataPagamento(d.nome);
+        if (!dataPagamento) {
+          statusSelect.value = d.status === "pago" ? "pago" : "nao_pago";
+          return;
+        }
+      }
       // Trava contra disparo duplicado (troca rápida/clique duplo enquanto o
       // await anterior ainda está em voo) — auditoria da tela Financeiro
       // encontrou esse controle sem nenhuma proteção contra concorrência.
@@ -4904,7 +4987,7 @@
         // RPC (não update direto) — resolve o admin autenticado no
         // servidor e grava status_alterado_por/em na mesma transação,
         // pra "quem mudou o status" nunca mais ficar sem ator no Histórico.
-        const { error } = await sb.rpc("admin_definir_status_boleto", { p_documento_id: d.id, p_novo_status: novoStatus });
+        const { error } = await sb.rpc("admin_definir_status_boleto", { p_documento_id: d.id, p_novo_status: novoStatus, p_pago_em: dataPagamento });
         if (error) {
           statusSelect.classList.toggle("pago", d.status === "pago");
           showToast("Não foi possível atualizar o status");
@@ -5075,7 +5158,11 @@
     const honorarios = base.filter(d => (categoriaPorId(d.categoria_id) || {}).tipo_financeiro === "receita");
     const impostos = base.filter(d => (categoriaPorId(d.categoria_id) || {}).tipo_financeiro === "imposto");
     const honorariosNoPeriodo = honorarios.filter(d => dentroDoPeriodo(d.data_vencimento, periodo));
-    const pagosNoPeriodo = base.filter(d => d.status === "pago" && dentroDoPeriodo(d.pago_em, periodo));
+    // "Recebido" = só honorários pagos (receita do escritório), mesmo critério
+    // do gráfico da Visão Geral. Imposto é repassado ao governo e tem o card
+    // próprio "Impostos pagos" -- somar os dois aqui fazia "Recebido" não
+    // bater com o gráfico (ex: R$ 4.838,62 contra R$ 1.810,00).
+    const pagosNoPeriodo = honorarios.filter(d => d.status === "pago" && dentroDoPeriodo(d.pago_em, periodo));
     const impostosPagosNoPeriodo = impostos.filter(d => d.status === "pago" && dentroDoPeriodo(d.pago_em, periodo));
     const emAberto = filtrados.filter(d => d.status !== "pago");
 
@@ -6304,7 +6391,23 @@
     document.getElementById("valor-field").style.display = isBoleto ? "block" : "none";
     document.getElementById("status-field").style.display = isBoleto ? "block" : "none";
     document.getElementById("email-note").style.display = isBoleto ? "flex" : "none";
+    atualizarCampoDataPagamento();
   }
+
+  // Boleto enviado já como "Pago" precisa da data real do pagamento (antes
+  // ficava sem pago_em e não entrava em nenhum gráfico/total por mês).
+  function atualizarCampoDataPagamento() {
+    const cat = categoriaPorId(document.getElementById("cat-select").value);
+    const pago = isBoletoCategoria(cat) && document.getElementById("status-input").value === "pago";
+    const campo = document.getElementById("pago-em-field");
+    const input = document.getElementById("pago-em-input");
+    campo.style.display = pago ? "block" : "none";
+    if (pago) {
+      input.max = hojeISOLocal();
+      if (!input.value) input.value = hojeISOLocal();
+    }
+  }
+  document.getElementById("status-input").addEventListener("change", atualizarCampoDataPagamento);
 
   let uploadVisivelCliente = true;
   function openUpload(clienteId) {
@@ -6400,10 +6503,17 @@
       if (!prosseguir) return;
     }
 
+    const statusBoleto_ = isBoleto ? document.getElementById("status-input").value : null;
+    const dataPagamentoUpload = document.getElementById("pago-em-input").value;
+    if (isBoleto && statusBoleto_ === "pago" && (!dataPagamentoUpload || dataPagamentoUpload > hojeISOLocal())) {
+      showToast(dataPagamentoUpload ? "A data do pagamento não pode ser no futuro." : "Informe a data do pagamento.");
+      return;
+    }
     const camposBoleto = isBoleto ? {
       valor: valorBoleto,
       data_vencimento: document.getElementById("vencimento-input").value,
-      status: document.getElementById("status-input").value
+      status: statusBoleto_,
+      ...(statusBoleto_ === "pago" ? { pago_em: pagoEmDeData(dataPagamentoUpload) } : {})
     } : {};
 
     const original = btn.textContent;

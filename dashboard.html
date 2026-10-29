@@ -75,7 +75,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=89"></script>
+<script src="js/app.js?v=90"></script>
 <script src="js/auth-guard.js?v=81"></script>
 <script>
   function initials(nome) {
@@ -85,12 +85,14 @@
     return (nomeCategoria || "").replace(/^Boleto\s*-\s*/i, "");
   }
   function competencia(iso) {
-    const d = new Date(iso);
+    const d = dataLocalDe(iso);
     const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
     return label.charAt(0).toUpperCase() + label.slice(1);
   }
   function diasAte(iso) {
-    return Math.round((new Date(iso) - new Date()) / 86400000);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return Math.round((dataLocalDe(iso) - hoje) / 86400000);
   }
   function formatMoeda(valor) {
     return (valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -148,7 +150,7 @@
 
     async function buscarBoletos() {
       const { data: boletos } = await sb.from("documentos")
-        .select("id, nome, valor, data_vencimento, status, pago_em, created_at, status_alterado_em, pagamento_informado_em, categorias(slug, nome)")
+        .select("id, nome, valor, data_vencimento, status, pago_em, created_at, status_alterado_em, pagamento_informado_em, categorias(slug, nome, tipo_financeiro)")
         .eq("cliente_id", cliente.id)
         .not("data_vencimento", "is", null)
         .order("data_vencimento", { ascending: true });
@@ -248,7 +250,7 @@
       // RLS só libera categoria ativa pro cliente); sem essa checagem quebra
       // o dashboard inteiro, não só esse alerta.
       const nomeCategoria = tipoBoleto(b.categorias && b.categorias.nome);
-      const dataFormatada = new Date(b.data_vencimento).toLocaleDateString("pt-BR");
+      const dataFormatada = dataLocalDe(b.data_vencimento).toLocaleDateString("pt-BR");
       const vencido = dias < 0;
       const titulo = vencido ? "Boleto vencido" : "Vencimento próximo";
       const descricao = vencido
@@ -277,7 +279,7 @@
       const st = statusBoleto(b, DIAS_ANTECEDENCIA_ALERTA);
       const dias = diasAte(b.data_vencimento);
       const quando = dias < 0 ? "Vencido" : dias === 0 ? "Hoje" : "Em " + dias + " dias";
-      const d = new Date(b.data_vencimento);
+      const d = dataLocalDe(b.data_vencimento);
       const dia = d.toLocaleDateString("pt-BR", { day: "2-digit" });
       const mes = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
       const classeSeveridade = st && st.cls === "danger" ? " danger" : st && st.cls === "warning" ? " urgent" : "";
@@ -299,8 +301,16 @@
       .filter(b => b.status === "pago" && b.pago_em && new Date(b.pago_em).getMonth() === hoje.getMonth() && new Date(b.pago_em).getFullYear() === hoje.getFullYear())
       .reduce((s, b) => s + Number(b.valor || 0), 0);
 
-    const honorarios = naoPagos.filter(b => b.categorias && b.categorias.slug === "boleto-honorarios").reduce((s, b) => s + Number(b.valor || 0), 0);
-    const imposto = naoPagos.filter(b => b.categorias && b.categorias.slug === "boleto-imposto").reduce((s, b) => s + Number(b.valor || 0), 0);
+    // Separa por categorias.tipo_financeiro (o mesmo critério do painel
+    // admin), não pelo slug: antes só "boleto-honorarios"/"boleto-imposto"
+    // entravam, então um boleto de qualquer outra categoria somava no "Total
+    // em aberto" mas não aparecia em nenhuma das duas linhas acima dele, e a
+    // conta não fechava. O que sobra vai pra "Outros".
+    const tipoDe = (b) => (b.categorias && b.categorias.tipo_financeiro) || "";
+    const somaAbertos = (fn) => naoPagos.filter(fn).reduce((s, b) => s + Number(b.valor || 0), 0);
+    const honorarios = somaAbertos(b => tipoDe(b) === "receita");
+    const imposto = somaAbertos(b => tipoDe(b) === "imposto");
+    const outros = somaAbertos(b => tipoDe(b) !== "receita" && tipoDe(b) !== "imposto");
 
     const ultimo = boletos.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
@@ -315,6 +325,7 @@
       <div class="resumo-linha"><span>Pago este mês</span><strong>R$ ${formatMoeda(pagoEsteMes)}</strong></div>
       <div class="resumo-linha"><span>Em aberto — Honorários</span><strong>R$ ${formatMoeda(honorarios)}</strong></div>
       <div class="resumo-linha"><span>Em aberto — Imposto</span><strong>R$ ${formatMoeda(imposto)}</strong></div>
+      ${outros > 0 ? `<div class="resumo-linha"><span>Em aberto — Outros</span><strong>R$ ${formatMoeda(outros)}</strong></div>` : ""}
       <div class="resumo-linha total"><span>Total em aberto</span><strong>R$ ${formatMoeda(valorTotalAberto)}</strong></div>
       <div class="resumo-progress"><div class="resumo-progress-bar" style="width:${pctPago}%"></div></div>
       ${ultimo ? `<p class="resumo-nota">Último boleto recebido: ${escapeHtml(ultimo.nome)}</p>` : ""}

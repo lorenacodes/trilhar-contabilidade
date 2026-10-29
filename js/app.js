@@ -9,6 +9,16 @@ function sanitizarNomeArquivo(nome) {
   return semAcento.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
+/* Data "AAAA-MM-DD" (coluna DATE do Postgres, sem hora/fuso) -> Date em hora
+   LOCAL. new Date("2026-10-15") direto é lido como meia-noite UTC, que no
+   Brasil (UTC-3) vira 14/10 às 21h: o vencimento aparecia 1 dia antes e o
+   boleto que vence hoje contava como "vencido". statusBoleto() já fazia
+   isso certo; as telas do cliente (dashboard/boletos) não. */
+function dataLocalDe(iso) {
+  const [ano, mes, dia] = String(iso).slice(0, 10).split("-").map(Number);
+  return new Date(ano, mes - 1, dia);
+}
+
 /* Valida um arquivo contra as regras configuradas na categoria (só tipo
    aceito — tamanho máximo foi removido de propósito, ver categoria.
    tamanho_maximo_mb: null é "sem limite", tratado igual no gatilho do banco

@@ -47,6 +47,14 @@
         <span class="admin-nav-item-icon" id="nav-icon-financeiro"></span>
         <span class="admin-nav-item-label">Financeiro</span>
       </button>
+      <button type="button" class="admin-nav-item" data-tab="chamados" onclick="switchTab('chamados')">
+        <span class="admin-nav-item-icon" id="nav-icon-chamados"></span>
+        <span class="admin-nav-item-label" id="nav-label-chamados">Chamados</span>
+      </button>
+      <button type="button" class="admin-nav-item" data-tab="comunicados" onclick="switchTab('comunicados')">
+        <span class="admin-nav-item-icon" id="nav-icon-comunicados"></span>
+        <span class="admin-nav-item-label">Comunicados</span>
+      </button>
       <button type="button" class="admin-nav-item" data-tab="administradores" onclick="switchTab('administradores')">
         <span class="admin-nav-item-icon" id="nav-icon-administradores"></span>
         <span class="admin-nav-item-label">Administradores</span>
@@ -664,6 +672,55 @@
           </section>
         </div>
 
+        <!-- Aba: Chamados (problemas abertos pelos clientes; o admin responde
+             com o prazo em dias e acompanha até resolver) -->
+        <div id="tab-chamados" style="display:none;">
+          <div class="period-presets" id="chamados-filtro" style="margin-bottom:16px;">
+            <button type="button" class="period-chip active" data-filtro="pendentes">Pendentes</button>
+            <button type="button" class="period-chip" data-filtro="resolvido">Resolvidos</button>
+            <button type="button" class="period-chip" data-filtro="todos">Todos</button>
+          </div>
+          <div class="table-card">
+            <table class="table-clients">
+              <thead>
+                <tr><th>Cliente</th><th>Assunto</th><th>Aberto em</th><th>Status</th><th>Prazo</th><th></th></tr>
+              </thead>
+              <tbody id="chamados-tbody"></tbody>
+            </table>
+            <p class="hint" id="chamados-no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum chamado por aqui.</p>
+          </div>
+        </div>
+
+        <!-- Aba: Comunicados (publica uma vez, todos os clientes veem) -->
+        <div id="tab-comunicados" style="display:none;">
+          <div class="table-card" style="padding:var(--space-6); margin-bottom:16px;">
+            <h3 style="margin:0 0 4px;">Novo comunicado</h3>
+            <p class="hint" style="margin:0 0 14px;">Aparece no portal de todos os clientes de uma vez, sem precisar enviar cliente por cliente.</p>
+            <div class="field">
+              <label class="required">Título</label>
+              <input type="text" id="com-titulo" maxlength="150" placeholder="Ex.: Nova regra do MEI a partir de janeiro">
+            </div>
+            <div class="field" style="margin-top:14px;">
+              <label class="required">Mensagem</label>
+              <textarea id="com-mensagem" rows="6" maxlength="5000" style="width:100%; resize:vertical;"></textarea>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; margin:14px 0;">
+              <input type="checkbox" id="com-email" checked> Avisar todos os clientes por e-mail agora
+            </label>
+            <p class="field-error" id="com-erro"></p>
+            <button class="btn btn-primary" id="btn-publicar-comunicado">Publicar comunicado</button>
+          </div>
+          <div class="table-card">
+            <table class="table-clients">
+              <thead>
+                <tr><th>Publicado em</th><th>Título</th><th>E-mail</th><th>Lido por</th><th></th></tr>
+              </thead>
+              <tbody id="comunicados-tbody"></tbody>
+            </table>
+            <p class="hint" id="comunicados-no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum comunicado publicado ainda.</p>
+          </div>
+        </div>
+
         <!-- Aba: Administradores -->
         <div id="tab-administradores" style="display:none;">
           <div class="table-toolbar page-header-flex" style="padding:0; margin-bottom:16px; border-bottom:none;">
@@ -1247,6 +1304,42 @@
   </div>
 </div>
 
+<!-- Modal: responder um chamado (status + prazo em dias + resposta) -->
+<div class="modal-overlay" id="modal-chamado">
+  <div class="modal modal-xl">
+    <h3 style="margin:0 0 4px;" id="chamado-modal-assunto">Chamado</h3>
+    <p class="hint" id="chamado-modal-meta" style="margin:0 0 12px;">—</p>
+    <p id="chamado-modal-descricao" style="margin:0 0 18px; white-space:pre-wrap; line-height:1.6; padding:12px; border-radius:8px; background:var(--bg-surface-elevated);"></p>
+    <div class="field-grid-2">
+      <div class="field">
+        <label class="required">Status</label>
+        <select class="select-like" id="chamado-status">
+          <option value="aberto">Aguardando resposta</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="resolvido">Resolvido</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Resolvo em quantos dias?</label>
+        <input type="number" id="chamado-prazo" min="1" max="365" placeholder="Ex.: 3">
+        <p class="hint" id="chamado-prazo-hint" style="margin:4px 0 0;"></p>
+      </div>
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label>Resposta ao cliente</label>
+      <textarea id="chamado-resposta" rows="5" maxlength="2000" style="width:100%; resize:vertical;"></textarea>
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; margin:14px 0;">
+      <input type="checkbox" id="chamado-email" checked> Avisar o cliente por e-mail
+    </label>
+    <p class="field-error" id="chamado-erro"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancelar-chamado">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-chamado">Salvar resposta</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: pedidos de alteração de dados feitos pelos clientes (Perfil) -->
 <div class="modal-overlay" id="modal-solicitacoes">
   <div class="modal modal-xl">
@@ -1593,7 +1686,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=90"></script>
+<script src="js/app.js?v=91"></script>
 <script src="js/auth-guard.js?v=81"></script>
 <script>
   // Guarda de sessão real. Assim que confirma admin, carrega tudo do Supabase
@@ -1623,6 +1716,8 @@
   document.getElementById("current-year").textContent = new Date().getFullYear();
   document.getElementById("nav-icon-clientes").innerHTML = ICONS.user;
   document.getElementById("nav-icon-financeiro").innerHTML = ICONS.card;
+  document.getElementById("nav-icon-chamados").innerHTML = ICONS.mail;
+  document.getElementById("nav-icon-comunicados").innerHTML = ICONS.bell;
   document.getElementById("nav-icon-administradores").innerHTML = ICONS.lock;
   document.getElementById("nav-icon-config").innerHTML = '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>';
   document.getElementById("config-icon-alerta").innerHTML = ICONS.bell;
@@ -2319,6 +2414,9 @@
   let ADMINISTRADORES = [];
   let EVENTOS_CLIENTE = [];
   let SOLICITACOES = [];
+  let CHAMADOS = [];
+  let COMUNICADOS = [];
+  let COMUNICADOS_LIDOS = [];
   let CONFIG_EMPRESA = { nome: "Trilhar Contabilidade", nome_fantasia: "", email_contato: "", telefone: "", endereco: "", dias_antecedencia_alerta: 7, alerta_boletos_ativo: true };
 
   function categoriaPorId(id) { return CATEGORIAS.find(c => c.id === id); }
@@ -2440,7 +2538,7 @@
   }
 
   async function carregarDados() {
-    const [catRes, cliRes, docRes, adminRes, configRes, eventosRes, solicRes] = await Promise.all([
+    const [catRes, cliRes, docRes, adminRes, configRes, eventosRes, solicRes, chamadosRes, comunRes, lidosRes] = await Promise.all([
       sb.from("categorias").select("*").order("ordem", { ascending: true }),
       sb.from("clientes").select("id, tipo_pessoa, nome, sobrenome, razao_social, nome_fantasia, cpf, cnpj, telefone, endereco_cep, endereco_rua, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_estado, created_at, users(nome, email, status)").order("created_at", { ascending: false }),
       sb.from("documentos")
@@ -2455,10 +2553,13 @@
       sb.from("administradores").select("id, nivel, created_at, users(nome, email, status)").order("created_at", { ascending: true }),
       sb.from("configuracoes_empresa").select("*").limit(1).maybeSingle(),
       sb.from("eventos_cliente").select("id, cliente_id, tipo, descricao, ator, ator_admin_id, campo, valor_anterior, valor_novo, created_at").order("created_at", { ascending: false }),
-      sb.from("solicitacoes_alteracao").select("id, cliente_id, mensagem, created_at").eq("status", "aberta").order("created_at", { ascending: true })
+      sb.from("solicitacoes_alteracao").select("id, cliente_id, mensagem, created_at").eq("status", "aberta").order("created_at", { ascending: true }),
+      sb.from("chamados").select("id, cliente_id, assunto, descricao, status, prazo_dias, prazo_data, resposta, created_at, respondido_em").order("created_at", { ascending: false }),
+      sb.from("comunicados").select("id, titulo, mensagem, created_at, email_enviado_em").order("created_at", { ascending: false }),
+      sb.from("comunicados_lidos").select("comunicado_id, cliente_id")
     ]);
 
-    if (catRes.error || cliRes.error || docRes.error || adminRes.error || configRes.error || eventosRes.error || solicRes.error) {
+    if (catRes.error || cliRes.error || docRes.error || adminRes.error || configRes.error || eventosRes.error || solicRes.error || chamadosRes.error || comunRes.error || lidosRes.error) {
       showToast("Erro ao carregar dados do painel. Recarregue a página.");
       return;
     }
@@ -2502,6 +2603,9 @@
     }));
     EVENTOS_CLIENTE = eventosRes.data || [];
     SOLICITACOES = solicRes.data || [];
+    CHAMADOS = chamadosRes.data || [];
+    COMUNICADOS = comunRes.data || [];
+    COMUNICADOS_LIDOS = lidosRes.data || [];
 
     renderTudo();
   }
@@ -2522,7 +2626,7 @@
     realtimeDebounceTimer = setTimeout(carregarDados, 600);
   }
   function iniciarRealtimeSync() {
-    const TABELAS_SINCRONIZADAS = ["categorias", "clientes", "documentos", "administradores", "configuracoes_empresa", "eventos_cliente", "solicitacoes_alteracao"];
+    const TABELAS_SINCRONIZADAS = ["categorias", "clientes", "documentos", "administradores", "configuracoes_empresa", "eventos_cliente", "solicitacoes_alteracao", "chamados", "comunicados", "comunicados_lidos"];
     let canal = sb.channel("admin-realtime-sync");
     TABELAS_SINCRONIZADAS.forEach(tabela => {
       canal = canal.on("postgres_changes", { event: "*", schema: "public", table: tabela }, agendarRefetchRealtime);
@@ -2548,6 +2652,8 @@
     renderCategoriesGrid();
     populateUploadCategorySelect();
     renderAdministradores();
+    renderChamados();
+    renderComunicados();
     renderConfiguracoes();
 
     // Se o admin estiver na tela de detalhe de um cliente quando os dados
@@ -2937,6 +3043,239 @@
     renderAtencaoDoDia(boletosVencendo, variacaoReceita);
   }
 
+  // ---------- Chamados (problemas abertos pelos clientes) ----------
+  const STATUS_CHAMADO = {
+    aberto: { label: "Aguardando resposta", cls: "warning" },
+    em_andamento: { label: "Em andamento", cls: "warning" },
+    resolvido: { label: "Resolvido", cls: "ok" }
+  };
+  let chamadosFiltro = "pendentes";
+  let chamadoAberto = null;
+
+  function renderChamados() {
+    const pendentes = CHAMADOS.filter(c => c.status !== "resolvido").length;
+    // Contador no item do menu (e só ali -- zero some).
+    const navLabel = document.getElementById("nav-label-chamados");
+    navLabel.textContent = "Chamados";
+    if (pendentes > 0) {
+      const b = document.createElement("span");
+      b.textContent = pendentes;
+      b.style.cssText = "margin-left:8px; background:var(--semantic-danger); color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700;";
+      navLabel.appendChild(b);
+    }
+
+    document.querySelectorAll("#chamados-filtro .period-chip").forEach(c => c.classList.toggle("active", c.dataset.filtro === chamadosFiltro));
+    const lista = CHAMADOS.filter(c =>
+      chamadosFiltro === "todos" ? true : chamadosFiltro === "resolvido" ? c.status === "resolvido" : c.status !== "resolvido");
+    const tbody = document.getElementById("chamados-tbody");
+    tbody.innerHTML = "";
+    document.getElementById("chamados-no-results").style.display = lista.length === 0 ? "block" : "none";
+    tbody.parentElement.style.display = lista.length === 0 ? "none" : "table";
+
+    lista.forEach(c => {
+      const cliente = clientePorId(c.cliente_id);
+      const st = STATUS_CHAMADO[c.status] || STATUS_CHAMADO.aberto;
+      const prazo = c.prazo_data && c.status !== "resolvido"
+        ? "até " + formatDataBR(c.prazo_data) + " (" + c.prazo_dias + (c.prazo_dias === 1 ? " dia" : " dias") + ")"
+        : "—";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td data-label="Cliente"></td>
+        <td data-label="Assunto"><span class="client-link"></span></td>
+        <td data-label="Aberto em"></td>
+        <td data-label="Status"><span class="status-badge ${st.cls}">${st.label}</span></td>
+        <td data-label="Prazo"></td>
+        <td style="text-align:right;"><button type="button" class="btn btn-secondary">${c.status === "resolvido" ? "Ver" : "Responder"}</button></td>`;
+      tr.children[0].textContent = cliente ? cliente.nome : "—";
+      tr.querySelector(".client-link").textContent = c.assunto;
+      tr.children[2].textContent = formatDataBR(c.created_at.slice(0, 10));
+      tr.children[4].textContent = prazo;
+      const abrir = () => abrirChamado(c);
+      tr.querySelector(".client-link").addEventListener("click", abrir);
+      tr.querySelector("button").addEventListener("click", abrir);
+      tbody.appendChild(tr);
+    });
+  }
+  document.querySelectorAll("#chamados-filtro .period-chip").forEach(chip => {
+    chip.addEventListener("click", () => { chamadosFiltro = chip.dataset.filtro; renderChamados(); });
+  });
+
+  function abrirChamado(c) {
+    chamadoAberto = c;
+    const cliente = clientePorId(c.cliente_id);
+    document.getElementById("chamado-modal-assunto").textContent = c.assunto;
+    document.getElementById("chamado-modal-meta").textContent =
+      (cliente ? cliente.nome : "Cliente") + " · aberto em " + formatDataBR(c.created_at.slice(0, 10));
+    document.getElementById("chamado-modal-descricao").textContent = c.descricao;
+    document.getElementById("chamado-status").value = c.status;
+    document.getElementById("chamado-prazo").value = c.prazo_dias || "";
+    document.getElementById("chamado-prazo-hint").textContent = c.prazo_data
+      ? "Prazo atual: até " + formatDataBR(c.prazo_data) + ". Informe um número para recalcular a partir de hoje."
+      : "A data é calculada a partir de hoje.";
+    document.getElementById("chamado-resposta").value = c.resposta || "";
+    document.getElementById("chamado-email").checked = true;
+    document.getElementById("chamado-erro").classList.remove("show");
+    document.getElementById("modal-chamado").classList.add("open");
+  }
+  document.getElementById("btn-cancelar-chamado").addEventListener("click", () => {
+    document.getElementById("modal-chamado").classList.remove("open");
+  });
+  document.getElementById("btn-salvar-chamado").addEventListener("click", async function () {
+    if (!chamadoAberto) return;
+    const erroEl = document.getElementById("chamado-erro");
+    const status = document.getElementById("chamado-status").value;
+    const prazoTexto = document.getElementById("chamado-prazo").value.trim();
+    const prazo = prazoTexto === "" ? null : Number(prazoTexto);
+    const resposta = document.getElementById("chamado-resposta").value.trim();
+    if (prazo !== null && (!Number.isInteger(prazo) || prazo < 1 || prazo > 365)) {
+      erroEl.textContent = "O prazo deve ser um número de dias entre 1 e 365.";
+      erroEl.classList.add("show");
+      return;
+    }
+    erroEl.classList.remove("show");
+    const btn = this;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.innerHTML = ICONS.spinner + " Salvando...";
+
+    const { error } = await sb.rpc("admin_atualizar_chamado", {
+      p_chamado_id: chamadoAberto.id, p_status: status,
+      p_prazo_dias: status === "resolvido" ? null : prazo, p_resposta: resposta || null
+    });
+    btn.disabled = false;
+    btn.textContent = original;
+    if (error) {
+      console.error("Falha ao salvar chamado:", error);
+      erroEl.textContent = "Não foi possível salvar. Tente novamente.";
+      erroEl.classList.add("show");
+      return;
+    }
+
+    let aviso = "Chamado atualizado";
+    if (document.getElementById("chamado-email").checked) {
+      try {
+        const { data, error: errEmail } = await sb.functions.invoke("notificar-portal", { body: { tipo: "chamado", id: chamadoAberto.id } });
+        if (errEmail || !data || data.error) throw (errEmail || new Error(data && data.error));
+        aviso += " — cliente avisado por e-mail";
+      } catch (e) {
+        console.error("Falha ao avisar cliente do chamado:", e);
+        aviso += " — mas o e-mail de aviso falhou";
+      }
+    }
+    document.getElementById("modal-chamado").classList.remove("open");
+    showToast(aviso);
+    await carregarDados();
+  });
+
+  // ---------- Comunicados (um aviso, todos os clientes) ----------
+  async function enviarEmailComunicado(id) {
+    const { data, error } = await sb.functions.invoke("notificar-portal", { body: { tipo: "comunicado", id } });
+    if (error || !data || data.error) {
+      const { mensagem } = error ? await extrairMensagemErroFuncao(error) : { mensagem: data && data.error };
+      throw new Error(mensagem || "Falha ao enviar e-mail");
+    }
+    return data.enviados;
+  }
+
+  function renderComunicados() {
+    const tbody = document.getElementById("comunicados-tbody");
+    tbody.innerHTML = "";
+    document.getElementById("comunicados-no-results").style.display = COMUNICADOS.length === 0 ? "block" : "none";
+    tbody.parentElement.style.display = COMUNICADOS.length === 0 ? "none" : "table";
+    const totalAtivos = CLIENTES.filter(c => c.status === "ativo").length;
+
+    COMUNICADOS.forEach(c => {
+      const lidos = new Set(COMUNICADOS_LIDOS.filter(l => l.comunicado_id === c.id).map(l => l.cliente_id)).size;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td data-label="Publicado em"></td>
+        <td data-label="Título"><span class="client-link"></span></td>
+        <td data-label="E-mail"></td>
+        <td data-label="Lido por"></td>
+        <td style="text-align:right;"><button type="button" class="icon-btn com-excluir" title="Excluir comunicado">${ICONS.trash}</button></td>`;
+      tr.children[0].textContent = formatDataBR(c.created_at.slice(0, 10));
+      tr.querySelector(".client-link").textContent = c.titulo;
+      tr.querySelector(".client-link").title = c.mensagem;
+      tr.children[3].textContent = lidos + " de " + totalAtivos + " clientes";
+      const emailTd = tr.children[2];
+      if (c.email_enviado_em) {
+        emailTd.textContent = "Enviado em " + formatDataBR(c.email_enviado_em.slice(0, 10));
+      } else {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn btn-secondary";
+        b.textContent = "Enviar por e-mail";
+        b.addEventListener("click", async () => {
+          b.disabled = true;
+          try {
+            const n = await enviarEmailComunicado(c.id);
+            showToast("E-mail enviado para " + n + (n === 1 ? " cliente" : " clientes"));
+            await carregarDados();
+          } catch (e) {
+            console.error("Falha ao enviar comunicado por e-mail:", e);
+            showToast("Não foi possível enviar o e-mail: " + e.message);
+            b.disabled = false;
+          }
+        });
+        emailTd.appendChild(b);
+      }
+      tr.querySelector(".com-excluir").addEventListener("click", async () => {
+        if (!window.confirm('Excluir o comunicado "' + c.titulo + '"? Ele some do portal de todos os clientes.')) return;
+        const { error } = await sb.from("comunicados").delete().eq("id", c.id);
+        if (error) {
+          console.error("Falha ao excluir comunicado:", error);
+          showToast("Não foi possível excluir o comunicado.");
+          return;
+        }
+        showToast("Comunicado excluído");
+        await carregarDados();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById("btn-publicar-comunicado").addEventListener("click", async function () {
+    const titulo = document.getElementById("com-titulo").value.trim();
+    const mensagem = document.getElementById("com-mensagem").value.trim();
+    const erroEl = document.getElementById("com-erro");
+    if (titulo.length < 3 || mensagem.length < 3) {
+      erroEl.textContent = "Preencha o título e a mensagem.";
+      erroEl.classList.add("show");
+      return;
+    }
+    erroEl.classList.remove("show");
+    const btn = this;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.innerHTML = ICONS.spinner + " Publicando...";
+
+    const { data: novo, error } = await sb.from("comunicados")
+      .insert({ titulo, mensagem, criado_por: ADMIN_ATUAL.id }).select("id").single();
+    btn.disabled = false;
+    btn.textContent = original;
+    if (error || !novo) {
+      console.error("Falha ao publicar comunicado:", error);
+      erroEl.textContent = "Não foi possível publicar. Tente novamente.";
+      erroEl.classList.add("show");
+      return;
+    }
+
+    let aviso = "Comunicado publicado para todos os clientes";
+    if (document.getElementById("com-email").checked) {
+      try {
+        const n = await enviarEmailComunicado(novo.id);
+        aviso += " e e-mail enviado para " + n + (n === 1 ? " cliente" : " clientes");
+      } catch (e) {
+        console.error("Falha ao enviar comunicado por e-mail:", e);
+        aviso += ", mas o e-mail falhou (use \"Enviar por e-mail\" na lista)";
+      }
+    }
+    document.getElementById("com-titulo").value = "";
+    document.getElementById("com-mensagem").value = "";
+    showToast(aviso);
+    await carregarDados();
+  });
+
   // ---------- Pedidos de alteração de dados (vindos do Perfil do cliente) ----------
   function renderSolicitacoes() {
     const lista = document.getElementById("solicitacoes-lista");
@@ -3034,6 +3373,15 @@
         titulo: pagamentosAvisados + (pagamentosAvisados === 1 ? " pagamento" : " pagamentos"),
         sub: "avisado pelo cliente, confirmar",
         onClick: () => switchTab("financeiro")
+      });
+    }
+    const chamadosAguardando = CHAMADOS.filter(c => c.status === "aberto").length;
+    if (chamadosAguardando > 0) {
+      itens.push({
+        icon: ICONS.mail, cls: "stat-icon-chip-danger",
+        titulo: chamadosAguardando + (chamadosAguardando === 1 ? " chamado" : " chamados"),
+        sub: "aguardando sua resposta",
+        onClick: () => { chamadosFiltro = "pendentes"; switchTab("chamados"); renderChamados(); }
       });
     }
     if (SOLICITACOES.length > 0) {
@@ -6402,6 +6750,8 @@
     "visao-geral": { title: "Visão geral", subtitle: "Como estão os clientes, os documentos e o financeiro do escritório." },
     "clientes": { title: "Clientes", subtitle: "Cadastro, pendências, documentos e financeiro de cada cliente." },
     "financeiro": { title: "Financeiro", subtitle: null },
+    "chamados": { title: "Chamados", subtitle: "Problemas e dúvidas abertos pelos clientes. Responda informando em quantos dias resolve." },
+    "comunicados": { title: "Comunicados", subtitle: "Avisos para todos os clientes de uma vez, como mudanças de lei e prazos." },
     "administradores": { title: "Administradores", subtitle: null },
     "configuracoes": { title: "Configurações", subtitle: null }
   };
@@ -6419,12 +6769,14 @@
     document.getElementById("tab-visao-geral").style.display = name === "visao-geral" ? "block" : "none";
     document.getElementById("tab-clientes").style.display = name === "clientes" ? "block" : "none";
     document.getElementById("tab-financeiro").style.display = name === "financeiro" ? "block" : "none";
+    document.getElementById("tab-chamados").style.display = name === "chamados" ? "block" : "none";
+    document.getElementById("tab-comunicados").style.display = name === "comunicados" ? "block" : "none";
     document.getElementById("tab-administradores").style.display = name === "administradores" ? "block" : "none";
     document.getElementById("tab-configuracoes").style.display = name === "configuracoes" ? "block" : "none";
     // "Novo cliente"/"Upload de documento" não fazem sentido em
-    // Configurações (não é uma tela sobre um cliente específico) — some
-    // só ali, continuam nas outras abas.
-    document.getElementById("admin-header-actions").style.display = name === "configuracoes" ? "none" : "flex";
+    // Configurações, Chamados e Comunicados (não são telas sobre um cliente
+    // específico) — somem só ali, continuam nas outras abas.
+    document.getElementById("admin-header-actions").style.display = ["configuracoes", "chamados", "comunicados"].includes(name) ? "none" : "flex";
 
     const info = TITULOS_ABA[name] || TITULOS_ABA["visao-geral"];
     document.getElementById("page-title").textContent = info.title;

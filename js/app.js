@@ -232,8 +232,34 @@ const NAV_ITEMS = [
   { slug: "dashboard", label: "Início", icon: "chart", href: "dashboard" },
   { slug: "boletos", label: "Boletos", icon: "card", href: "boletos" },
   { slug: "documentos", label: "Documentos", icon: "doc", href: "documentos" },
+  { slug: "comunicados", label: "Comunicados", icon: "bell", href: "comunicados" },
+  { slug: "chamados", label: "Chamados", icon: "mail", href: "chamados" },
   { slug: "perfil", label: "Perfil", icon: "user", href: "perfil" }
 ];
+
+/* Contador vermelho de comunicados ainda não lidos ao lado do item do menu.
+   Melhor esforço: se a consulta falhar, o menu só fica sem contador. */
+async function atualizarBadgeComunicados() {
+  try {
+    const [{ data: coms }, { data: lidos }] = await Promise.all([
+      sb.from("comunicados").select("id"),
+      sb.from("comunicados_lidos").select("comunicado_id")
+    ]);
+    const lidosSet = new Set((lidos || []).map((l) => l.comunicado_id));
+    const naoLidos = (coms || []).filter((c) => !lidosSet.has(c.id)).length;
+    const label = document.querySelector('.admin-nav-item[href="comunicados"] .admin-nav-item-label');
+    if (!label) return;
+    const antigo = label.querySelector(".nav-badge");
+    if (antigo) antigo.remove();
+    if (naoLidos > 0) {
+      const b = document.createElement("span");
+      b.className = "nav-badge";
+      b.textContent = naoLidos;
+      b.style.cssText = "margin-left:8px; background:var(--semantic-danger); color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700;";
+      label.appendChild(b);
+    }
+  } catch (_) { /* sem contador */ }
+}
 
 /* Sidebar do painel do cliente — mesma linguagem visual e mesmo
    comportamento (recolher, arrastar largura, drawer no mobile) da sidebar
@@ -294,6 +320,7 @@ function renderNav(paginaAtiva, cliente) {
     document.getElementById("sidebar-user-nome").textContent = cliente.nome;
     document.getElementById("sidebar-avatar").textContent = cliente.nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
   }
+  atualizarBadgeComunicados();
   document.getElementById("sidebar-user-chip").addEventListener("click", () => toggleDropdown("user-panel"));
   document.getElementById("sidebar-perfil-item").addEventListener("click", () => window.location.href = "perfil");
   document.getElementById("sidebar-logout-item").addEventListener("click", () => logoutCliente());

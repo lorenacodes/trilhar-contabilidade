@@ -239,12 +239,11 @@ const NAV_ITEMS = [
 
 /* ---------- App instalável (PWA) ----------
    O service worker (sw.js) + manifest.webmanifest deixam o portal instalável
-   como app no Android (Chrome oferece "Instalar") e no iPhone (Compartilhar >
-   Adicionar à Tela de Início). Instalado, o app abre em tela cheia, com o
-   ícone da Trilhar, e mantém o login -- o cliente não precisa digitar e-mail
-   e senha toda vez. O convite abaixo só aparece em celular/tablet, só nas
-   telas do cliente, nunca se o app já está instalado, e some por 14 dias
-   depois que a pessoa dispensa. */
+   como app. Instalado, abre em tela cheia, com o ícone da Trilhar, e mantém
+   o login -- o cliente não precisa digitar e-mail e senha toda vez. O convite
+   abaixo só aparece no Android (quando o navegador confirma que consegue
+   instalar), só nas telas do cliente, nunca se o app já está instalado, e
+   some por 14 dias depois que a pessoa dispensa. */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("Service worker não registrado:", e));
@@ -258,8 +257,8 @@ const CHAVE_CONVITE_DISPENSADO = "trilhar-instalar-dispensado";
 function appJaInstalado() {
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
-function aparelhoEhIOS() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+function aparelhoEhAndroid() {
+  return /android/i.test(navigator.userAgent);
 }
 function conviteDispensadoRecentemente() {
   const t = parseInt(safeStorage.getItem(CHAVE_CONVITE_DISPENSADO), 10);
@@ -285,9 +284,13 @@ function iniciarConviteInstalacao() {
 function mostrarConviteInstalacao() {
   if (document.getElementById("convite-instalacao")) return;
   if (appJaInstalado() || conviteDispensadoRecentemente()) return;
+  // Só Android (decisão da Lorena: o app é pra Android) e só quando o
+  // próprio navegador confirmou que consegue instalar (evento
+  // beforeinstallprompt). Isso também some com o convite dentro do
+  // WhatsApp/Instagram e outros navegadores embutidos, onde a instalação
+  // não funciona. No iPhone o convite não aparece.
+  if (!aparelhoEhAndroid() || !_eventoInstalacao) return;
   if (!window.matchMedia("(pointer: coarse)").matches) return;
-  const ios = aparelhoEhIOS();
-  if (!ios && !_eventoInstalacao) return;
 
   const el = document.createElement("div");
   el.id = "convite-instalacao";
@@ -304,15 +307,13 @@ function mostrarConviteInstalacao() {
       <button type="button" class="btn btn-primary convite-ok" style="padding:8px 14px; font-size:13px;"></button>
       <button type="button" class="convite-depois" style="background:none; border:0; color:var(--text-secondary, #5b6072); font-size:12px; cursor:pointer; padding:2px;">Agora não</button>
     </div>`;
-  el.querySelector(".convite-texto").textContent = ios
-    ? "Toque em Compartilhar e depois em \"Adicionar à Tela de Início\". Abre direto, sem digitar a senha."
-    : "Acesso direto da tela inicial, sem digitar a senha toda vez.";
+  el.querySelector(".convite-texto").textContent = "Acesso direto da tela inicial, sem digitar a senha toda vez.";
   const ok = el.querySelector(".convite-ok");
-  ok.textContent = ios ? "Entendi" : "Instalar";
+  ok.textContent = "Instalar";
   const dispensar = () => { safeStorage.setItem(CHAVE_CONVITE_DISPENSADO, String(Date.now())); el.remove(); };
   el.querySelector(".convite-depois").addEventListener("click", dispensar);
   ok.addEventListener("click", async () => {
-    if (ios || !_eventoInstalacao) { dispensar(); return; }
+    if (!_eventoInstalacao) { dispensar(); return; }
     _eventoInstalacao.prompt();
     try { await _eventoInstalacao.userChoice; } catch (_) {}
     _eventoInstalacao = null;

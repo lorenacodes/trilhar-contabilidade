@@ -31,7 +31,7 @@ function validarArquivoParaCategoria(file, categoria) {
   const extensao = (file.name.split(".").pop() || "").toUpperCase();
 
   if (tiposAceitos.length && !tiposAceitos.includes(extensao)) {
-    return `Tipo de arquivo ".${extensao.toLowerCase()}" não é aceito nesta categoria — envie: ${tiposAceitos.join(", ")}.`;
+    return `Tipo de arquivo ".${extensao.toLowerCase()}" não é aceito nesta categoria, envie: ${tiposAceitos.join(", ")}.`;
   }
   if (tamanhoMaximoMb && file.size > tamanhoMaximoMb * 1024 * 1024) {
     return `Arquivo maior que o permitido nesta categoria (máx. ${tamanhoMaximoMb} MB).`;

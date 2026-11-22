@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#17244A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trilhar">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<title>Chamados | Portal do Cliente</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=154">
+</head>
+<body class="client-portal">
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main" style="max-width:760px;">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header page-header-flex">
+        <div>
+          <h1 class="page-title">Chamados</h1>
+          <p class="page-subtitle">Algum problema ou dúvida? Abra um chamado e acompanhe aqui quando a Trilhar vai resolver.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-novo-chamado">Abrir chamado</button>
+      </div>
+
+      <div id="chamados-lista" style="display:flex; flex-direction:column; gap:var(--space-4);"></div>
+      <div id="chamados-vazio" style="display:none;">
+        <div class="empty-state">
+          <h3>Você ainda não abriu nenhum chamado</h3>
+          <p>Use o botão "Abrir chamado" para contar um problema à Trilhar Contabilidade.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-novo-chamado">
+  <div class="modal modal-xl">
+    <h3 style="margin:0 0 4px;">Abrir chamado</h3>
+    <p class="hint" style="margin:0 0 18px;">Descreva o problema com o máximo de detalhes. A Trilhar responde informando em quantos dias consegue resolver.</p>
+    <div class="field">
+      <label class="required">Assunto</label>
+      <input type="text" id="ch-assunto" maxlength="120" placeholder="Ex.: Não consigo abrir um boleto">
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label class="required">Descrição do problema</label>
+      <textarea id="ch-descricao" rows="6" maxlength="2000" placeholder="Conte o que aconteceu, em qual tela e o que você esperava ver." style="width:100%; resize:vertical;"></textarea>
+    </div>
+    <p class="field-error" id="ch-erro"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancelar-chamado">Cancelar</button>
+      <button class="btn btn-primary" id="btn-enviar-chamado">Enviar chamado</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=94"></script>
+<script src="js/auth-guard.js?v=82"></script>
+<script>
+  let CLIENTE_ATUAL = null;
+  const STATUS_CHAMADO = {
+    aberto: { label: "Aguardando resposta", cls: "warning" },
+    em_andamento: { label: "Em andamento", cls: "warning" },
+    resolvido: { label: "Resolvido", cls: "ok" }
+  };
+
+  function textoPrazo(c) {
+    if (c.status === "resolvido" || !c.prazo_data) return "";
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const restam = Math.round((dataLocalDe(c.prazo_data) - hoje) / 86400000);
+    const ate = dataLocalDe(c.prazo_data).toLocaleDateString("pt-BR");
+    const quando = restam > 1 ? "faltam " + restam + " dias" : restam === 1 ? "falta 1 dia" : restam === 0 ? "previsto para hoje" : "prazo passou há " + Math.abs(restam) + (Math.abs(restam) === 1 ? " dia" : " dias");
+    return "Previsão: resolvido em " + c.prazo_dias + (c.prazo_dias === 1 ? " dia" : " dias") + " (até " + ate + ") · " + quando;
+  }
+
+  async function carregarChamados() {
+    const cliente = CLIENTE_ATUAL || await guardCliente();
+    if (!cliente) return;
+    CLIENTE_ATUAL = cliente;
+
+    const { data, error } = await sb.from("chamados")
+      .select("id, assunto, descricao, status, prazo_dias, prazo_data, resposta, created_at, respondido_em")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Falha ao carregar chamados:", error);
+      showToast("Não foi possível carregar os chamados. Recarregue a página.");
+      return;
+    }
+    const lista = document.getElementById("chamados-lista");
+    lista.innerHTML = "";
+    document.getElementById("chamados-vazio").style.display = (data || []).length === 0 ? "block" : "none";
+
+    (data || []).forEach((c) => {
+      const st = STATUS_CHAMADO[c.status] || STATUS_CHAMADO.aberto;
+      const prazo = textoPrazo(c);
+      const card = document.createElement("div");
+      card.className = "table-card";
+      card.style.padding = "var(--space-6)";
+      card.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+          <h3 class="ch-assunto" style="margin:0; flex:1;"></h3>
+          <span class="status-badge ${st.cls}">${st.label}</span>
+        </div>
+        <p class="hint ch-data" style="margin:0 0 10px;"></p>
+        <p class="ch-desc" style="margin:0; white-space:pre-wrap; line-height:1.6;"></p>
+        ${prazo ? '<p class="ch-prazo" style="margin:12px 0 0; font-weight:600;"></p>' : ""}
+        ${c.resposta ? '<div class="alert-box alert-info" style="margin-top:12px;"><div><p class="alert-title">Resposta da Trilhar</p><p class="alert-subtitle ch-resposta" style="white-space:pre-wrap;"></p></div></div>' : ""}`;
+      card.querySelector(".ch-assunto").textContent = c.assunto;
+      card.querySelector(".ch-data").textContent = "Aberto em " + new Date(c.created_at).toLocaleDateString("pt-BR");
+      card.querySelector(".ch-desc").textContent = c.descricao;
+      if (prazo) card.querySelector(".ch-prazo").textContent = prazo;
+      if (c.resposta) card.querySelector(".ch-resposta").textContent = c.resposta;
+      lista.appendChild(card);
+    });
+  }
+
+  const inputAssunto = document.getElementById("ch-assunto");
+  const inputDescricao = document.getElementById("ch-descricao");
+  const erroEl = document.getElementById("ch-erro");
+  const btnEnviar = document.getElementById("btn-enviar-chamado");
+
+  document.getElementById("btn-novo-chamado").addEventListener("click", () => {
+    inputAssunto.value = "";
+    inputDescricao.value = "";
+    erroEl.classList.remove("show");
+    document.getElementById("modal-novo-chamado").classList.add("open");
+    inputAssunto.focus();
+  });
+  document.getElementById("btn-cancelar-chamado").addEventListener("click", () => {
+    document.getElementById("modal-novo-chamado").classList.remove("open");
+  });
+
+  btnEnviar.addEventListener("click", async () => {
+    const assunto = inputAssunto.value.trim();
+    const descricao = inputDescricao.value.trim();
+    if (assunto.length < 3 || descricao.length < 3) {
+      erroEl.textContent = "Preencha o assunto e a descrição do problema.";
+      erroEl.classList.add("show");
+      return;
+    }
+    if (!CLIENTE_ATUAL) return;
+    btnEnviar.disabled = true;
+    const original = btnEnviar.textContent;
+    btnEnviar.innerHTML = ICONS.spinner + " Enviando...";
+    erroEl.classList.remove("show");
+
+    const { error } = await sb.from("chamados").insert({ cliente_id: CLIENTE_ATUAL.id, assunto, descricao });
+    btnEnviar.disabled = false;
+    btnEnviar.textContent = original;
+    if (error) {
+      console.error("Falha ao abrir chamado:", error);
+      // Mais de 10 chamados não resolvidos é barrado pelo banco (policy de insert).
+      erroEl.textContent = error.code === "42501"
+        ? "Você já tem muitos chamados em aberto. Aguarde a Trilhar resolver alguns antes de abrir outro."
+        : "Não foi possível abrir o chamado. Tente novamente.";
+      erroEl.classList.add("show");
+      return;
+    }
+    document.getElementById("modal-novo-chamado").classList.remove("open");
+    showToast("Chamado aberto. A Trilhar vai responder com o prazo para resolver.");
+    await carregarChamados();
+  });
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+    CLIENTE_ATUAL = cliente;
+    renderNav("chamados", cliente);
+    await carregarChamados();
+    hideAuthOverlay();
+    iniciarRealtimeCliente(cliente.id, [{ table: "chamados", filter: "cliente_id=eq." + cliente.id }], carregarChamados);
+  })();
+</script>
+</body>
+</html>

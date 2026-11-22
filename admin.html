@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Trilhar">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<title>Painel Administrativo — Trilhar Contabilidade</title>
+<title>Painel Administrativo | Trilhar Contabilidade</title>
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -593,7 +593,7 @@
                    mais forte que a que elas já têm. -->
               <div class="detalhe-header-actions-destrutivas">
                 <button class="btn btn-secondary" id="detalhe-status-btn" style="color:var(--semantic-danger); border-color:var(--semantic-danger);">Desativar</button>
-                <button class="btn btn-secondary" id="detalhe-excluir-btn" style="color:var(--semantic-danger); border-color:var(--semantic-danger);" title="Exclusão permanente — diferente de desativar">Excluir permanentemente</button>
+                <button class="btn btn-secondary" id="detalhe-excluir-btn" style="color:var(--semantic-danger); border-color:var(--semantic-danger);" title="Exclusão permanente, diferente de desativar">Excluir permanentemente</button>
               </div>
             </div>
           </div>
@@ -916,7 +916,7 @@
           <label class="required">E-mail</label>
           <input placeholder="cliente@exemplo.com" id="cliente-email-input">
           <p class="field-error" id="cliente-email-erro"></p>
-          <p class="field-hint" id="cliente-email-hint" style="display:none;">Para trocar o e-mail de login, é preciso falar com o suporte — este campo só está disponível ao cadastrar.</p>
+          <p class="field-hint" id="cliente-email-hint" style="display:none;">Para trocar o e-mail de login, é preciso falar com o suporte, este campo só está disponível ao cadastrar.</p>
         </div>
         <div class="field">
           <label class="required">Telefone</label>
@@ -1381,7 +1381,7 @@
       </div>
       <div class="avatar-field-info">
         <p>Foto de perfil</p>
-        <span>PNG, JPG ou WEBP — até 5MB</span>
+        <span>PNG, JPG ou WEBP, até 5MB</span>
       </div>
       <input type="file" id="avatar-file-input" accept="image/png,image/jpeg,image/webp" style="display:none;">
     </div>
@@ -1546,14 +1546,14 @@
               <button type="button" class="segmented-option" data-valor="nao">Categoria única</button>
               <button type="button" class="segmented-option" data-valor="sim">Possui subcategorias</button>
             </div>
-            <p class="hint" id="cf-permite-subcategorias-hint" style="margin:6px 0 0;">Só decide agora, na criação — depois de criada não dá mais pra mudar. "Possui subcategorias" vira uma pasta organizadora (não recebe documento direto); entre no detalhamento dela pra criar quantas subcategorias quiser.</p>
+            <p class="hint" id="cf-permite-subcategorias-hint" style="margin:6px 0 0;">Só decide agora, na criação, depois de criada não dá mais pra mudar. "Possui subcategorias" vira uma pasta organizadora (não recebe documento direto); entre no detalhamento dela pra criar quantas subcategorias quiser.</p>
           </div>
           <div class="field">
             <label>Categoria pai <span style="font-weight:400; color:var(--text-secondary);">(opcional)</span></label>
             <select class="select-like" id="cf-categoria-pai">
               <option value="">Nenhuma (categoria de nível superior)</option>
             </select>
-            <p class="hint" id="cf-categoria-pai-hint" style="margin:6px 0 0;">Vira uma subcategoria dela — ex: "Notas de Entrada" dentro de "Notas Fiscais". Uma categoria com subcategoria vira só uma pasta organizadora e para de aceitar anexo direto.</p>
+            <p class="hint" id="cf-categoria-pai-hint" style="margin:6px 0 0;">Vira uma subcategoria dela, ex: "Notas de Entrada" dentro de "Notas Fiscais". Uma categoria com subcategoria vira só uma pasta organizadora e para de aceitar anexo direto.</p>
           </div>
           <div class="field">
             <label>Ordem de exibição</label>
@@ -1693,8 +1693,8 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=93"></script>
-<script src="js/auth-guard.js?v=81"></script>
+<script src="js/app.js?v=94"></script>
+<script src="js/auth-guard.js?v=82"></script>
 <script>
   // Guarda de sessão real. Assim que confirma admin, carrega tudo do Supabase
   // (categorias/clientes/documentos) — nada nesta tela depende mais de mock
@@ -2158,7 +2158,7 @@
   document.getElementById("avatar-file-input").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { showToast("Imagem muito grande — o limite é 5MB."); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast("Imagem muito grande, o limite é 5MB."); return; }
     const img = document.getElementById("avatar-cropper-img");
     img.src = URL.createObjectURL(file);
     document.getElementById("avatar-field-trigger").style.display = "none";
@@ -2692,7 +2692,7 @@
     const dias = Math.min(30, Math.max(1, parseInt(document.getElementById("config-dias-antecedencia").value, 10) || 7));
     document.getElementById("config-preview-texto").textContent = ativo
       ? `Boletos com vencimento em até ${dias} ${dias === 1 ? "dia" : "dias"} vão aparecer com destaque no painel "Precisa de atenção".`
-      : "O alerta está desativado — boletos a vencer não vão ganhar destaque no painel.";
+      : "O alerta está desativado, boletos a vencer não vão ganhar destaque no painel.";
   }
   document.getElementById("config-alerta-boletos").addEventListener("change", atualizarPreviewConfig);
   document.getElementById("config-dias-antecedencia").addEventListener("input", atualizarPreviewConfig);
@@ -3163,10 +3163,10 @@
       try {
         const { data, error: errEmail } = await sb.functions.invoke("notificar-portal", { body: { tipo: "chamado", id: chamadoAberto.id } });
         if (errEmail || !data || data.error) throw (errEmail || new Error(data && data.error));
-        aviso += " — cliente avisado por e-mail";
+        aviso += ", cliente avisado por e-mail";
       } catch (e) {
         console.error("Falha ao avisar cliente do chamado:", e);
-        aviso += " — mas o e-mail de aviso falhou";
+        aviso += ", mas o e-mail de aviso falhou";
       }
     }
     document.getElementById("modal-chamado").classList.remove("open");
@@ -3777,7 +3777,7 @@
     limparErroCampo("cliente-telefone-erro");
   });
   telefoneInputCliente.addEventListener("blur", function () {
-    if (this.value && !validarTelefone(this.value)) mostrarErroCampo("cliente-telefone-erro", "Telefone inválido — confira o DDD e a quantidade de dígitos.");
+    if (this.value && !validarTelefone(this.value)) mostrarErroCampo("cliente-telefone-erro", "Telefone inválido, confira o DDD e a quantidade de dígitos.");
   });
 
   emailInputCliente.addEventListener("input", () => limparErroCampo("cliente-email-erro"));
@@ -3816,7 +3816,7 @@
     cidadeSelectCliente.style.display = "none";
     cidadeInputCliente.style.display = "block";
     cidadeStatusCliente.style.display = mostrarErro ? "block" : "none";
-    if (mostrarErro) cidadeStatusCliente.textContent = "Não foi possível carregar a lista de cidades — digite manualmente.";
+    if (mostrarErro) cidadeStatusCliente.textContent = "Não foi possível carregar a lista de cidades, digite manualmente.";
   }
   async function carregarCidadesPorEstado(uf, cidadeParaSelecionar) {
     cidadeSelectCliente.innerHTML = '<option value="">Carregando...</option>';
@@ -3864,7 +3864,7 @@
       const resp = await fetch("https://viacep.com.br/ws/" + cepDigitos + "/json/");
       const dados = await resp.json();
       if (!resp.ok || dados.erro) {
-        cepStatusCliente.textContent = "CEP não encontrado — preencha o endereço manualmente.";
+        cepStatusCliente.textContent = "CEP não encontrado, preencha o endereço manualmente.";
         return;
       }
       if (dados.logradouro) document.getElementById("cliente-rua-input").value = dados.logradouro;
@@ -3876,9 +3876,9 @@
         limparErroCampo("cliente-estado-erro");
         await carregarCidadesPorEstado(dados.uf, dados.localidade || "");
       }
-      cepStatusCliente.textContent = "Endereço preenchido automaticamente — confira antes de salvar.";
+      cepStatusCliente.textContent = "Endereço preenchido automaticamente, confira antes de salvar.";
     } catch (_e) {
-      cepStatusCliente.textContent = "Não foi possível buscar o CEP agora — preencha o endereço manualmente.";
+      cepStatusCliente.textContent = "Não foi possível buscar o CEP agora, preencha o endereço manualmente.";
     }
   }
   cepInputCliente.addEventListener("blur", buscarEnderecoPorCep);
@@ -3975,7 +3975,7 @@
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erros.push(["cliente-email-input", "cliente-email-erro", "E-mail inválido."]);
     else if (outrosClientes.some(c => c.email.toLowerCase() === email.toLowerCase())) erros.push(["cliente-email-input", "cliente-email-erro", "Já existe um cliente cadastrado com esse e-mail."]);
     if (!telefone) erros.push(["cliente-telefone-input", "cliente-telefone-erro", "Informe o telefone."]);
-    else if (!validarTelefone(telefone)) erros.push(["cliente-telefone-input", "cliente-telefone-erro", "Telefone inválido — confira o DDD e a quantidade de dígitos."]);
+    else if (!validarTelefone(telefone)) erros.push(["cliente-telefone-input", "cliente-telefone-erro", "Telefone inválido, confira o DDD e a quantidade de dígitos."]);
 
     // Endereço é obrigatório pra qualquer cliente (PF ou PJ) — rua, número,
     // bairro, cidade, estado e CEP; só complemento continua opcional.
@@ -4068,8 +4068,8 @@
         window.__dadosBoasVindas = { tipo: "cliente", nome: data.nome, email: data.email, senha: data.senhaTemporaria };
         window.open("boas-vindas", "_blank");
         showToast(data.emailEnviado
-          ? "Cliente cadastrado — e-mail de acesso enviado e carta de boas-vindas aberta em nova aba"
-          : "Cliente cadastrado, mas o e-mail de acesso falhou — use a carta de boas-vindas (aberta em nova aba) para entregar o acesso");
+          ? "Cliente cadastrado, e-mail de acesso enviado e carta de boas-vindas aberta em nova aba"
+          : "Cliente cadastrado, mas o e-mail de acesso falhou, use a carta de boas-vindas (aberta em nova aba) para entregar o acesso");
       }
       closeCliente();
       await carregarDados();
@@ -4223,7 +4223,7 @@
     document.getElementById("detalhe-desde").textContent = formatDataBR(c.created_at);
     document.getElementById("detalhe-endereco").textContent = c.enderecoRua
       ? [c.enderecoRua + ", " + c.enderecoNumero, c.enderecoComplemento, c.enderecoBairro, c.enderecoCidade + "/" + c.enderecoEstado, c.enderecoCep ? "CEP " + mascararCEP(c.enderecoCep) : null]
-          .filter(Boolean).join(" — ")
+          .filter(Boolean).join(", ")
       : "—";
     document.getElementById("detalhe-status").innerHTML = c.status === "ativo"
       ? '<span class="status-tag active"><span class="status-dot"></span>Ativo</span>'
@@ -4378,7 +4378,7 @@
       const st = statusBoleto(d, diasAlerta);
       const vencido = st && st.cls === "danger";
       // Boleto não tem "cat" — não é uma categoria documental, não tem o que anexar aqui.
-      porResp.cliente.push({ nome: d.nome, detalhe: vencido ? "Boleto vencido — venceu em " + formatDataBR(d.data_vencimento) : "Boleto em aberto — vence em " + formatDataBR(d.data_vencimento), danger: vencido, badge: vencido ? "Vencido" : "Em aberto" });
+      porResp.cliente.push({ nome: d.nome, detalhe: vencido ? "Boleto vencido, venceu em " + formatDataBR(d.data_vencimento) : "Boleto em aberto, vence em " + formatDataBR(d.data_vencimento), danger: vencido, badge: vencido ? "Vencido" : "Em aberto" });
     });
 
     document.getElementById("detalhe-pendencias-count-cliente").textContent = porResp.cliente.length > 0 ? " (" + porResp.cliente.length + ")" : "";
@@ -4391,7 +4391,7 @@
     wrap.innerHTML = "";
     const itens = porResp[detalhePendenciasFiltro];
     if (itens.length === 0) {
-      wrap.innerHTML = '<p class="attention-empty">' + (detalhePendenciasFiltro === "cliente" ? "Nenhuma pendência do cliente — tudo em dia." : "Nenhuma pendência do escritório — tudo em dia.") + '</p>';
+      wrap.innerHTML = '<p class="attention-empty">' + (detalhePendenciasFiltro === "cliente" ? "Nenhuma pendência do cliente, tudo em dia." : "Nenhuma pendência do escritório, tudo em dia.") + '</p>';
       return;
     }
     itens.forEach(item => {
@@ -4526,28 +4526,28 @@
     const eventosReais = EVENTOS_CLIENTE.filter(e => e.cliente_id === clienteId);
     const criacaoReal = eventosReais.find(e => e.tipo === "cliente_criado");
     if (criacaoReal) {
-      eventos.push({ data: criacaoReal.created_at, texto: criacaoReal.descricao + (criacaoReal.ator ? " — " + criacaoReal.ator : "") });
+      eventos.push({ data: criacaoReal.created_at, texto: criacaoReal.descricao + (criacaoReal.ator ? " por " + criacaoReal.ator : "") });
     } else if (c) {
       // Cliente cadastrado antes desta auditoria existir — não dá pra saber
       // quem criou retroativamente, então mostra só a data real, sem inventar
       // um responsável.
-      eventos.push({ data: c.created_at, texto: "Cliente cadastrado — origem desconhecida (anterior à auditoria)" });
+      eventos.push({ data: c.created_at, texto: "Cliente cadastrado, origem desconhecida (anterior à auditoria)" });
     }
 
     DOCUMENTOS.filter(d => d.cliente_id === clienteId).forEach(d => {
       const boleto = isBoletoCategoria(categoriaPorId(d.categoria_id));
       const rotulo = boleto ? "Boleto" : "Documento";
       const origem = d.criadoPorNome ? " por " + d.criadoPorNome : "";
-      eventos.push({ data: d.created_at, texto: rotulo + " enviado" + origem + " — " + d.nome });
+      eventos.push({ data: d.created_at, texto: rotulo + " enviado" + origem + ": " + d.nome });
 
       if (boleto && d.status_alterado_em) {
         const acaoStatus = d.status === "pago" ? "marcado como pago" : "marcado como não pago";
         const autorStatus = d.statusAlteradoPorNome ? " por " + d.statusAlteradoPorNome : "";
-        eventos.push({ data: d.status_alterado_em, texto: "Boleto " + acaoStatus + autorStatus + " — " + d.nome });
+        eventos.push({ data: d.status_alterado_em, texto: "Boleto " + acaoStatus + autorStatus + ": " + d.nome });
       } else if (boleto && d.status === "pago" && d.pago_em) {
         // Troca de status anterior a esta auditoria — sem ator conhecido,
         // nada inventado.
-        eventos.push({ data: d.pago_em, texto: "Boleto marcado como pago — " + d.nome });
+        eventos.push({ data: d.pago_em, texto: "Boleto marcado como pago, " + d.nome });
       }
     });
 
@@ -4556,10 +4556,10 @@
       if (e.tipo === "dados_editados" && e.campo) {
         const label = CAMPO_LABELS[e.campo] || e.campo;
         const texto = "Alterou " + label + ": " + formatarValorCampo(e.campo, e.valor_anterior) + " → " + formatarValorCampo(e.campo, e.valor_novo)
-          + (e.ator ? " — " + e.ator : "");
+          + (e.ator ? " por " + e.ator : "");
         eventos.push({ data: e.created_at, texto });
       } else {
-        eventos.push({ data: e.created_at, texto: e.descricao + (e.ator ? " — " + e.ator : "") });
+        eventos.push({ data: e.created_at, texto: e.descricao + (e.ator ? " por " + e.ator : "") });
       }
     });
 
@@ -4716,7 +4716,7 @@
         // avisa explicitamente porque, se ignorado, o e-mail fica "preso"
         // numa conta órfã e trava um recadastro futuro com esse mesmo e-mail.
         showToast(data.authDeletionOk === false
-          ? "Cliente excluído, mas a conta de acesso antiga pode ter ficado presa — avise o suporte técnico se tentar recadastrar esse e-mail depois"
+          ? "Cliente excluído, mas a conta de acesso antiga pode ter ficado presa, avise o suporte técnico se tentar recadastrar esse e-mail depois"
           : "Cliente excluído permanentemente");
         closeDetalhe();
         await carregarDados();
@@ -5391,7 +5391,7 @@
           <option value="pago" ${d.status === "pago" ? "selected" : ""}>Pago</option>
         </select>
         ${st && st.cls !== "ok" ? `<span class="due-tag ${st.cls}" style="margin-left:6px;">${st.label}</span>` : ""}
-        ${d.status !== "pago" && d.pagamentoInformadoEm ? `<button type="button" class="btn btn-secondary boleto-ver-comprovante-btn" style="margin-left:6px; padding:4px 10px; font-size:12px;" title="Cliente avisou pagamento — ver comprovante">${ICONS.upload} Comprovante</button>` : ""}
+        ${d.status !== "pago" && d.pagamentoInformadoEm ? `<button type="button" class="btn btn-secondary boleto-ver-comprovante-btn" style="margin-left:6px; padding:4px 10px; font-size:12px;" title="Cliente avisou pagamento, ver comprovante">${ICONS.upload} Comprovante</button>` : ""}
       </td>
       <td style="text-align:right; position:relative;">${menuAcoesHtml("Baixar boleto")}</td>
     `;
@@ -6181,9 +6181,9 @@
     document.getElementById("confirm-cat-icon").innerHTML = ICONS.trash;
     const textEl = document.getElementById("confirm-cat-text");
     textEl.innerHTML = qtdFilhos > 0
-      ? `<strong>${escapeHtml(cat.nome)}</strong> tem ${qtdFilhos} subcategoria(s) vinculada(s). Não é possível remover — remova ou reorganize as subcategorias primeiro.`
+      ? `<strong>${escapeHtml(cat.nome)}</strong> tem ${qtdFilhos} subcategoria(s) vinculada(s). Não é possível remover, remova ou reorganize as subcategorias primeiro.`
       : qtdDocs > 0
-      ? `<strong>${escapeHtml(cat.nome)}</strong> tem ${qtdDocs} documento(s) vinculado(s). Não é possível remover uma categoria com documentos — remova ou reclassifique os documentos primeiro.`
+      ? `<strong>${escapeHtml(cat.nome)}</strong> tem ${qtdDocs} documento(s) vinculado(s). Não é possível remover uma categoria com documentos, remova ou reclassifique os documentos primeiro.`
       : `Tem certeza que deseja remover <strong>${escapeHtml(cat.nome)}</strong>? Ela deixa de aparecer no upload e no painel dos clientes imediatamente.`;
     document.getElementById("modal-confirm-categoria").classList.add("open");
     const confirmBtn = document.getElementById("btn-confirmar-remocao-categoria");
@@ -6444,7 +6444,7 @@
     } else if (estaEditando) {
       hint.textContent = "Decidido na criação desta categoria -- não dá mais pra mudar.";
     } else {
-      hint.textContent = "Só decide agora, na criação — depois de criada não dá mais pra mudar. \"Possui subcategorias\" vira uma pasta organizadora (não recebe documento direto); entre no detalhamento dela pra criar quantas subcategorias quiser.";
+      hint.textContent = "Só decide agora, na criação, depois de criada não dá mais pra mudar. \"Possui subcategorias\" vira uma pasta organizadora (não recebe documento direto); entre no detalhamento dela pra criar quantas subcategorias quiser.";
     }
   }
   document.getElementById("cf-categoria-pai").addEventListener("change", () => atualizarTravaPermiteSubcategorias(!!editingCategoryId));
@@ -6453,7 +6453,7 @@
     editingCategoryId = cat ? cat.id : null;
 
     document.getElementById("config-panel-title").textContent = cat ? "Configurar categoria" : "Nova categoria";
-    document.getElementById("config-panel-subtitle").textContent = cat ? "Altere os aspectos desta categoria — as mudanças valem pra todos os clientes." : "Configure os aspectos desta categoria de documento.";
+    document.getElementById("config-panel-subtitle").textContent = cat ? "Altere os aspectos desta categoria, as mudanças valem pra todos os clientes." : "Configure os aspectos desta categoria de documento.";
     document.getElementById("config-save-btn").textContent = cat ? "Salvar alterações" : "Criar categoria";
 
     selectedIcon = (cat && cat.icone) || "doc";
@@ -6480,7 +6480,7 @@
     campoCategoriaPai.disabled = jaTemFilhos;
     document.getElementById("cf-categoria-pai-hint").textContent = jaTemFilhos
       ? "Essa categoria já tem subcategoria(s) -- não pode virar subcategoria de outra."
-      : "Vira uma subcategoria dela — ex: \"Notas de Entrada\" dentro de \"Notas Fiscais\". Uma categoria com subcategoria vira só uma pasta organizadora e para de aceitar anexo direto.";
+      : "Vira uma subcategoria dela, ex: \"Notas de Entrada\" dentro de \"Notas Fiscais\". Uma categoria com subcategoria vira só uma pasta organizadora e para de aceitar anexo direto.";
 
     selectedPermiteSubcategorias = !!(cat && cat.permite_subcategorias);
     setToggleAtivo("cf-permite-subcategorias-toggle", selectedPermiteSubcategorias ? "sim" : "nao");
@@ -6592,7 +6592,7 @@
         showToast(mensagem);
         return;
       }
-      showToast(editingCategoryId ? 'Categoria "' + nome + '" atualizada' : 'Categoria "' + nome + '" criada — já disponível para todos os clientes');
+      showToast(editingCategoryId ? 'Categoria "' + nome + '" atualizada' : 'Categoria "' + nome + '" criada, já disponível para todos os clientes');
       closeCategoryPanel();
       await carregarDados();
     } finally {
@@ -6645,7 +6645,7 @@
     document.getElementById("confirm-excluir-administrador-icon").innerHTML = ICONS.trash;
     document.getElementById("confirm-excluir-administrador-text").innerHTML =
       `Isso remove <strong>${escapeHtml(a.nome)}</strong> (${escapeHtml(a.email)}) permanentemente: o cadastro e o acesso ao painel administrativo. ` +
-      `Documentos que essa pessoa já enviou ou revisou continuam guardados — só deixam de mostrar de quem vieram. ` +
+      `Documentos que essa pessoa já enviou ou revisou continuam guardados, só deixam de mostrar de quem vieram. ` +
       `<strong>Essa ação não pode ser desfeita.</strong>`;
     document.getElementById("modal-confirm-excluir-administrador").classList.add("open");
     const confirmBtn = document.getElementById("btn-confirmar-excluir-administrador");
@@ -6667,7 +6667,7 @@
         }
         document.getElementById("modal-confirm-excluir-administrador").classList.remove("open");
         showToast(data.authDeletionOk === false
-          ? "Administrador excluído, mas a conta de acesso antiga pode ter ficado presa — avise o suporte técnico se tentar recadastrar esse e-mail depois"
+          ? "Administrador excluído, mas a conta de acesso antiga pode ter ficado presa, avise o suporte técnico se tentar recadastrar esse e-mail depois"
           : "Administrador excluído permanentemente");
         await carregarDados();
       } catch (err) {
@@ -6733,7 +6733,7 @@
         logErroPainel("admin-convidar-administrador (Edge Function)", payload, new Error(data.error), data);
         throw new Error(data.error);
       }
-      showToast("Administrador convidado — um e-mail de acesso foi enviado");
+      showToast("Administrador convidado, um e-mail de acesso foi enviado");
       closeAdministrador();
       await carregarDados();
     } catch (err) {
@@ -7010,10 +7010,10 @@
       try {
         const { data: resAviso, error: erroAviso } = await sb.functions.invoke("notificar-boleto", { body: { documentoIds: boletosParaAvisar } });
         if (erroAviso || !resAviso || resAviso.error) throw (erroAviso || new Error(resAviso && resAviso.error));
-        avisoEmail = resAviso.enviado ? " — cliente avisado por e-mail" : "";
+        avisoEmail = resAviso.enviado ? ", cliente avisado por e-mail" : "";
       } catch (errAviso) {
         console.error("Falha ao avisar cliente por e-mail:", errAviso);
-        avisoEmail = " — mas o e-mail de aviso ao cliente falhou";
+        avisoEmail = ", mas o e-mail de aviso ao cliente falhou";
       }
     }
 

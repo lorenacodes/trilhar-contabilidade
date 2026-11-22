@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Trilhar">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<title>Início — Portal do Cliente</title>
+<title>Início | Portal do Cliente</title>
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -82,8 +82,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=93"></script>
-<script src="js/auth-guard.js?v=81"></script>
+<script src="js/app.js?v=94"></script>
+<script src="js/auth-guard.js?v=82"></script>
 <script>
   function initials(nome) {
     return nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
@@ -247,7 +247,7 @@
 
     const itens = [...vencidos, ...vencendoSemana].slice(0, 5);
     if (itens.length === 0) {
-      list.innerHTML = '<p class="attention-empty">Nenhum alerta no momento — tudo em dia.</p>';
+      list.innerHTML = '<p class="attention-empty">Nenhum alerta no momento, tudo em dia.</p>';
       return;
     }
     list.innerHTML = "";
@@ -261,7 +261,7 @@
       const vencido = dias < 0;
       const titulo = vencido ? "Boleto vencido" : "Vencimento próximo";
       const descricao = vencido
-        ? nomeCategoria + " venceu em " + dataFormatada + " — " + b.nome
+        ? nomeCategoria + " venceu em " + dataFormatada + ": " + b.nome
         : b.nome + " vence em " + dataFormatada + "."
       const el = document.createElement("div");
       el.className = "attention-item" + (vencido ? " danger" : "");
@@ -330,9 +330,9 @@
 
     document.getElementById("resumo-financeiro").innerHTML = `
       <div class="resumo-linha"><span>Pago este mês</span><strong>R$ ${formatMoeda(pagoEsteMes)}</strong></div>
-      <div class="resumo-linha"><span>Em aberto — Honorários</span><strong>R$ ${formatMoeda(honorarios)}</strong></div>
-      <div class="resumo-linha"><span>Em aberto — Imposto</span><strong>R$ ${formatMoeda(imposto)}</strong></div>
-      ${outros > 0 ? `<div class="resumo-linha"><span>Em aberto — Outros</span><strong>R$ ${formatMoeda(outros)}</strong></div>` : ""}
+      <div class="resumo-linha"><span>Em aberto, Honorários</span><strong>R$ ${formatMoeda(honorarios)}</strong></div>
+      <div class="resumo-linha"><span>Em aberto, Imposto</span><strong>R$ ${formatMoeda(imposto)}</strong></div>
+      ${outros > 0 ? `<div class="resumo-linha"><span>Em aberto, Outros</span><strong>R$ ${formatMoeda(outros)}</strong></div>` : ""}
       <div class="resumo-linha total"><span>Total em aberto</span><strong>R$ ${formatMoeda(valorTotalAberto)}</strong></div>
       <div class="resumo-progress"><div class="resumo-progress-bar" style="width:${pctPago}%"></div></div>
       ${ultimo ? `<p class="resumo-nota">Último boleto recebido: ${escapeHtml(ultimo.nome)}</p>` : ""}

@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Trilhar">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<title>Boas-vindas — Trilhar Contabilidade</title>
+<title>Boas-vindas | Trilhar Contabilidade</title>
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -106,7 +106,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=93"></script>
+<script src="js/app.js?v=94"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script>
   // A senha temporária nunca trafega pela URL (ficaria no histórico do
@@ -251,7 +251,7 @@
     doc.line(20, y, largura - 20, y);
     y += 7;
     doc.setFontSize(9);
-    doc.text("Trilhar Contabilidade — Seu negócio no caminho certo.", 20, y);
+    doc.text("Trilhar Contabilidade. Seu negócio no caminho certo.", 20, y);
 
     const nomeArquivo = "boas-vindas-" + sanitizarNomeArquivo(nome.toLowerCase().replace(/\s+/g, "-")) + ".pdf";
     doc.save(nomeArquivo);

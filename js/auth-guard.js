@@ -32,12 +32,26 @@ function lembrarTipoAcessoCliente() {
 async function obterUsuarioAtual() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return { session: null, usuario: null };
-  const { data: usuario } = await sb
+  const { data: usuario, error } = await sb
     .from("users")
     .select("id, nome, email, tipo, status, primeiro_acesso, avatar_url")
     .eq("auth_user_id", session.user.id)
     .maybeSingle();
-  return { session, usuario };
+  return { session, usuario, error };
+}
+
+/* Falha de rede/servidor NÃO é falta de permissão: não desloga a pessoa,
+   só avisa e deixa tentar de novo (senão um sinal ruim no celular fazia
+   o cliente "perder o login" e achar que o app não funciona). */
+function mostrarFalhaDeConexao() {
+  const overlay = document.getElementById("auth-guard-overlay");
+  const html = '<div style="max-width:320px;margin:0 auto;padding:24px;text-align:center;font-family:inherit;">' +
+    '<p style="font-size:16px;margin:0 0 8px;font-weight:600;">Sem conexão com o portal</p>' +
+    '<p style="font-size:14px;margin:0 0 16px;opacity:.8;">Não foi possível carregar seus dados agora. Sua sessão continua ativa, confira a internet e tente de novo.</p>' +
+    '<button type="button" class="btn btn-primary" onclick="location.reload()">Tentar de novo</button></div>';
+  if (overlay) { overlay.innerHTML = html; overlay.style.display = "flex"; overlay.style.alignItems = "center"; overlay.style.justifyContent = "center"; }
+  else document.body.innerHTML = html;
+  return null;
 }
 
 /* Protege as páginas do cliente. Mantém o MESMO formato de retorno de
@@ -46,7 +60,8 @@ async function obterUsuarioAtual() {
    continuarem funcionando sem nenhuma alteração depois da migração pra
    "users". */
 async function guardCliente() {
-  const { session, usuario } = await obterUsuarioAtual();
+  const { session, usuario, error: erroUsuario } = await obterUsuarioAtual();
+  if (session && erroUsuario) return mostrarFalhaDeConexao();
 
   if (!session) {
     lembrarTipoAcessoCliente();
@@ -76,7 +91,8 @@ async function guardCliente() {
     .eq("user_id", usuario.id)
     .maybeSingle();
 
-  if (error || !cliente) {
+  if (error) return mostrarFalhaDeConexao();
+  if (!cliente) {
     await sb.auth.signOut();
     lembrarTipoAcessoCliente();
     window.location.replace("/?erro=sem_permissao");
@@ -102,7 +118,8 @@ async function guardCliente() {
 
 /* Protege admin.html. Espelha guardCliente(), com id = administradores.id. */
 async function guardAdministrador() {
-  const { session, usuario } = await obterUsuarioAtual();
+  const { session, usuario, error: erroUsuario } = await obterUsuarioAtual();
+  if (session && erroUsuario) return mostrarFalhaDeConexao();
 
   if (!session) {
     window.location.replace("admin-login");
@@ -128,7 +145,8 @@ async function guardAdministrador() {
     .eq("user_id", usuario.id)
     .maybeSingle();
 
-  if (error || !administrador) {
+  if (error) return mostrarFalhaDeConexao();
+  if (!administrador) {
     await sb.auth.signOut();
     window.location.replace("admin-login?erro=sem_permissao");
     return null;
@@ -149,7 +167,8 @@ async function guardAdministrador() {
    entrar de novo (nada de "esqueci a URL da tela de troca de senha e
    consigo acessar sempre que quiser"). */
 async function guardPrimeiroAcesso() {
-  const { session, usuario } = await obterUsuarioAtual();
+  const { session, usuario, error: erroUsuario } = await obterUsuarioAtual();
+  if (session && erroUsuario) return mostrarFalhaDeConexao();
 
   if (!session) {
     lembrarTipoAcessoCliente();

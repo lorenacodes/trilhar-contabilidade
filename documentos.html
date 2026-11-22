@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Trilhar">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<title>Documentos — Portal do Cliente</title>
+<title>Documentos | Portal do Cliente</title>
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -120,8 +120,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=93"></script>
-<script src="js/auth-guard.js?v=81"></script>
+<script src="js/app.js?v=94"></script>
+<script src="js/auth-guard.js?v=82"></script>
 <script>
   document.getElementById("busca-icon").innerHTML = '<svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
   document.getElementById("historico-close-btn").innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>';
@@ -397,7 +397,8 @@
 
   function atualizarTituloHistorico() {
     const cat = CATEGORIAS.find(c => c.id === categoriaAtiva);
-    document.getElementById("historico-titulo").textContent = cat ? cat.nome : "Todo o histórico";
+    const extra = !cat && categoriaAtiva ? categoriasSoDoEscritorio().find(c => c.id === categoriaAtiva) : null;
+    document.getElementById("historico-titulo").textContent = cat ? cat.nome : (extra ? extra.nome : "Todo o histórico");
   }
 
   // Botão de anexar dentro do próprio "Todo o histórico" -- antes, pra
@@ -416,6 +417,19 @@
     btn.style.display = "inline-flex";
   }
 
+  /* Categorias que só o escritório anexa (Declarações, Recibos, Contrato...)
+     não entram nos cards de envio do cliente, mas os documentos que o
+     escritório mandou nelas precisam continuar acháveis no histórico. */
+  function categoriasSoDoEscritorio() {
+    const vistas = new Map();
+    TODOS_DOCS.forEach(d => {
+      if (d.categorias && !CATEGORIAS.some(c => c.id === d.categoria_id) && !vistas.has(d.categoria_id)) {
+        vistas.set(d.categoria_id, { id: d.categoria_id, nome: d.categorias.nome });
+      }
+    });
+    return [...vistas.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
+  }
+
   function renderCategorias() {
     atualizarTituloHistorico();
     atualizarAnexarHistorico();
@@ -423,6 +437,10 @@
     const total = TODOS_DOCS.length;
     let html = `<div class="doc-cat-item${categoriaAtiva === "" ? " active" : ""}" data-cat="">Todos<span class="doc-cat-count">${total}</span></div>`;
     CATEGORIAS.forEach(c => {
+      const qtd = TODOS_DOCS.filter(d => d.categoria_id === c.id).length;
+      html += `<div class="doc-cat-item${categoriaAtiva === c.id ? " active" : ""}" data-cat="${c.id}">${escapeHtml(c.nome)}<span class="doc-cat-count">${qtd}</span></div>`;
+    });
+    categoriasSoDoEscritorio().forEach(c => {
       const qtd = TODOS_DOCS.filter(d => d.categoria_id === c.id).length;
       html += `<div class="doc-cat-item${categoriaAtiva === c.id ? " active" : ""}" data-cat="${c.id}">${escapeHtml(c.nome)}<span class="doc-cat-count">${qtd}</span></div>`;
     });

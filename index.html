@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#17244A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trilhar">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <title>Portal do Cliente — Trilhar Contabilidade</title>
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,9 +63,9 @@
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=91"></script>
+<script src="js/app.js?v=92"></script>
 <script>
   // Tela única com seletor Cliente/Administrador no topo (substitui as duas
   // páginas separadas de antes, index.html + admin-login.html) — pedido:
@@ -101,7 +108,6 @@
     },
   };
   const MSG_NAO_CADASTRADO = "Este e-mail não está autorizado. Entre em contato com a empresa.";
-  const MSG_TIPO_ERRADO = "Este acesso não corresponde ao tipo de conta.";
   const MSG_INATIVO = "Este e-mail não tem permissão para acessar o sistema. Fale com a Trilhar Contabilidade.";
   const CHAVE_TIPO_LEMBRADO = "portal_tipo_acesso";
   const CHAVE_OAUTH_PENDENTE = "portal_oauth_pendente";
@@ -153,14 +159,15 @@
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
 
-    if (usuarioError || !usuario) {
-      await sb.auth.signOut();
-      showLoginError(MSG_NAO_CADASTRADO);
+    // Falha de rede/servidor NÃO é "e-mail não cadastrado": não derruba a
+    // sessão da pessoa por causa de um tropeço de conexão.
+    if (usuarioError) {
+      showLoginError("Não foi possível verificar sua conta agora. Confira a internet e tente de novo.");
       return false;
     }
-    if (usuario.tipo !== tipoAtual) {
+    if (!usuario) {
       await sb.auth.signOut();
-      showLoginError(MSG_TIPO_ERRADO);
+      showLoginError(MSG_NAO_CADASTRADO);
       return false;
     }
     if (usuario.status !== "ativo") {
@@ -169,8 +176,14 @@
       return false;
     }
 
-    const destino = TIPO_TEXTOS[tipoAtual];
-    window.location.href = usuario.primeiro_acesso ? destino.destinoPrimeiroAcesso : destino.destinoPainel;
+    // Quem decide pra onde a pessoa vai é o tipo REAL da conta (tabela users),
+    // não o botão Cliente/Administrador. Antes, escolher o lado errado derrubava
+    // o login com "acesso não corresponde ao tipo de conta" -- confuso pra um
+    // cliente que só queria entrar. Segurança igual: cada página continua
+    // conferindo o tipo (guardCliente/guardAdministrador) e o banco só libera
+    // dado pra quem tem direito (RLS).
+    const destino = TIPO_TEXTOS[usuario.tipo] || TIPO_TEXTOS.cliente;
+    window.location.replace(usuario.primeiro_acesso ? destino.destinoPrimeiroAcesso : destino.destinoPainel);
     return true;
   }
 
@@ -238,6 +251,29 @@
     // Se não deu erro, a página está navegando pro Google — nada mais a
     // fazer aqui, o resto acontece quando ela voltar.
   });
+
+  // Já está logado? Vai direto pro painel, sem pedir senha de novo. Antes essa
+  // tela SEMPRE mostrava o formulário, mesmo com sessão ativa -- então abrir o
+  // site (ou o app instalado) obrigava a digitar tudo de novo, e cada login
+  // criava mais uma sessão (um cliente tinha 18 sessões em 2 meses). Não roda
+  // quando a pessoa acabou de ser mandada pra cá por erro de permissão
+  // (?erro=...) nem quando está voltando do Google (tratado logo abaixo).
+  (async function entrarDireitoSeJaLogado() {
+    let voltandoDoGoogle = false;
+    try { voltandoDoGoogle = sessionStorage.getItem(CHAVE_OAUTH_PENDENTE) === "1"; } catch (_) {}
+    if (voltandoDoGoogle || params.get("erro")) return;
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return;
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = ICONS.spinner + " Entrando...";
+      const ok = await validarSessaoEProsseguir();
+      if (!ok) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Entrar";
+      }
+    } catch (_) { /* sem sessão utilizável: segue com o formulário normal */ }
+  })();
 
   (async function tratarRetornoDoGoogle() {
     let voltandoDoGoogle = false;

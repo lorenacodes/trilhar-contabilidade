@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#17244A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trilhar">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <title>Redefinir senha — Portal do Cliente</title>
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,8 +31,9 @@
     </div>
 
     <div id="link-invalido" style="display:none; text-align:center;">
-      <p class="hint">Esse link de recuperação é inválido ou já expirou. Solicite um novo.</p>
-      <a href="esqueci-senha" class="btn btn-secondary" style="width:100%; margin-top:12px; display:block; text-align:center;">Solicitar novo link</a>
+      <p class="hint"><strong>Esse link já venceu ou já foi usado.</strong><br>Por segurança, o link enviado por e-mail vale por pouco tempo e só funciona uma vez. É rápido resolver: peça um novo link e crie sua senha.</p>
+      <a href="esqueci-senha" class="btn btn-primary" style="width:100%; margin-top:12px; display:block; text-align:center;">Pedir um novo link</a>
+      <a href="/" class="btn btn-secondary" style="width:100%; margin-top:10px; display:block; text-align:center;">Voltar para o login</a>
     </div>
 
     <div id="form-senha" style="display:none;">
@@ -54,9 +62,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=91"></script>
+<script src="js/app.js?v=92"></script>
 <script>
   const CRITERIOS = [
     { key: "tamanho", texto: "Pelo menos 8 caracteres (ideal 12+)" },
@@ -155,12 +163,19 @@
       document.getElementById("form-senha").style.display = "block";
     }
   });
-  setTimeout(() => {
-    if (!sessaoDeRecuperacaoOk) {
-      document.getElementById("carregando").style.display = "none";
-      document.getElementById("link-invalido").style.display = "block";
-    }
-  }, 4000);
+  function mostrarLinkInvalido() {
+    if (sessaoDeRecuperacaoOk) return;
+    document.getElementById("carregando").style.display = "none";
+    document.getElementById("link-invalido").style.display = "block";
+  }
+  // Link vencido/usado: o Supabase já devolve o erro na própria URL
+  // (error_code=otp_expired) -- mostra na hora em vez de esperar 4 segundos
+  // olhando um "validando" que nunca vai dar certo.
+  if (/error_code=|error=access_denied|otp_expired/.test(location.hash + location.search)) {
+    mostrarLinkInvalido();
+  } else {
+    setTimeout(mostrarLinkInvalido, 4000);
+  }
 </script>
 </body>
 </html>

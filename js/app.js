@@ -237,6 +237,90 @@ const NAV_ITEMS = [
   { slug: "perfil", label: "Perfil", icon: "user", href: "perfil" }
 ];
 
+/* ---------- App instalável (PWA) ----------
+   O service worker (sw.js) + manifest.webmanifest deixam o portal instalável
+   como app no Android (Chrome oferece "Instalar") e no iPhone (Compartilhar >
+   Adicionar à Tela de Início). Instalado, o app abre em tela cheia, com o
+   ícone da Trilhar, e mantém o login -- o cliente não precisa digitar e-mail
+   e senha toda vez. O convite abaixo só aparece em celular/tablet, só nas
+   telas do cliente, nunca se o app já está instalado, e some por 14 dias
+   depois que a pessoa dispensa. */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("Service worker não registrado:", e));
+  });
+}
+
+let _eventoInstalacao = null;
+let _conviteAtivo = false;
+const CHAVE_CONVITE_DISPENSADO = "trilhar-instalar-dispensado";
+
+function appJaInstalado() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function aparelhoEhIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+function conviteDispensadoRecentemente() {
+  const t = parseInt(safeStorage.getItem(CHAVE_CONVITE_DISPENSADO), 10);
+  return !isNaN(t) && Date.now() - t < 14 * 24 * 3600 * 1000;
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  _eventoInstalacao = e;
+  if (_conviteAtivo) mostrarConviteInstalacao();
+});
+window.addEventListener("appinstalled", () => {
+  _eventoInstalacao = null;
+  const el = document.getElementById("convite-instalacao");
+  if (el) el.remove();
+});
+
+function iniciarConviteInstalacao() {
+  _conviteAtivo = true;
+  mostrarConviteInstalacao();
+}
+
+function mostrarConviteInstalacao() {
+  if (document.getElementById("convite-instalacao")) return;
+  if (appJaInstalado() || conviteDispensadoRecentemente()) return;
+  if (!window.matchMedia("(pointer: coarse)").matches) return;
+  const ios = aparelhoEhIOS();
+  if (!ios && !_eventoInstalacao) return;
+
+  const el = document.createElement("div");
+  el.id = "convite-instalacao";
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-label", "Instalar o app da Trilhar");
+  el.style.cssText = "position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom, 0px)); z-index:900; background:var(--bg-surface, #fff); color:var(--text-primary, #161a2b); border:1px solid var(--border-default, #d2d6e2); border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.25); padding:14px 16px; display:flex; gap:12px; align-items:center; max-width:520px; margin:0 auto;";
+  el.innerHTML = `
+    <img src="/img/icon-192.png" alt="" width="44" height="44" style="border-radius:10px; flex-shrink:0;">
+    <div style="flex:1; min-width:0; font-size:13px; line-height:1.4;">
+      <strong style="display:block; font-size:14px; margin-bottom:2px;">Instale o app da Trilhar</strong>
+      <span class="convite-texto"></span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+      <button type="button" class="btn btn-primary convite-ok" style="padding:8px 14px; font-size:13px;"></button>
+      <button type="button" class="convite-depois" style="background:none; border:0; color:var(--text-secondary, #5b6072); font-size:12px; cursor:pointer; padding:2px;">Agora não</button>
+    </div>`;
+  el.querySelector(".convite-texto").textContent = ios
+    ? "Toque em Compartilhar e depois em \"Adicionar à Tela de Início\". Abre direto, sem digitar a senha."
+    : "Acesso direto da tela inicial, sem digitar a senha toda vez.";
+  const ok = el.querySelector(".convite-ok");
+  ok.textContent = ios ? "Entendi" : "Instalar";
+  const dispensar = () => { safeStorage.setItem(CHAVE_CONVITE_DISPENSADO, String(Date.now())); el.remove(); };
+  el.querySelector(".convite-depois").addEventListener("click", dispensar);
+  ok.addEventListener("click", async () => {
+    if (ios || !_eventoInstalacao) { dispensar(); return; }
+    _eventoInstalacao.prompt();
+    try { await _eventoInstalacao.userChoice; } catch (_) {}
+    _eventoInstalacao = null;
+    el.remove();
+  });
+  document.body.appendChild(el);
+}
+
 /* Contador vermelho de comunicados ainda não lidos ao lado do item do menu.
    Melhor esforço: se a consulta falhar, o menu só fica sem contador. */
 async function atualizarBadgeComunicados() {
@@ -321,6 +405,7 @@ function renderNav(paginaAtiva, cliente) {
     document.getElementById("sidebar-avatar").textContent = cliente.nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
   }
   atualizarBadgeComunicados();
+  iniciarConviteInstalacao();
   document.getElementById("sidebar-user-chip").addEventListener("click", () => toggleDropdown("user-panel"));
   document.getElementById("sidebar-perfil-item").addEventListener("click", () => window.location.href = "perfil");
   document.getElementById("sidebar-logout-item").addEventListener("click", () => logoutCliente());

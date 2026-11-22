@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#17244A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trilhar">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<title>Comunicados | Portal do Cliente</title>
+<link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=154">
+</head>
+<body class="client-portal">
+<div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
+<div class="admin-shell" id="admin-shell">
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
+  <div class="admin-content">
+    <div class="main admin-main" style="max-width:760px;">
+      <div class="admin-mobile-topbar" id="admin-mobile-topbar">
+        <button type="button" class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" aria-label="Abrir menu"></button>
+        <div class="brand" style="gap:8px;">
+          <div class="brand-mark" style="width:26px; height:26px;"><img src="img/logo-glyph.png" alt="Trilhar Contabilidade"></div>
+          <div class="brand-name" style="font-size:13px;">Trilhar Contabilidade</div>
+        </div>
+      </div>
+
+      <div class="page-header">
+        <h1 class="page-title">Comunicados</h1>
+        <p class="page-subtitle">Avisos importantes da Trilhar Contabilidade para todos os clientes, como mudanças na legislação e prazos.</p>
+      </div>
+
+      <div id="comunicados-lista" style="display:flex; flex-direction:column; gap:var(--space-4);"></div>
+      <div id="comunicados-vazio" style="display:none;">
+        <div class="empty-state">
+          <h3>Nenhum comunicado por aqui ainda</h3>
+          <p>Quando a Trilhar publicar um aviso para os clientes, ele aparece aqui.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
+<script src="js/supabase-client.js?v=80"></script>
+<script src="js/app.js?v=95"></script>
+<script src="js/auth-guard.js?v=82"></script>
+<script>
+  let CLIENTE_ATUAL = null;
+
+  async function carregarComunicados() {
+    const cliente = CLIENTE_ATUAL || await guardCliente();
+    if (!cliente) return;
+    CLIENTE_ATUAL = cliente;
+
+    const [{ data: coms, error }, { data: lidos }] = await Promise.all([
+      sb.from("comunicados").select("id, titulo, mensagem, created_at").order("created_at", { ascending: false }),
+      sb.from("comunicados_lidos").select("comunicado_id")
+    ]);
+    if (error) {
+      console.error("Falha ao carregar comunicados:", error);
+      showToast("Não foi possível carregar os comunicados. Recarregue a página.");
+      return;
+    }
+
+    const lidosSet = new Set((lidos || []).map((l) => l.comunicado_id));
+    const lista = document.getElementById("comunicados-lista");
+    lista.innerHTML = "";
+    document.getElementById("comunicados-vazio").style.display = (coms || []).length === 0 ? "block" : "none";
+
+    (coms || []).forEach((c) => {
+      const novo = !lidosSet.has(c.id);
+      const card = document.createElement("div");
+      card.className = "table-card";
+      card.style.padding = "var(--space-6)";
+      card.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+          <h3 class="com-titulo" style="margin:0; flex:1;"></h3>
+          ${novo ? '<span class="status-badge danger">Novo</span>' : ""}
+        </div>
+        <p class="hint com-data" style="margin:0 0 12px;"></p>
+        <p class="com-msg" style="margin:0; white-space:pre-wrap; line-height:1.6;"></p>`;
+      card.querySelector(".com-titulo").textContent = c.titulo;
+      card.querySelector(".com-data").textContent = "Publicado em " + new Date(c.created_at).toLocaleDateString("pt-BR");
+      card.querySelector(".com-msg").textContent = c.mensagem;
+      lista.appendChild(card);
+    });
+
+    // Abrir a tela conta como leitura -- apaga o contador do menu.
+    const naoLidos = (coms || []).filter((c) => !lidosSet.has(c.id));
+    if (naoLidos.length) {
+      await sb.from("comunicados_lidos").upsert(
+        naoLidos.map((c) => ({ comunicado_id: c.id, cliente_id: cliente.id })),
+        { onConflict: "comunicado_id,cliente_id", ignoreDuplicates: true }
+      );
+      atualizarBadgeComunicados();
+    }
+  }
+
+  (async function init() {
+    const cliente = await guardCliente();
+    if (!cliente) return;
+    CLIENTE_ATUAL = cliente;
+    renderNav("comunicados", cliente);
+    await carregarComunicados();
+    hideAuthOverlay();
+    iniciarRealtimeCliente(cliente.id, [{ table: "comunicados" }], carregarComunicados);
+  })();
+</script>
+</body>
+</html>

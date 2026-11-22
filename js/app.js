@@ -358,6 +358,10 @@ function renderNav(paginaAtiva, cliente) {
   const shell = document.getElementById("admin-shell");
   if (!shell) return;
 
+  // Registro simples de quem abriu o portal (o servidor ignora se já houve
+  // acesso nos últimos 30 minutos). Falha aqui nunca pode atrapalhar a tela.
+  try { sb.rpc("registrar_acesso", { p_pagina: paginaAtiva, p_app_instalado: appJaInstalado() }).then(() => {}, () => {}); } catch (_) {}
+
   const aside = document.createElement("aside");
   aside.className = "admin-sidebar";
   aside.id = "admin-sidebar";

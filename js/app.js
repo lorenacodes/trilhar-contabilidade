@@ -272,8 +272,10 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 window.addEventListener("appinstalled", () => {
   _eventoInstalacao = null;
-  const el = document.getElementById("convite-instalacao");
-  if (el) el.remove();
+  ["convite-instalacao", "sidebar-instalar-item", "login-instalar-app"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
 });
 
 function iniciarConviteInstalacao() {
@@ -320,6 +322,65 @@ function mostrarConviteInstalacao() {
     el.remove();
   });
   document.body.appendChild(el);
+}
+
+/* Instalação manual, pelo item "Instalar app" do menu da conta (cliente) e
+   pelo link na tela de login. Existe porque o convite automático acima
+   depende do navegador disparar beforeinstallprompt, e isso nem sempre
+   acontece: o Chrome pode demorar ou não disparar, o Samsung Internet e o
+   Firefox têm regras próprias, navegadores embutidos (WhatsApp, Instagram)
+   nunca disparam, e quem tocou em "Agora não" fica 14 dias sem ver o
+   convite. Sem isso o cliente ficava sem nenhuma forma de instalar.
+   Com o evento disponível, abre o diálogo nativo; sem ele, explica o
+   caminho pelo menu do navegador. */
+function navegadorEmbutido() {
+  return /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|; wv\)/i.test(navigator.userAgent);
+}
+function podeOferecerInstalacao() {
+  return aparelhoEhAndroid() && !appJaInstalado();
+}
+async function abrirInstalacao() {
+  if (_eventoInstalacao) {
+    const ev = _eventoInstalacao;
+    ev.prompt();
+    try { await ev.userChoice; } catch (_) {}
+    _eventoInstalacao = null;
+    const conv = document.getElementById("convite-instalacao");
+    if (conv) conv.remove();
+    return;
+  }
+  if (document.getElementById("ajuda-instalacao")) return;
+  const ua = navigator.userAgent;
+  let passos;
+  if (navegadorEmbutido()) {
+    passos = "Você abriu o portal dentro de outro app (WhatsApp, Instagram...), onde não dá pra instalar. Toque nos três pontinhos do canto da tela, escolha \"Abrir no Chrome\" (ou \"Abrir no navegador\") e instale por lá.";
+  } else if (/SamsungBrowser/i.test(ua)) {
+    passos = "Toque no menu (☰) na barra de baixo do navegador e escolha \"Adicionar página a\" → \"Tela inicial\".";
+  } else if (/Firefox/i.test(ua)) {
+    passos = "Toque nos três pontinhos (⋮) do navegador e escolha \"Instalar\" ou \"Adicionar à tela inicial\".";
+  } else {
+    passos = "Toque nos três pontinhos (⋮) no canto de cima do Chrome e escolha \"Instalar app\" ou \"Adicionar à tela inicial\".";
+  }
+  const fundo = document.createElement("div");
+  fundo.id = "ajuda-instalacao";
+  fundo.setAttribute("role", "dialog");
+  fundo.setAttribute("aria-modal", "true");
+  fundo.setAttribute("aria-label", "Como instalar o app da Trilhar");
+  fundo.style.cssText = "position:fixed; inset:0; z-index:950; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; justify-content:center; padding:12px 12px calc(12px + env(safe-area-inset-bottom, 0px));";
+  fundo.innerHTML = `
+    <div style="background:var(--bg-surface, #fff); color:var(--text-primary, #161a2b); border-radius:14px; padding:18px; max-width:520px; width:100%; box-shadow:0 8px 28px rgba(0,0,0,.25);">
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:10px;">
+        <img src="/img/icon-192.png" alt="" width="40" height="40" style="border-radius:10px;">
+        <strong style="font-size:15px;">Instalar o app da Trilhar</strong>
+      </div>
+      <p class="ajuda-texto" style="font-size:14px; line-height:1.5; margin:0 0 14px;"></p>
+      <button type="button" class="btn btn-primary ajuda-ok" style="width:100%;">Entendi</button>
+    </div>`;
+  fundo.querySelector(".ajuda-texto").textContent = passos;
+  const fechar = () => fundo.remove();
+  fundo.querySelector(".ajuda-ok").addEventListener("click", fechar);
+  fundo.addEventListener("click", (e) => { if (e.target === fundo) fechar(); });
+  document.body.appendChild(fundo);
 }
 
 /* Contador vermelho de comunicados ainda não lidos ao lado do item do menu.
@@ -396,6 +457,7 @@ function renderNav(paginaAtiva, cliente) {
         <div class="dropdown-panel" id="user-panel">
           <div class="dropdown-header">Conta</div>
           <div class="dropdown-item" id="sidebar-perfil-item">${ICONS.user} Meu perfil</div>
+          ${podeOferecerInstalacao() ? `<div class="dropdown-item" id="sidebar-instalar-item">${ICONS.download} Instalar app</div>` : ""}
           <div class="dropdown-item" data-theme-toggle></div>
           <div class="dropdown-divider"></div>
           <div class="dropdown-item" id="sidebar-logout-item">${ICONS.logout} Sair</div>
@@ -413,6 +475,8 @@ function renderNav(paginaAtiva, cliente) {
   iniciarConviteInstalacao();
   document.getElementById("sidebar-user-chip").addEventListener("click", () => toggleDropdown("user-panel"));
   document.getElementById("sidebar-perfil-item").addEventListener("click", () => window.location.href = "perfil");
+  const itemInstalar = document.getElementById("sidebar-instalar-item");
+  if (itemInstalar) itemInstalar.addEventListener("click", () => abrirInstalacao());
   document.getElementById("sidebar-logout-item").addEventListener("click", () => logoutCliente());
 
   // O listener global de tema (DOMContentLoaded, no topo deste arquivo) já

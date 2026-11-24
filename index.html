@@ -60,12 +60,13 @@
     <div class="login-footnote">
       Acesso fornecido pela Trilhar Contabilidade.<br>
       <a href="esqueci-senha">Esqueci minha senha</a>
+      <a href="#" id="login-instalar-app" style="display:none; margin-top:10px;">Instalar o app no celular</a>
     </div>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=95"></script>
+<script src="js/app.js?v=96"></script>
 <script>
   // Tela única com seletor Cliente/Administrador no topo (substitui as duas
   // páginas separadas de antes, index.html + admin-login.html) — pedido:
@@ -288,6 +289,17 @@
       googleBtn.disabled = false;
       googleBtn.innerHTML = GOOGLE_BTN_HTML;
     }
+  })();
+
+  // App instalável também a partir da tela de login (antes o convite e a
+  // opção de instalar só existiam depois de entrar, no painel do cliente,
+  // então quem abria o site não via como baixar no Android).
+  (function () {
+    if (!podeOferecerInstalacao()) return;
+    const link = document.getElementById("login-instalar-app");
+    link.style.display = "inline-block";
+    link.addEventListener("click", (e) => { e.preventDefault(); abrirInstalacao(); });
+    iniciarConviteInstalacao();
   })();
 </script>
 </body>

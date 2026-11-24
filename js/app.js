@@ -241,9 +241,9 @@ const NAV_ITEMS = [
    O service worker (sw.js) + manifest.webmanifest deixam o portal instalável
    como app. Instalado, abre em tela cheia, com o ícone da Trilhar, e mantém
    o login -- o cliente não precisa digitar e-mail e senha toda vez. O convite
-   abaixo só aparece no Android (quando o navegador confirma que consegue
-   instalar), só nas telas do cliente, nunca se o app já está instalado, e
-   some por 14 dias depois que a pessoa dispensa. */
+   abaixo aparece logo ao entrar no site (login e telas do cliente), só no
+   Android, nunca se o app já está instalado, e some por 14 dias depois que
+   a pessoa dispensa. */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("Service worker não registrado:", e));
@@ -286,13 +286,14 @@ function iniciarConviteInstalacao() {
 function mostrarConviteInstalacao() {
   if (document.getElementById("convite-instalacao")) return;
   if (appJaInstalado() || conviteDispensadoRecentemente()) return;
-  // Só Android (decisão da Lorena: o app é pra Android) e só quando o
-  // próprio navegador confirmou que consegue instalar (evento
-  // beforeinstallprompt). Isso também some com o convite dentro do
-  // WhatsApp/Instagram e outros navegadores embutidos, onde a instalação
-  // não funciona. No iPhone o convite não aparece.
-  if (!aparelhoEhAndroid() || !_eventoInstalacao) return;
-  if (!window.matchMedia("(pointer: coarse)").matches) return;
+  // Só Android (decisão da Lorena: o app é pra Android). No iPhone o
+  // convite não aparece.
+  // Aparece logo ao entrar no site em qualquer Android, sem esperar o
+  // navegador disparar beforeinstallprompt (que pode demorar, não vir
+  // nunca no WhatsApp/Instagram, ou ter regras próprias no Samsung
+  // Internet). O botão usa o diálogo nativo quando ele existe e, se não,
+  // explica o caminho pelo menu do navegador (abrirInstalacao).
+  if (!aparelhoEhAndroid()) return;
 
   const el = document.createElement("div");
   el.id = "convite-instalacao";
@@ -314,12 +315,9 @@ function mostrarConviteInstalacao() {
   ok.textContent = "Instalar";
   const dispensar = () => { safeStorage.setItem(CHAVE_CONVITE_DISPENSADO, String(Date.now())); el.remove(); };
   el.querySelector(".convite-depois").addEventListener("click", dispensar);
-  ok.addEventListener("click", async () => {
-    if (!_eventoInstalacao) { dispensar(); return; }
-    _eventoInstalacao.prompt();
-    try { await _eventoInstalacao.userChoice; } catch (_) {}
-    _eventoInstalacao = null;
+  ok.addEventListener("click", () => {
     el.remove();
+    abrirInstalacao();
   });
   document.body.appendChild(el);
 }

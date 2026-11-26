@@ -289,6 +289,13 @@
       googleBtn.innerHTML = GOOGLE_BTN_HTML;
     }
   })();
+
+  // Convite "Instale o app da Trilhar" também na tela de login (pedido da
+  // Lorena): quem ainda não instalou já vê o convite antes de entrar. As
+  // regras são as mesmas das telas do cliente (só Android/Chrome, nunca se
+  // o app já está instalado, some por 14 dias se a pessoa dispensar) —
+  // tudo decidido em mostrarConviteInstalacao(), em js/app.js.
+  iniciarConviteInstalacao();
 </script>
 </body>
 </html>

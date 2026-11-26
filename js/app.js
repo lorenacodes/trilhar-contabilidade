@@ -242,7 +242,7 @@ const NAV_ITEMS = [
    como app. Instalado, abre em tela cheia, com o ícone da Trilhar, e mantém
    o login -- o cliente não precisa digitar e-mail e senha toda vez. O convite
    abaixo só aparece no Android (quando o navegador confirma que consegue
-   instalar), só nas telas do cliente, nunca se o app já está instalado, e
+   instalar), só nas telas do cliente e no login (index.html), nunca se o app já está instalado, e
    some por 14 dias depois que a pessoa dispensa. */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

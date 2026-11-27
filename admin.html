@@ -78,10 +78,10 @@
     <div class="admin-sidebar-footer">
       <div class="dropdown-wrap">
         <div class="user-chip" style="cursor:pointer" onclick="toggleDropdown('user-panel')">
-          <div class="avatar" id="sidebar-avatar">TI</div>
+          <div class="avatar" id="sidebar-avatar"></div>
           <div class="admin-sidebar-user-text">
-            <span>Tinaysa</span>
-            <small>Administrador</small>
+            <span></span>
+            <small id="sidebar-user-nivel" style="display:none;"></small>
           </div>
         </div>
         <div class="dropdown-panel" id="user-panel">
@@ -1707,6 +1707,13 @@
     if (!admin) return; // guardAdministrador já redirecionou
     ADMIN_ATUAL = admin;
     document.querySelector(".user-chip span").textContent = admin.nome;
+    // Nome e iniciais vêm só de quem está logado (antes o HTML trazia um nome
+    // fixo de exemplo, que aparecia pra qualquer administrador até carregar).
+    // Proprietário não tem rótulo embaixo do nome; os demais mostram
+    // "Administrador".
+    const nivelEl = document.getElementById("sidebar-user-nivel");
+    if (admin.nivel === "proprietario") { nivelEl.style.display = "none"; nivelEl.textContent = ""; }
+    else { nivelEl.textContent = "Administrador"; nivelEl.style.display = ""; }
     document.querySelector(".user-chip .avatar").textContent = admin.nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
     aplicarAvatar(admin.avatarUrl);
     // Só o proprietário cria categoria — administrador comum só visualiza

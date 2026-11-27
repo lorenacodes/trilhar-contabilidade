@@ -1,0 +1,29 @@
+{
+  "name": "Trilhar Contabilidade - Portal do Cliente",
+  "short_name": "Trilhar",
+  "description": "Boletos, documentos e comunicados da Trilhar Contabilidade.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#17244A",
+  "theme_color": "#17244A",
+  "categories": ["business", "finance", "productivity"],
+  "related_applications": [
+    { "platform": "webapp", "url": "https://trilharcontabilidadese.com.br/manifest.webmanifest" }
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Boletos", "url": "/boletos", "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Documentos", "url": "/documentos", "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Chamados", "url": "/chamados", "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

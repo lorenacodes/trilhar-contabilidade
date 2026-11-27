@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=159">
+<link rel="stylesheet" href="css/styles.css?v=160">
 <link rel="stylesheet" href="css/tema-moderno.css?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 </head>
@@ -209,11 +209,17 @@
             </div>
             <div class="chart-card chart-card-boletos">
               <div class="chart-head">
-                <div><h3>Status dos boletos</h3><p>Todos os clientes</p></div>
+                <div><h3>Boletos em aberto</h3><p id="aberto-subtitulo">Por prazo de vencimento</p></div>
+                <div class="period-presets" id="aberto-tipo">
+                  <button type="button" class="period-chip active" data-tipo="todos">Todos</button>
+                  <button type="button" class="period-chip" data-tipo="receita">Honorários</button>
+                  <button type="button" class="period-chip" data-tipo="imposto">Impostos</button>
+                </div>
               </div>
               <div class="chart-card-boletos-body">
-                <div class="stacked-bar" id="chart-status-boletos"></div>
-                <div class="chart-legend" id="chart-status-boletos-legend"></div>
+                <div class="aberto-total" id="aberto-total"></div>
+                <div class="aberto-faixas" id="aberto-faixas"></div>
+                <p class="aberto-rodape" id="aberto-rodape"></p>
               </div>
             </div>
           </div>
@@ -2964,57 +2970,83 @@
   receitaChartFilterDateDe.addEventListener("change", rerenderReceitaChart);
   receitaChartFilterDateAte.addEventListener("change", rerenderReceitaChart);
 
-  // ---------- Barra empilhada: status dos boletos ----------
-  function statusBoletosGlobal() {
-    const diasAlerta = CONFIG_EMPRESA.dias_antecedencia_alerta;
-    const grupos = { pago: [], pendente: [], vencido: [] };
-    DOCUMENTOS.filter(d => isBoletoCategoria(categoriaPorId(d.categoria_id))).forEach(d => {
-      if (d.status === "pago") { grupos.pago.push(d); return; }
-      const st = statusBoleto(d, diasAlerta);
-      if (st && st.cls === "danger") grupos.vencido.push(d);
-      else grupos.pendente.push(d);
+  // ---------- Boletos em aberto por prazo ----------
+  // Substitui a antiga barra "pago x pendente" de todos os tempos, que só
+  // crescia no verde e não dizia o que fazer. Aqui só entra o que ainda não
+  // foi pago, agrupado pela distância do vencimento, com valor e quantidade.
+  let abertoTipo = "todos";
+  const FAIXAS_ABERTO = [
+    { id: "v30", label: "Vencidos há mais de 30 dias", min: -Infinity, max: -31, atraso: true },
+    { id: "v1", label: "Vencidos há até 30 dias", min: -30, max: -1, atraso: true },
+    { id: "p7", label: "Vencem em até 7 dias", min: 0, max: 7 },
+    { id: "p30", label: "Vencem em 8 a 30 dias", min: 8, max: 30 },
+    { id: "pmais", label: "Vencem depois de 30 dias", min: 31, max: Infinity }
+  ];
+  function boletosEmAbertoPorPrazo(tipo) {
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const faixas = FAIXAS_ABERTO.map(f => ({ ...f, count: 0, valor: 0, clientes: new Set() }));
+    let pagos90 = 0, pagosEmDia90 = 0;
+    const desde90 = new Date(hoje); desde90.setDate(desde90.getDate() - 90);
+    DOCUMENTOS.forEach(d => {
+      const cat = categoriaPorId(d.categoria_id);
+      if (!isBoletoCategoria(cat) || !d.data_vencimento) return;
+      if (tipo !== "todos" && (cat.tipo_financeiro || "") !== tipo) return;
+      const venc = parseDataLocal(d.data_vencimento);
+      if (d.status === "pago") {
+        if (venc >= desde90 && venc <= hoje) {
+          pagos90++;
+          const pagoEm = d.pago_em ? new Date(d.pago_em) : null;
+          if (pagoEm) { pagoEm.setHours(0, 0, 0, 0); if (pagoEm <= venc) pagosEmDia90++; }
+        }
+        return;
+      }
+      const dias = Math.round((venc - hoje) / 86400000);
+      const f = faixas.find(x => dias >= x.min && dias <= x.max);
+      if (!f) return;
+      f.count++; f.valor += Number(d.valor) || 0; f.clientes.add(d.cliente_id);
     });
-    const somar = (arr) => arr.reduce((s, d) => s + (Number(d.valor) || 0), 0);
-    return {
-      total: grupos.pago.length + grupos.pendente.length + grupos.vencido.length,
-      pago: { count: grupos.pago.length, valor: somar(grupos.pago) },
-      pendente: { count: grupos.pendente.length, valor: somar(grupos.pendente) },
-      vencido: { count: grupos.vencido.length, valor: somar(grupos.vencido) }
-    };
+    return { faixas, pagos90, pagosEmDia90 };
   }
-  function renderStatusBoletosBar(dist) {
-    const barra = document.getElementById("chart-status-boletos");
-    const legenda = document.getElementById("chart-status-boletos-legend");
-    barra.innerHTML = "";
-    legenda.innerHTML = "";
-    if (dist.total === 0) {
-      barra.style.display = "none";
-      legenda.innerHTML = '<p class="attention-empty" style="margin:0;">Nenhum boleto registrado ainda.</p>';
-      return;
+  function renderBoletosEmAberto() {
+    const { faixas, pagos90, pagosEmDia90 } = boletosEmAbertoPorPrazo(abertoTipo);
+    const totalEl = document.getElementById("aberto-total");
+    const lista = document.getElementById("aberto-faixas");
+    const rodape = document.getElementById("aberto-rodape");
+    const totalValor = faixas.reduce((s, f) => s + f.valor, 0);
+    const totalQtd = faixas.reduce((s, f) => s + f.count, 0);
+    const atrasoValor = faixas.filter(f => f.atraso).reduce((s, f) => s + f.valor, 0);
+    const clientesAtraso = new Set(); faixas.filter(f => f.atraso).forEach(f => f.clientes.forEach(c => clientesAtraso.add(c)));
+    lista.innerHTML = "";
+    if (totalQtd === 0) {
+      totalEl.innerHTML = "";
+      lista.innerHTML = '<p class="attention-empty" style="margin:0;">Nenhum boleto em aberto.</p>';
+    } else {
+      totalEl.innerHTML = `
+        <div><span class="aberto-total-rotulo">Total em aberto</span><strong>${escapeHtml(formatBRL(totalValor))}</strong><span class="aberto-total-sub">${totalQtd} boleto${totalQtd === 1 ? "" : "s"}</span></div>
+        <div><span class="aberto-total-rotulo">Em atraso</span><strong class="${atrasoValor > 0 ? "aberto-atraso" : ""}">${escapeHtml(formatBRL(atrasoValor))}</strong><span class="aberto-total-sub">${clientesAtraso.size} cliente${clientesAtraso.size === 1 ? "" : "s"}</span></div>`;
+      const maior = Math.max(...faixas.map(f => f.valor), 1);
+      faixas.forEach(f => {
+        const linha = document.createElement("div");
+        linha.className = "aberto-faixa" + (f.atraso ? " atraso" : "") + (f.count === 0 ? " vazia" : "");
+        linha.title = f.label + ": " + f.count + " boleto(s), " + formatBRL(f.valor) + ", " + f.clientes.size + " cliente(s)";
+        const pct = f.valor > 0 ? Math.max(2, (f.valor / maior) * 100) : 0;
+        linha.innerHTML = `
+          <div class="aberto-faixa-topo"><span>${escapeHtml(f.label)}</span><span class="aberto-faixa-valor">${escapeHtml(formatBRL(f.valor))}<em>${f.count}</em></span></div>
+          <div class="aberto-faixa-trilho"><div class="aberto-faixa-barra" style="width:${pct}%"></div></div>`;
+        lista.appendChild(linha);
+      });
     }
-    barra.style.display = "flex";
-    [
-      { label: "Pago", cor: "var(--semantic-success)", dado: dist.pago },
-      { label: "Pendente", cor: "var(--semantic-warning)", dado: dist.pendente },
-      { label: "Vencido", cor: "var(--semantic-danger)", dado: dist.vencido }
-    ].filter(s => s.dado.count > 0).forEach(s => {
-      const seg = document.createElement("div");
-      seg.className = "stacked-bar-segment";
-      seg.style.width = ((s.dado.count / dist.total) * 100) + "%";
-      seg.style.background = s.cor;
-      seg.title = s.label + ": " + s.dado.count + " (" + formatBRL(s.dado.valor) + ")";
-      barra.appendChild(seg);
-
-      const item = document.createElement("div");
-      item.className = "chart-legend-item";
-      item.innerHTML = `
-        <div class="chart-legend-dot-row"><span class="dot" style="background:${s.cor}"></span>${escapeHtml(s.label)}</div>
-        <div class="chart-legend-num">${s.dado.count}</div>
-        <div class="chart-legend-val">${escapeHtml(formatBRL(s.dado.valor))}</div>
-      `;
-      legenda.appendChild(item);
-    });
+    rodape.textContent = pagos90 > 0
+      ? "Pagos em dia nos últimos 90 dias: " + Math.round((pagosEmDia90 / pagos90) * 100) + "% (" + pagosEmDia90 + " de " + pagos90 + ")"
+      : "";
   }
+  document.querySelectorAll("#aberto-tipo .period-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      abertoTipo = btn.dataset.tipo;
+      document.querySelectorAll("#aberto-tipo .period-chip").forEach(b => b.classList.toggle("active", b === btn));
+      renderBoletosEmAberto();
+    });
+  });
 
   // financeiro = retorno de renderBoletos() (receitaMensal/totalImpostosNoMes)
   // — chamada antes desta no renderTudo(), pra não duplicar o filtro de
@@ -3078,7 +3110,7 @@
       : clientesComPendencia + " de " + CLIENTES.length + " clientes";
 
     rerenderReceitaChart();
-    renderStatusBoletosBar(statusBoletosGlobal());
+    renderBoletosEmAberto();
     renderAtencaoDoDia(boletosVencendo, variacaoReceita);
   }
 

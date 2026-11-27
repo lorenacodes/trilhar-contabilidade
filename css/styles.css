@@ -4613,3 +4613,23 @@ body.modo-ver-como #convite-instalacao { display: none !important; }
   .ver-como-faixa { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; text-align: center; }
   body.modo-ver-como { padding-bottom: 130px; }
 }
+
+/* Boletos em aberto por prazo (Visão geral) */
+.aberto-total { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+.aberto-total > div { display: flex; flex-direction: column; gap: 2px; background: var(--bg-surface-elevated); border-radius: var(--radius-md); padding: 10px 14px; }
+.aberto-total-rotulo { font-size: 11px; color: var(--text-secondary); }
+.aberto-total strong { font-size: 18px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.aberto-total strong.aberto-atraso { color: var(--semantic-danger); }
+.aberto-total-sub { font-size: 11px; color: var(--text-secondary); }
+.aberto-faixas { display: flex; flex-direction: column; gap: 12px; }
+.aberto-faixa-topo { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--text-primary); margin-bottom: 5px; }
+.aberto-faixa-valor { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aberto-faixa-valor em { font-style: normal; font-weight: 500; color: var(--text-secondary); margin-left: 8px; min-width: 18px; display: inline-block; text-align: right; }
+.aberto-faixa-trilho { height: 8px; border-radius: 4px; background: var(--bg-surface-elevated); overflow: hidden; }
+.aberto-faixa-barra { height: 100%; border-radius: 4px; background: var(--brand-navy); transition: width 0.4s ease; }
+.aberto-faixa.atraso .aberto-faixa-barra { background: var(--semantic-danger); }
+.aberto-faixa.vazia { opacity: 0.55; }
+.aberto-rodape { margin: 16px 0 0; font-size: 12px; color: var(--text-secondary); }
+.aberto-rodape:empty { display: none; }
+.chart-card-boletos .chart-head { flex-wrap: wrap; gap: 10px; }
+html[data-theme="dark"] .aberto-faixa:not(.atraso) .aberto-faixa-barra { background: #8FA6D6; }

@@ -10,7 +10,7 @@
      atualiza em segundo plano pra próxima abertura.
    - Nenhum dado de cliente é guardado: os dados vêm do Supabase (não passa
      por aqui) e as páginas HTML não são guardadas. */
-const VERSAO = "trilhar-v3";
+const VERSAO = "trilhar-v4";
 const OFFLINE_URL = "/offline.html";
 const PRE_CACHE = [OFFLINE_URL, "/img/icon-192.png"];
 

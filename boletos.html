@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=154">
+<link rel="stylesheet" href="css/styles.css?v=155">
 </head>
 <body class="client-portal">
 <div id="auth-guard-overlay" class="auth-guard-overlay"><div class="auth-guard-spinner"></div></div>
@@ -232,8 +232,8 @@
     row.innerHTML = `
       <div class="boleto-row-icon">${ICONS.card}</div>
       <div class="boleto-row-main">
-        <p class="boleto-row-competencia">${escapeHtml(competencia(b.data_vencimento))}</p>
-        <p class="boleto-row-tipo">${escapeHtml(tipoBoleto(b.categorias && b.categorias.nome))}</p>
+        <p class="boleto-row-competencia">${escapeHtml(tipoBoleto(b.categorias && b.categorias.nome))}</p>
+        <p class="boleto-row-tipo">${escapeHtml(competencia(b.data_vencimento))}</p>
       </div>
       <div class="boleto-row-valor"><span class="moeda">R$</span>${formatMoeda(b.valor)}</div>
       <div class="boleto-row-vencimento">${dataLocalDe(b.data_vencimento).toLocaleDateString("pt-BR")}</div>
@@ -242,9 +242,9 @@
         ${podeAvisar && jaAvisou ? `<span class="badge neutral" title="Aguardando a Trilhar confirmar o pagamento">Pagamento avisado</span>` : ""}
       </div>
       <div class="boleto-row-actions">
-        ${podeAvisar ? `<button class="icon-btn boleto-avisar-btn" title="${jaAvisou ? "Avisar pagamento novamente" : "Avisar que paguei"}">${ICONS.upload}</button>` : ""}
-        <button class="icon-btn boleto-ver-btn" title="Visualizar">${ICONS.eye}</button>
-        <button class="icon-btn boleto-baixar-btn" title="Baixar">${ICONS.download}</button>
+        ${podeAvisar ? `<button class="icon-btn boleto-avisar-btn" title="${jaAvisou ? "Avisar pagamento novamente" : "Avisar que paguei"}">${ICONS.upload}<span class="icon-btn-label">Já paguei</span></button>` : ""}
+        <button class="icon-btn boleto-ver-btn" title="Visualizar">${ICONS.eye}<span class="icon-btn-label">Ver</span></button>
+        <button class="icon-btn boleto-baixar-btn" title="Baixar">${ICONS.download}<span class="icon-btn-label">Baixar</span></button>
       </div>
     `;
     row.querySelector(".boleto-ver-btn").addEventListener("click", () => abrirPreview(b));
@@ -298,6 +298,21 @@
   function renderListaAgrupada(visiveis) {
     const list = document.getElementById("boleto-list");
     list.innerHTML = "";
+
+    // Vencidos e vencendo primeiro (pedido da Lorena, revisão do mobile):
+    // antes o mês mais recente abria sozinho e um boleto vencido do mês
+    // anterior ficava escondido dentro de um grupo fechado. Eles continuam
+    // também no histórico por data, logo abaixo.
+    const urgentes = visiveis
+      .filter(b => { const st = statusBoleto(b, DIAS_ANTECEDENCIA_ALERTA); return b.status === "nao_pago" && st && (st.cls === "danger" || st.cls === "warning"); })
+      .sort((a, b) => (a.data_vencimento < b.data_vencimento ? -1 : 1));
+    if (urgentes.length) {
+      const bloco = document.createElement("div");
+      bloco.className = "boletos-atencao";
+      bloco.innerHTML = `<p class="boletos-atencao-titulo">Precisa de atenção (${urgentes.length})</p>`;
+      urgentes.forEach(b => bloco.appendChild(criarLinhaBoleto(b)));
+      list.appendChild(bloco);
+    }
 
     // Agrupa por data de VENCIMENTO (não upload) — é a data que importa pra
     // um boleto: "qual boleto é de julho" se refere a quando ele vence, não

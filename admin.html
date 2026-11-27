@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=154">
+<link rel="stylesheet" href="css/styles.css?v=155">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 </head>
 <body>
@@ -738,7 +738,7 @@
           <div class="table-card" style="padding:var(--space-6);">
             <p class="hint" style="margin:0 0 14px;">Mostra quando cada cliente abriu o portal (no máximo um registro a cada 30 minutos). Os registros começam a partir da ativação deste recurso.</p>
             <div style="overflow-x:auto;">
-              <table class="table-clients">
+              <table class="table-clients table-acessos">
                 <thead><tr><th>Cliente</th><th>Último acesso</th><th>Acessos em 30 dias</th><th>Usa o app instalado</th></tr></thead>
                 <tbody id="acessos-tbody"><tr><td colspan="4">Carregando...</td></tr></tbody>
               </table>
@@ -6796,7 +6796,7 @@
     // ponto certo pra restaurar isso de forma incondicional.
     document.getElementById("admin-page-header").style.display = "";
     document.querySelectorAll(".admin-nav-item").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
-    document.getElementById("tab-visao-geral").style.display = name === "visao-geral" ? "block" : "none";
+    document.getElementById("tab-visao-geral").style.display = name === "visao-geral" ? "" : "none";
     document.getElementById("tab-clientes").style.display = name === "clientes" ? "block" : "none";
     document.getElementById("tab-financeiro").style.display = name === "financeiro" ? "block" : "none";
     document.getElementById("tab-chamados").style.display = name === "chamados" ? "block" : "none";
@@ -6807,7 +6807,7 @@
     // "Novo cliente"/"Upload de documento" não fazem sentido em
     // Configurações, Chamados e Comunicados (não são telas sobre um cliente
     // específico) — somem só ali, continuam nas outras abas.
-    document.getElementById("admin-header-actions").style.display = ["configuracoes", "chamados", "comunicados", "acessos"].includes(name) ? "none" : "flex";
+    document.getElementById("admin-header-actions").style.display = ["configuracoes", "chamados", "comunicados", "acessos", "administradores"].includes(name) ? "none" : "flex";
 
     const info = TITULOS_ABA[name] || TITULOS_ABA["visao-geral"];
     document.getElementById("page-title").textContent = info.title;
@@ -6842,7 +6842,7 @@
       .sort((a, b) => (b.r ? b.r.ultimo : "").localeCompare(a.r ? a.r.ultimo : ""));
     tbody.innerHTML = linhas.length ? linhas.map(l => {
       const ultimo = l.r ? new Date(l.r.ultimo).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Sem registro ainda";
-      return `<tr><td>${escapeHtml(l.nome)}</td><td>${escapeHtml(ultimo)}</td><td>${l.r ? l.r.total30 : 0}</td><td>${l.r ? (l.r.app ? "Sim" : "Não") : "Sem registro"}</td></tr>`;
+      return `<tr><td data-label="Cliente">${escapeHtml(l.nome)}</td><td data-label="Último acesso">${escapeHtml(ultimo)}</td><td data-label="Acessos em 30 dias">${l.r ? l.r.total30 : 0}</td><td data-label="Usa o app">${l.r ? (l.r.app ? "Sim" : "Não") : "Sem registro"}</td></tr>`;
     }).join("") : '<tr><td colspan="4">Nenhum cliente cadastrado.</td></tr>';
   }
 

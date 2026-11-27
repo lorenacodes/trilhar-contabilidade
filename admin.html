@@ -3078,23 +3078,22 @@
     const totalValor = faixas.reduce((s, f) => s + f.valor, 0);
     const totalQtd = faixas.reduce((s, f) => s + f.count, 0);
     lista.innerHTML = "";
-    if (totalQtd === 0) {
-      totalEl.innerHTML = "";
-      lista.innerHTML = '<p class="attention-empty" style="margin:0;">Nenhum boleto em atraso.</p>';
-    } else {
-      totalEl.innerHTML = `<strong class="aberto-atraso">${escapeHtml(formatBRL(totalValor))}</strong><span class="aberto-total-sub">em ${totalQtd} boleto${totalQtd === 1 ? "" : "s"} vencido${totalQtd === 1 ? "" : "s"}</span>`;
-      const maior = Math.max(...faixas.map(f => f.valor), 1);
-      faixas.forEach(f => {
-        const linha = document.createElement("div");
-        linha.className = "aberto-faixa" + (f.atraso ? " atraso" : "") + (f.count === 0 ? " vazia" : "");
-        linha.title = f.label + ": " + f.count + " boleto(s), " + formatBRL(f.valor) + ", " + f.clientes.size + " cliente(s)";
-        const pct = f.valor > 0 ? Math.max(2, (f.valor / maior) * 100) : 0;
-        linha.innerHTML = `
-          <div class="aberto-faixa-topo"><span>${escapeHtml(f.label)}</span><span class="aberto-faixa-valor">${escapeHtml(formatBRL(f.valor))}<em>${f.count}</em></span></div>
-          <div class="aberto-faixa-trilho"><div class="aberto-faixa-barra" style="width:${pct}%"></div></div>`;
-        lista.appendChild(linha);
-      });
-    }
+    // Sem atraso o card mantém o mesmo desenho (total zerado e faixas vazias),
+    // pra não parecer que o gráfico quebrou.
+    totalEl.innerHTML = totalQtd === 0
+      ? `<strong>${escapeHtml(formatBRL(0))}</strong><span class="aberto-total-sub">nenhum boleto vencido</span>`
+      : `<strong class="aberto-atraso">${escapeHtml(formatBRL(totalValor))}</strong><span class="aberto-total-sub">em ${totalQtd} boleto${totalQtd === 1 ? "" : "s"} vencido${totalQtd === 1 ? "" : "s"}</span>`;
+    const maior = Math.max(...faixas.map(f => f.valor), 1);
+    faixas.forEach(f => {
+      const linha = document.createElement("div");
+      linha.className = "aberto-faixa" + (f.atraso ? " atraso" : "") + (f.count === 0 ? " vazia" : "");
+      linha.title = f.label + ": " + f.count + " boleto(s), " + formatBRL(f.valor) + ", " + f.clientes.size + " cliente(s)";
+      const pct = f.valor > 0 ? Math.max(2, (f.valor / maior) * 100) : 0;
+      linha.innerHTML = `
+        <div class="aberto-faixa-topo"><span>${escapeHtml(f.label)}</span><span class="aberto-faixa-valor">${escapeHtml(formatBRL(f.valor))}<em>${f.count}</em></span></div>
+        <div class="aberto-faixa-trilho"><div class="aberto-faixa-barra" style="width:${pct}%"></div></div>`;
+      lista.appendChild(linha);
+    });
     rodape.textContent = pagos90 > 0
       ? "Pagos em dia nos últimos 90 dias: " + Math.round((pagosEmDia90 / pagos90) * 100) + "% (" + pagosEmDia90 + " de " + pagos90 + ")"
       : "";

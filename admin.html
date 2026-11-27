@@ -1720,7 +1720,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="js/supabase-client.js?v=80"></script>
 <script src="js/app.js?v=99"></script>
-<script src="js/auth-guard.js?v=83"></script>
+<script src="js/auth-guard.js?v=84"></script>
 <script>
   // Guarda de sessão real. Assim que confirma admin, carrega tudo do Supabase
   // (categorias/clientes/documentos) — nada nesta tela depende mais de mock
@@ -2633,8 +2633,8 @@
       // criado_por é null quando foi o próprio cliente quem enviou (é assim
       // que o gatilho definir_origem_documento() decide "origem"); só tem
       // nome de administrador aqui quando um admin de fato fez o upload.
-      criadoPorNome: (d.admin_upload && d.admin_upload.users && d.admin_upload.users.nome) || null,
-      statusAlteradoPorNome: (d.admin_status && d.admin_status.users && d.admin_status.users.nome) || null,
+      criadoPorNome: (d.admin_upload && d.admin_upload.users && d.admin_upload.users.nome) ? limparNomeAdmin(d.admin_upload.users.nome) : null,
+      statusAlteradoPorNome: (d.admin_status && d.admin_status.users && d.admin_status.users.nome) ? limparNomeAdmin(d.admin_status.users.nome) : null,
       pagamentoInformadoEm: d.pagamento_informado_em,
       comprovanteStoragePath: d.comprovante_storage_path,
       comprovanteNomeOriginal: d.comprovante_nome_original,
@@ -2642,7 +2642,7 @@
     }));
     ADMINISTRADORES = (adminRes.data || []).map(a => ({
       id: a.id, nivel: a.nivel, created_at: a.created_at,
-      nome: (a.users && a.users.nome) || "—", email: (a.users && a.users.email) || "—",
+      nome: limparNomeAdmin((a.users && a.users.nome) || "—"), email: (a.users && a.users.email) || "—",
       status: (a.users && a.users.status) || "ativo"
     }));
     EVENTOS_CLIENTE = eventosRes.data || [];

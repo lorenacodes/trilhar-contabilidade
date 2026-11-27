@@ -87,6 +87,7 @@
         <div class="dropdown-panel" id="user-panel">
           <div class="dropdown-header">Conta</div>
           <div class="dropdown-item" id="btn-abrir-avatar"></div>
+          <div class="dropdown-item" id="btn-abrir-alterar-nome"></div>
           <div class="dropdown-item" id="btn-abrir-trocar-senha"></div>
           <div class="dropdown-item" data-theme-toggle></div>
           <div class="dropdown-item" data-instalar-app style="display:none;"></div>
@@ -1444,6 +1445,21 @@
 </div>
 
 <!-- Modal: trocar senha do administrador logado -->
+<div class="modal-overlay" id="modal-alterar-nome">
+  <div class="modal">
+    <h3 style="margin:0 0 18px;">Alterar nome</h3>
+    <div class="field">
+      <label class="required" for="an-nome">Nome</label>
+      <input type="text" id="an-nome" maxlength="80" autocomplete="name">
+    </div>
+    <p class="field-error" id="an-erro"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancelar-alterar-nome">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-alterar-nome">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-trocar-senha">
   <div class="modal modal-xl">
     <h3 style="margin:0 0 4px;">Trocar senha</h3>
@@ -1801,6 +1817,7 @@
   document.getElementById("btn-novo-administrador").innerHTML = ICONS.user + " Convidar administrador";
   document.getElementById("btn-abrir-avatar").innerHTML = ICONS.camera + " Alterar foto de perfil";
   document.getElementById("btn-abrir-trocar-senha").innerHTML = ICONS.lock + " Trocar senha";
+  document.getElementById("btn-abrir-alterar-nome").innerHTML = ICONS.edit + " Alterar nome";
   document.getElementById("btn-abrir-perfil-empresa").innerHTML = ICONS.building + " Perfil da empresa";
   document.getElementById("avatar-upload-badge").innerHTML = ICONS.camera;
   document.getElementById("logout-item").innerHTML = ICONS.logout + " Sair";
@@ -2066,6 +2083,50 @@
     document.getElementById("user-panel").classList.remove("open");
     resetarModalAvatar();
     document.getElementById("modal-avatar").classList.add("open");
+  });
+
+  // ---------- Alterar o próprio nome (qualquer administrador) ----------
+  function aplicarNomeAdmin(nome) {
+    ADMIN_ATUAL.nome = nome;
+    document.querySelector(".user-chip span").textContent = nome;
+    if (!ADMIN_ATUAL.avatarUrl) document.querySelector(".user-chip .avatar").textContent = initials(nome);
+    const meu = ADMINISTRADORES.find(a => a.email === ADMIN_ATUAL.email);
+    if (meu) { meu.nome = nome; if (typeof renderAdministradores === "function") renderAdministradores(); }
+  }
+  document.getElementById("btn-abrir-alterar-nome").addEventListener("click", () => {
+    document.getElementById("user-panel").classList.remove("open");
+    document.getElementById("an-nome").value = ADMIN_ATUAL ? ADMIN_ATUAL.nome : "";
+    document.getElementById("an-erro").classList.remove("show");
+    document.getElementById("modal-alterar-nome").classList.add("open");
+    setTimeout(() => document.getElementById("an-nome").focus(), 50);
+  });
+  document.getElementById("btn-cancelar-alterar-nome").addEventListener("click", () => {
+    document.getElementById("modal-alterar-nome").classList.remove("open");
+  });
+  document.getElementById("an-nome").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("btn-salvar-alterar-nome").click();
+  });
+  document.getElementById("btn-salvar-alterar-nome").addEventListener("click", async function () {
+    const erroEl = document.getElementById("an-erro");
+    const nome = document.getElementById("an-nome").value.replace(/\s+/g, " ").trim();
+    if (nome.length < 2) { erroEl.textContent = "Digite seu nome."; erroEl.classList.add("show"); return; }
+    if (nome === ADMIN_ATUAL.nome) { document.getElementById("modal-alterar-nome").classList.remove("open"); return; }
+    const btn = this, original = btn.textContent;
+    btn.disabled = true; btn.innerHTML = ICONS.spinner + " Salvando...";
+    erroEl.classList.remove("show");
+    // .select() devolve a linha alterada: se o banco não deixar (RLS), volta
+    // vazio em vez de erro, e assim dá pra avisar em vez de fingir que salvou.
+    const { data, error } = await sb.from("users").update({ nome }).eq("id", ADMIN_ATUAL.userId).select("id");
+    btn.disabled = false; btn.textContent = original;
+    if (error || !data || !data.length) {
+      console.error("Falha ao alterar nome:", error);
+      erroEl.textContent = "Não foi possível salvar o nome. Tente novamente.";
+      erroEl.classList.add("show");
+      return;
+    }
+    aplicarNomeAdmin(nome);
+    document.getElementById("modal-alterar-nome").classList.remove("open");
+    showToast("Nome atualizado.");
   });
 
   // ---------- Trocar senha (administrador logado) ----------

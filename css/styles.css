@@ -4388,3 +4388,180 @@ table.table-clients .last-doc strong { color: var(--text-primary); }
   .client-hero-footer { flex-direction: column; align-items: flex-start; }
   .client-hero-updated { text-align: left; }
 }
+
+
+/* ---------- Revisão do mobile (2026-11) ----------
+   - Ações dos boletos com nome no celular (Já paguei / Ver / Baixar), em vez
+     de só ícone.
+   - Bloco "Precisa de atenção" no topo da lista de boletos.
+   - Botões de Documentos com área de toque de 40px no celular.
+   - Painel do cliente: cartões Vencendo/Vencidos lado a lado e textos
+     pequenos com no mínimo 12px no celular. */
+.icon-btn-label { display: none; }
+.boletos-atencao { margin-bottom: var(--space-5); }
+.boletos-atencao-titulo { margin: 0 0 var(--space-3); font-size: var(--text-sm); font-weight: var(--font-bold); color: var(--semantic-danger); }
+@media (max-width: 640px) {
+  .boleto-row-actions .icon-btn { flex: 1; width: auto; height: 40px; border-radius: 999px; gap: 6px; font-size: 13px; font-weight: var(--font-semibold); }
+  .boleto-row-actions .icon-btn-label { display: inline; }
+  .cat-attach-btn, .cat-pill-btn { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+  .client-portal .stat-label, .client-portal .stat-trend, .client-portal .badge, .client-portal .status-badge { font-size: 12px; }
+}
+@media (max-width: 480px) {
+  .client-portal .client-hero-side-kpis { grid-template-columns: 1fr 1fr; }
+  .client-portal .client-hero-side-kpis .stat-card { padding: 14px; }
+  .client-portal .client-hero-side-kpis .stat-top { display: none; }
+}
+
+
+/* ---------- Auditoria mobile (2026-11): toque, estouro e leitura ----------
+   Ajustes só para telas pequenas (até 640px, salvo indicação). Nada aqui
+   muda o desktop. */
+.client-portal .client-two-col > * { min-width: 0; }
+@media (max-width: 1024px) {
+  .client-portal .client-two-col { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  /* Áreas de toque de pelo menos 40px */
+  .period-chip { min-height: 40px; }
+  .panel-close { width: 40px; height: 40px; }
+  .cat-action-btn { width: 36px; height: 36px; }
+  .cat-action-btn .icon { width: 15px; height: 15px; }
+  .docs-filtro-chip { min-height: 36px; }
+  .tipo-pessoa-option { min-height: 40px; }
+  #detalhe-voltar-btn { min-height: 40px; }
+  .password-toggle-btn { width: 40px; height: 40px; }
+  .login-footnote a, #voltar-link { display: inline-block; padding: 10px 6px; }
+  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; flex-shrink: 0; }
+  /* iPhone dá zoom em campos com fonte menor que 16px. !important porque
+     classes como .select-like/.select-sm definem 13–14px e ganhariam. */
+  input[type="date"], input[type="month"], select, textarea, input[type="text"], input[type="email"], input[type="search"], input[type="tel"], input[type="password"], input:not([type]) { font-size: 16px !important; }
+
+  /* Ações dos cartões de documento quebram linha em vez de sair da tela */
+  .cat-group-actions { flex-wrap: wrap; max-width: 100%; }
+
+  /* Cartão de boleto: título inteiro (sem "DAS - Simple...") e botões numa linha */
+  .boleto-row-competencia { white-space: normal; overflow: visible; }
+  .boleto-row-actions .icon-btn { white-space: nowrap; padding: 0 8px; min-width: 0; }
+
+  /* Tabelas em modo cartão: cabeçalhos de grupo (ano/mês/dia) viram um
+     título simples à esquerda, não um cartão vazio alinhado à direita */
+  .table-card tr.date-group-row { border: none; padding: 0; margin: 14px 0 6px; background: none; box-shadow: none; }
+  .table-card tr.date-group-row td { display: block; padding: 0; text-align: left; width: 100%; }
+  .table-card tr.date-group-row td::before { display: none; }
+  .table-card tr.date-group-row .date-group-header { justify-content: flex-start; width: auto; }
+  .table-card tr.date-group-row .date-group-header.day { margin-left: var(--space-3); }
+
+  /* Barra de busca + Filtros + Baixar tudo (Financeiro/Documentos do admin):
+     busca na linha de cima, botões dividindo a linha de baixo */
+  .docs-toolbar { flex-direction: row; flex-wrap: wrap; }
+  .docs-toolbar .btn { width: auto; }
+  .docs-toolbar .docs-search { flex: 1 1 100%; }
+  .docs-toolbar .btn { flex: 1 1 0; justify-content: center; }
+  .docs-toolbar #docs-download-all { margin-left: 0; }
+
+  .filtros-dropdown input[type="date"], .filter-date-range input[type="date"] { font-size: 16px; }
+  #detalhe-enviar-btn, .doc-viewer-abrir-nova-aba { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+  .client-hero-total-label, .due-item-badge { font-size: 12px; }
+  .table-card table { display: block; width: 100%; }
+  .table-card td { min-width: 0; overflow-wrap: anywhere; flex-wrap: wrap; }
+
+  /* Listas agrupadas por ano > mês > dia (boletos e documentos): o recuo
+     de cada nível comia a largura do cartão no celular e o nome do boleto
+     quebrava em várias linhas. O recuo fica só no título do grupo. */
+  .date-group-body, .date-group-body.month-body, .date-group-body.day-body { margin-left: 0; padding-left: 0; }
+  .icon-btn .icon { flex-shrink: 0; }
+  .date-group-header.day { margin-left: var(--space-2); }
+
+  /* Topo do admin: "Novo cliente" e "Upload de documento" dividem a linha
+     em vez de empilhar com larguras diferentes */
+  #admin-header-actions { width: 100%; flex-wrap: wrap; }
+  #admin-header-actions .btn { flex: 1 1 140px; justify-content: center; }
+  /* Legenda de "Status dos boletos": três quadros lado a lado */
+  #chart-status-boletos-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+  /* No celular, "Atenção do dia" (o que pede ação agora) vem primeiro na
+     Visão geral do admin. No desktop continua abaixo dos gráficos, como a
+     Lorena pediu. */
+  #tab-visao-geral { display: flex; flex-direction: column; }
+  #tab-visao-geral > .atencao-dia { order: -1; margin-top: 0; margin-bottom: var(--space-4); }
+  .atencao-dia-item-texto { flex: 1; }
+
+  /* Visão geral do admin: itens de "Atenção do dia" ocupam a linha toda */
+  .atencao-dia-item { width: 100%; }
+}
+
+
+/* Tablet em pé (641–900px): as tabelas do admin (clientes, financeiro,
+   documentos...) ficavam espremidas, com a coluna de ação cortada na
+   borda. Usam o mesmo modo cartão do celular, em duas colunas. */
+@media (min-width: 641px) and (max-width: 900px) {
+  .table-card { overflow-x: visible; }
+  .table-card table { min-width: 0; }
+  .table-card thead { display: none; }
+  .table-card tbody { display: block; }
+  .table-card tr {
+    display: block;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 10px;
+  }
+  .table-card tbody tr:last-child { margin-bottom: 0; }
+  .table-card tbody tr td { border-bottom: none; }
+  .table-card td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    text-align: right;
+    width: auto;
+  }
+  .table-card td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--text-secondary);
+    text-align: left;
+    flex-shrink: 0;
+  }
+  /* Última coluna é sempre a ação (botão/kebab/select) — sem rótulo, alinhada à direita.
+     width:100% sobrescreve o truque de coluna estreita "width:1%" do modo
+     desktop (table.table-clients td:last-child) — em modo cartão a linha
+     inteira deve ficar disponível, senão o botão fica espremido. */
+  .table-card td:last-child, table.table-clients td:last-child { justify-content: flex-end; white-space: normal; width: 100%; }
+  .table-card td:last-child::before { display: none; }
+  .table-card tr.date-group-row { border: none; padding: 0; margin: 14px 0 6px; background: none; box-shadow: none; }
+  .table-card tr.date-group-row td { display: block; padding: 0; text-align: left; width: 100%; }
+  .table-card tr.date-group-row td::before { display: none; }
+  .table-card tr.date-group-row .date-group-header { justify-content: flex-start; width: auto; }
+  .table-card table { display: block; width: 100%; }
+  .table-card td { min-width: 0; overflow-wrap: anywhere; flex-wrap: wrap; }
+  .table-card tbody { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+  .table-card tbody tr { margin-bottom: 0; }
+  .table-card tbody tr.date-group-row, .table-card tbody tr td[colspan] { grid-column: 1 / -1; }
+}
+
+/* Telas de toque maiores que celular (tablets): mesmas áreas de toque e
+   campos sem zoom automático do iPad. */
+@media (pointer: coarse) {
+  .period-chip { min-height: 40px; }
+  .panel-close { width: 40px; height: 40px; }
+  .cat-action-btn { width: 36px; height: 36px; }
+  .docs-filtro-chip { min-height: 36px; }
+  .tipo-pessoa-option { min-height: 40px; }
+  #detalhe-voltar-btn, #detalhe-enviar-btn, .doc-viewer-abrir-nova-aba { min-height: 40px; }
+  .password-toggle-btn { width: 40px; height: 40px; }
+  .select-sm, .select-like.select-sm { min-height: 40px; }
+  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+  input[type="date"], input[type="month"], select, textarea, input[type="text"], input[type="email"], input[type="search"], input[type="tel"], input[type="password"], input[type="number"], input:not([type]) { font-size: 16px !important; }
+  .login-footnote a, #voltar-link { display: inline-block; padding: 10px 6px; }
+  .cat-attach-btn, .cat-pill-btn { min-height: 40px; padding: 8px 14px; }
+}
+
+/* Botão desabilitado com cara de desabilitado: o "Avisar pagamento" fica
+   travado até escolher o comprovante, mas parecia ativo e o toque não fazia
+   nada. Vale para qualquer .btn travado (ex.: enviando). */
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }

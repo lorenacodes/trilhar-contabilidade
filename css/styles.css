@@ -4464,8 +4464,6 @@ table.table-clients .last-doc strong { color: var(--text-primary); }
   .client-hero-total-label, .due-item-badge { font-size: 12px; }
   .table-card table { display: block; width: 100%; }
   .table-card td { min-width: 0; overflow-wrap: anywhere; flex-wrap: wrap; }
-  .table-acessos td:last-child { justify-content: space-between; }
-  .table-acessos td:last-child::before { display: block; }
 
   /* Listas agrupadas por ano > mês > dia (boletos e documentos): o recuo
      de cada nível comia a largura do cartão no celular e o nome do boleto
@@ -4541,8 +4539,6 @@ table.table-clients .last-doc strong { color: var(--text-primary); }
   .table-card tr.date-group-row .date-group-header { justify-content: flex-start; width: auto; }
   .table-card table { display: block; width: 100%; }
   .table-card td { min-width: 0; overflow-wrap: anywhere; flex-wrap: wrap; }
-  .table-acessos td:last-child { justify-content: space-between; }
-  .table-acessos td:last-child::before { display: block; }
   .table-card tbody { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
   .table-card tbody tr { margin-bottom: 0; }
   .table-card tbody tr.date-group-row, .table-card tbody tr td[colspan] { grid-column: 1 / -1; }

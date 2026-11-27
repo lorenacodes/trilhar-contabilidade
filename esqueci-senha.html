@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css?v=156">
-<link rel="stylesheet" href="css/tema-moderno.css?v=1">
+<link rel="stylesheet" href="css/tema-moderno.css?v=2">
 </head>
 <body>
 <div class="auth-atmosphere">
@@ -26,7 +26,7 @@
       <div class="brand-sub">RECUPERAR SENHA</div>
     </div>
 
-    <p class="hint" id="instrucao" style="margin:0 0 20px; text-align:center; color:rgba(244,241,232,0.75);">Informe seu e-mail cadastrado. Se ele existir no sistema, você recebe um link pra criar uma senha nova.</p>
+    <p class="hint" id="instrucao" style="margin:0 0 20px; text-align:center;">Informe seu e-mail cadastrado. Se ele existir no sistema, você recebe um link pra criar uma senha nova.</p>
 
     <div class="field">
       <label>E-mail</label>
@@ -43,7 +43,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
 <script src="js/supabase-client.js?v=80"></script>
-<script src="js/app.js?v=96"></script>
+<script src="js/app.js?v=97"></script>
 <script>
   document.getElementById("voltar-link").innerHTML = ICONS.back + " Voltar para o login";
 
@@ -80,7 +80,7 @@
     } else {
       document.getElementById("instrucao").innerHTML =
         "Se " + email + " estiver cadastrado, um link de recuperação foi enviado. Confira sua caixa de entrada (e o spam)." +
-        '<br><br><span style="color:rgba(244,241,232,0.55); font-size:13px;">Não recebeu em alguns minutos? Fale com a Trilhar Contabilidade para verificar seu acesso.</span>';
+        '<br><br><span style="color:var(--text-secondary); font-size:13px;">Não recebeu em alguns minutos? Fale com a Trilhar Contabilidade para verificar seu acesso.</span>';
       document.getElementById("email-input").value = "";
     }
     btn.classList.remove("btn-loading");

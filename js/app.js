@@ -100,20 +100,23 @@ const safeStorage = (function () {
   const saved = safeStorage.getItem("trilhar-theme") || "light";
   document.documentElement.setAttribute("data-theme", saved);
 
-  window.addEventListener("DOMContentLoaded", () => {
-    const toggles = document.querySelectorAll("[data-theme-toggle]");
-    if (!toggles.length) return;
-    toggles.forEach((btn) => {
-      updateLabel(btn);
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const current = document.documentElement.getAttribute("data-theme");
-        const next = current === "dark" ? "light" : "dark";
-        document.documentElement.setAttribute("data-theme", next);
-        safeStorage.setItem("trilhar-theme", next);
-        toggles.forEach(updateLabel);
-      });
-    });
+  // Delegação no document: o botão de tema do painel do cliente é criado
+  // por renderNav() DEPOIS do DOMContentLoaded (depois de conferir o login),
+  // então ligar o clique só nos botões que existiam no carregamento deixava
+  // o botão do cliente sem efeito nenhum. Assim vale pra qualquer botão
+  // [data-theme-toggle], inclusive os criados depois.
+  function atualizarRotulosTema() { document.querySelectorAll("[data-theme-toggle]").forEach(updateLabel); }
+  window.atualizarRotulosTema = atualizarRotulosTema;
+  window.addEventListener("DOMContentLoaded", atualizarRotulosTema);
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest("[data-theme-toggle]");
+    if (!btn) return;
+    e.stopPropagation();
+    const current = document.documentElement.getAttribute("data-theme");
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    safeStorage.setItem("trilhar-theme", next);
+    atualizarRotulosTema();
   });
 
   function updateLabel(btn) {
@@ -461,6 +464,7 @@ function renderNav(paginaAtiva, cliente) {
   }
   atualizarBadgeComunicados();
   iniciarConviteInstalacao();
+  if (window.atualizarRotulosTema) window.atualizarRotulosTema();
   document.getElementById("sidebar-user-chip").addEventListener("click", () => toggleDropdown("user-panel"));
   document.getElementById("sidebar-perfil-item").addEventListener("click", () => window.location.href = "perfil");
   document.getElementById("sidebar-logout-item").addEventListener("click", () => logoutCliente());

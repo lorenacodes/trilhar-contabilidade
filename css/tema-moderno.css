@@ -379,3 +379,30 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus-ring)
 [data-theme="dark"] .period-chip.active, [data-theme="dark"] .docs-filtro-chip.active {
   background: var(--bg-surface); color: var(--text-primary); border-color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-primary);
 }
+
+/* ---------- Ajustes da verificação pós-tema ---------- */
+/* Avatar do menu lateral: o fundo branco translúcido sumia no menu claro */
+.admin-sidebar-footer .avatar { background: var(--brand-navy); color: #fff; box-shadow: none; }
+[data-theme="dark"] .admin-sidebar-footer .avatar { background: var(--bg-surface-elevated); color: var(--text-primary); }
+/* Seta do cartão clicável não fica por cima do rótulo/valor (o ícone de
+   cima saiu e o texto subiu até a altura da seta) */
+#tab-visao-geral .stat-card-hero.clickable, .stat-card-hero.clickable { padding-right: 52px; }
+/* Linha de identificação do cliente (documento · e-mail · desde) quebra
+   item por item no celular, sem encavalar */
+.detalhe-header-meta { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0; row-gap: 2px; }
+@media (max-width: 640px) {
+  .detalhe-header-meta { flex-direction: column; }
+  .detalhe-header-meta-dot { display: none; }
+}
+
+/* Tema escuro: navy e vermelho viram tons claros; texto branco por cima
+   ficava sem contraste no avatar e nos contadores do menu */
+[data-theme="dark"] .avatar { color: #0F1219; }
+/* contadores do menu têm cor inline (#fff) definida no JS: !important só aqui */
+[data-theme="dark"] .admin-nav-item span[style*="semantic-danger"] { color: #1A0B0C !important; }
+/* Fundos de selo/aviso com as cores sólidas do tema (antes eram misturas
+   calculadas, com contraste incerto no texto) */
+.due-item.danger .due-item-badge, .due-item.danger .due-item-date { background: var(--semantic-danger-bg); color: var(--semantic-danger); }
+.due-item.urgent .due-item-badge, .due-item.urgent .due-item-date { background: var(--semantic-warning-bg); color: var(--semantic-warning); }
+.alert-info { background: var(--bg-surface-elevated); border-color: var(--border-default); }
+.alert-info .alert-title { color: var(--text-primary); }

@@ -411,3 +411,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus-ring)
    itens de lista (pendências do cliente, alertas, vencimentos), mesmo
    quando o contêiner não define espaçamento. */
 :not(.attention-list) > .attention-item + .attention-item { margin-top: 8px; }
+
+/* Celular: KPIs compactos em 2 colunas, só rótulo + número, para a lista
+   (Financeiro) e o conteúdo (Visão geral) aparecerem logo na primeira tela. */
+@media (max-width: 600px) {
+  #financial-summary-row, #tab-visao-geral .stats-row-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  #financial-summary-row .stat-card, #tab-visao-geral .stats-row-hero .stat-card { padding: 12px 14px; min-height: 0; }
+  #financial-summary-row .stat-label, #tab-visao-geral .stats-row-hero .stat-label { font-size: 10.5px; line-height: 1.3; margin-bottom: 4px; }
+  #financial-summary-row .stat-value, #tab-visao-geral .stats-row-hero .stat-value { font-size: 19px; line-height: 1.2; }
+  #financial-summary-row .stat-trend, #financial-summary-row .stat-period, #financial-summary-row .stat-top,
+  #tab-visao-geral .stats-row-hero .stat-trend, #tab-visao-geral .stats-row-hero .stat-insight, #tab-visao-geral .stats-row-hero .stat-top { display: none !important; }
+  #tab-visao-geral .stats-row-hero .stat-card-hero.clickable { padding-right: 30px; }
+  #tab-visao-geral .stats-row-hero .stat-card-hero-chev { width: 14px; height: 14px; right: 10px; }
+}

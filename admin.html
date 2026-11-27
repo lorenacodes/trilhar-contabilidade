@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=157">
+<link rel="stylesheet" href="css/styles.css?v=158">
 <link rel="stylesheet" href="css/tema-moderno.css?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 </head>
@@ -758,14 +758,7 @@
                 <button type="button" class="period-chip active" data-dias="30">30 dias</button>
               </div>
             </div>
-            <h3 class="acessos-titulo">Resumo por cliente</h3>
-            <div class="table-card">
-              <table class="table-clients table-acessos">
-                <thead><tr><th>Cliente</th><th>Último acesso</th><th>Acessos no período</th><th>Usa o app instalado</th></tr></thead>
-                <tbody id="acessos-tbody"><tr><td colspan="4">Carregando...</td></tr></tbody>
-              </table>
-            </div>
-            <h3 class="acessos-titulo">Atividade dos clientes</h3>
+            <p class="acessos-atualizado" id="acessos-atualizado"></p>
             <div class="table-card">
               <ul class="acessos-atividade" id="acessos-atividade"><li class="hint">Carregando...</li></ul>
             </div>
@@ -2670,7 +2663,7 @@
     realtimeDebounceTimer = setTimeout(carregarDados, 600);
   }
   function iniciarRealtimeSync() {
-    const TABELAS_SINCRONIZADAS = ["categorias", "clientes", "documentos", "administradores", "configuracoes_empresa", "eventos_cliente", "solicitacoes_alteracao", "chamados", "comunicados", "comunicados_lidos"];
+    const TABELAS_SINCRONIZADAS = ["categorias", "clientes", "documentos", "administradores", "configuracoes_empresa", "eventos_cliente", "solicitacoes_alteracao", "chamados", "comunicados", "comunicados_lidos", "acessos"];
     let canal = sb.channel("admin-realtime-sync");
     TABELAS_SINCRONIZADAS.forEach(tabela => {
       canal = canal.on("postgres_changes", { event: "*", schema: "public", table: tabela }, agendarRefetchRealtime);
@@ -2707,6 +2700,7 @@
     if (detalheClienteId != null && document.getElementById("tab-detalhe-cliente").style.display !== "none") {
       renderDetalheConteudo(detalheClienteId);
     }
+    if (typeof acessosVisivel === "function" && acessosVisivel()) carregarAcessos();
   }
 
   function renderConfiguracoes() {
@@ -6808,7 +6802,6 @@
   let ACESSOS_DIAS = 30;
 
   async function carregarAcessos() {
-    const tbody = document.getElementById("acessos-tbody");
     const lista = document.getElementById("acessos-atividade");
     // A coluna "pagina" pode não existir em todo banco: tenta com ela e,
     // se der erro, busca sem.
@@ -6819,7 +6812,6 @@
       sb.from("solicitacoes_alteracao").select("id, cliente_id, mensagem, created_at").order("created_at", { ascending: false }).limit(500)
     ]);
     if (e1 || res.error) {
-      tbody.innerHTML = '<tr><td colspan="4">Não foi possível carregar os acessos. Tente de novo.</td></tr>';
       lista.innerHTML = '<li class="hint">Não foi possível carregar a atividade. Tente de novo.</li>';
       return;
     }
@@ -6835,28 +6827,11 @@
 
   function renderAcessos() {
     if (!ACESSOS_CACHE) return;
-    const tbody = document.getElementById("acessos-tbody");
     const lista = document.getElementById("acessos-atividade");
     const filtroCliente = document.getElementById("acessos-filtro-cliente").value;
     const desde = new Date(Date.now() - ACESSOS_DIAS * 86400000).toISOString();
-    const clientes = ACESSOS_CACHE.clientes.filter(c => !filtroCliente || c.id === filtroCliente);
     const clientePorUser = new Map(ACESSOS_CACHE.clientes.map(c => [c.users.id, c]));
     const nomeCliente = new Map(ACESSOS_CACHE.clientes.map(c => [c.id, c.users.nome]));
-
-    // Resumo por cliente
-    const porUsuario = new Map();
-    ACESSOS_CACHE.acessos.forEach(a => {
-      const r = porUsuario.get(a.user_id) || { ultimo: a.created_at, total: 0, app: false };
-      if (a.created_at >= desde) r.total++;
-      if (a.app_instalado) r.app = true;
-      porUsuario.set(a.user_id, r);
-    });
-    const linhas = clientes.map(c => ({ nome: c.users.nome, r: porUsuario.get(c.users.id) }))
-      .sort((a, b) => (b.r ? b.r.ultimo : "").localeCompare(a.r ? a.r.ultimo : ""));
-    tbody.innerHTML = linhas.length ? linhas.map(l => {
-      const ultimo = l.r ? new Date(l.r.ultimo).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Sem registro ainda";
-      return `<tr><td data-label="Cliente">${escapeHtml(l.nome)}</td><td data-label="Último acesso">${escapeHtml(ultimo)}</td><td data-label="Acessos no período">${l.r ? l.r.total : 0}</td><td data-label="Usa o app">${l.r ? (l.r.app ? "Sim" : "Não") : "Sem registro"}</td></tr>`;
-    }).join("") : '<tr><td colspan="4">Nenhum cliente cadastrado.</td></tr>';
 
     // Linha do tempo de atividade
     const eventos = [];
@@ -6878,7 +6853,19 @@
       const quando = new Date(e.quando).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
       return `<li class="acessos-evento"><span class="acessos-evento-quando">${escapeHtml(quando)}</span><span class="acessos-evento-cliente">${escapeHtml(nomeCliente.get(e.clienteId))}</span><span class="acessos-evento-texto">${escapeHtml(e.texto)}</span></li>`;
     }).join("") : '<li class="hint">Nenhuma atividade de cliente neste período.</li>';
+    document.getElementById("acessos-atualizado").textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + ". A lista se atualiza sozinha.";
   }
+
+  // Atualização automática da atividade: tempo real quando o banco avisa
+  // (tabela acessos e as demais já sincronizadas, via renderTudo) e, por
+  // garantia, uma nova busca a cada 30 segundos enquanto a subaba Acessos
+  // está aberta e a página está visível.
+  function acessosVisivel() {
+    const el = document.getElementById("administradores-subtab-acessos");
+    return el && el.style.display !== "none" && document.getElementById("tab-administradores").style.display !== "none";
+  }
+  setInterval(() => { if (acessosVisivel() && document.visibilityState === "visible") carregarAcessos(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && acessosVisivel()) carregarAcessos(); });
   document.getElementById("acessos-filtro-cliente").addEventListener("change", renderAcessos);
   document.querySelectorAll("#acessos-periodo .period-chip").forEach(c => c.addEventListener("click", () => {
     document.querySelectorAll("#acessos-periodo .period-chip").forEach(x => x.classList.toggle("active", x === c));

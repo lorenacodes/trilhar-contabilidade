@@ -240,10 +240,22 @@ const NAV_ITEMS = [
 /* ---------- App instalável (PWA) ----------
    O service worker (sw.js) + manifest.webmanifest deixam o portal instalável
    como app. Instalado, abre em tela cheia, com o ícone da Trilhar, e mantém
-   o login -- o cliente não precisa digitar e-mail e senha toda vez. O convite
-   abaixo só aparece no Android (quando o navegador confirma que consegue
-   instalar), só nas telas do cliente, nunca se o app já está instalado, e
-   some por 14 dias depois que a pessoa dispensa. */
+   o login -- o cliente não precisa digitar e-mail e senha toda vez.
+
+   Convite "Instale o app da Trilhar" (pedido da Lorena: o site tem que
+   perceber sozinho se o app não está instalado e, nesse caso, avisar):
+   - Só no Android e só nas telas do cliente (renderNav). Nunca no login,
+     no admin, no iPhone ou em navegador embutido (WhatsApp, Instagram...).
+   - Não aparece se o app já está instalado: confere se a página está aberta
+     como app (display-mode standalone) e pergunta ao Chrome se o app está
+     instalado no aparelho (getInstalledRelatedApps + related_applications
+     no manifest).
+   - Se o Chrome oferecer a instalação (beforeinstallprompt), "Instalar"
+     abre a janela de instalação na hora. Se não oferecer em alguns
+     segundos, o convite aparece mesmo assim e "Como instalar" mostra o
+     passo a passo pelo menu do navegador.
+   - "Agora não" esconde só até a pessoa fechar o navegador: na próxima
+     visita, se o app continuar sem instalar, o convite volta. */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("Service worker não registrado:", e));
@@ -252,22 +264,45 @@ if ("serviceWorker" in navigator) {
 
 let _eventoInstalacao = null;
 let _conviteAtivo = false;
-const CHAVE_CONVITE_DISPENSADO = "trilhar-instalar-dispensado";
+let _esperaConvite = null;
+const CHAVE_CONVITE_DISPENSADO = "trilhar-instalar-dispensado-sessao";
+const ESPERA_SINAL_CHROME_MS = 3000;
 
 function appJaInstalado() {
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
+// Pergunta ao Chrome se o app da Trilhar está instalado neste aparelho
+// (funciona porque o manifest declara related_applications apontando pra ele
+// mesmo). Em navegador sem suporte, responde "não sei" (false).
+async function appInstaladoNoAparelho() {
+  if (appJaInstalado()) return true;
+  try {
+    if (navigator.getInstalledRelatedApps) {
+      const apps = await navigator.getInstalledRelatedApps();
+      return Array.isArray(apps) && apps.length > 0;
+    }
+  } catch (_) {}
+  return false;
+}
 function aparelhoEhAndroid() {
   return /android/i.test(navigator.userAgent);
 }
-function conviteDispensadoRecentemente() {
-  const t = parseInt(safeStorage.getItem(CHAVE_CONVITE_DISPENSADO), 10);
-  return !isNaN(t) && Date.now() - t < 14 * 24 * 3600 * 1000;
+function navegadorEmbutido() {
+  // WebView do Android (WhatsApp, apps em geral) traz "; wv)" no user agent;
+  // Instagram e Facebook se identificam pelo nome.
+  return /; wv\)|Instagram|FBAN|FBAV/i.test(navigator.userAgent);
+}
+function conviteDispensadoNestaSessao() {
+  try { return sessionStorage.getItem(CHAVE_CONVITE_DISPENSADO) === "1"; } catch (_) { return false; }
 }
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   _eventoInstalacao = e;
+  // Se o convite já está na tela no modo "Como instalar", troca pro botão
+  // que instala direto.
+  const el = document.getElementById("convite-instalacao");
+  if (el) { el.remove(); }
   if (_conviteAtivo) mostrarConviteInstalacao();
 });
 window.addEventListener("appinstalled", () => {
@@ -281,16 +316,22 @@ function iniciarConviteInstalacao() {
   mostrarConviteInstalacao();
 }
 
-function mostrarConviteInstalacao() {
+async function mostrarConviteInstalacao() {
   if (document.getElementById("convite-instalacao")) return;
-  if (appJaInstalado() || conviteDispensadoRecentemente()) return;
-  // Só Android (decisão da Lorena: o app é pra Android) e só quando o
-  // próprio navegador confirmou que consegue instalar (evento
-  // beforeinstallprompt). Isso também some com o convite dentro do
-  // WhatsApp/Instagram e outros navegadores embutidos, onde a instalação
-  // não funciona. No iPhone o convite não aparece.
-  if (!aparelhoEhAndroid() || !_eventoInstalacao) return;
+  if (!aparelhoEhAndroid() || navegadorEmbutido()) return;
   if (!window.matchMedia("(pointer: coarse)").matches) return;
+  if (conviteDispensadoNestaSessao()) return;
+  if (await appInstaladoNoAparelho()) return;
+  if (document.getElementById("convite-instalacao")) return;
+
+  // Sem o sinal do Chrome ainda: espera alguns segundos (ele costuma chegar
+  // logo depois de a página carregar). Se não vier, mostra o convite com o
+  // passo a passo pelo menu.
+  if (!_eventoInstalacao && !_esperaConvite) {
+    _esperaConvite = setTimeout(() => { _esperaConvite = "feito"; mostrarConviteInstalacao(); }, ESPERA_SINAL_CHROME_MS);
+    return;
+  }
+  if (!_eventoInstalacao && _esperaConvite !== "feito") return;
 
   const el = document.createElement("div");
   el.id = "convite-instalacao";
@@ -307,13 +348,21 @@ function mostrarConviteInstalacao() {
       <button type="button" class="btn btn-primary convite-ok" style="padding:8px 14px; font-size:13px;"></button>
       <button type="button" class="convite-depois" style="background:none; border:0; color:var(--text-secondary, #5b6072); font-size:12px; cursor:pointer; padding:2px;">Agora não</button>
     </div>`;
-  el.querySelector(".convite-texto").textContent = "Acesso direto da tela inicial, sem digitar a senha toda vez.";
+  const texto = el.querySelector(".convite-texto");
+  texto.textContent = "Acesso direto da tela inicial, sem digitar a senha toda vez.";
   const ok = el.querySelector(".convite-ok");
-  ok.textContent = "Instalar";
-  const dispensar = () => { safeStorage.setItem(CHAVE_CONVITE_DISPENSADO, String(Date.now())); el.remove(); };
+  ok.textContent = _eventoInstalacao ? "Instalar" : "Como instalar";
+  const dispensar = () => {
+    try { sessionStorage.setItem(CHAVE_CONVITE_DISPENSADO, "1"); } catch (_) {}
+    el.remove();
+  };
   el.querySelector(".convite-depois").addEventListener("click", dispensar);
   ok.addEventListener("click", async () => {
-    if (!_eventoInstalacao) { dispensar(); return; }
+    if (!_eventoInstalacao) {
+      texto.textContent = "Toque em ⋮ no canto de cima do navegador e depois em “Instalar app”.";
+      ok.style.display = "none";
+      return;
+    }
     _eventoInstalacao.prompt();
     try { await _eventoInstalacao.userChoice; } catch (_) {}
     _eventoInstalacao = null;

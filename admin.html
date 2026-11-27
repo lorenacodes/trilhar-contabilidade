@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=160">
+<link rel="stylesheet" href="css/styles.css?v=161">
 <link rel="stylesheet" href="css/tema-moderno.css?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 </head>
@@ -209,7 +209,7 @@
             </div>
             <div class="chart-card chart-card-boletos">
               <div class="chart-head">
-                <div><h3>Boletos em aberto</h3><p id="aberto-subtitulo">Por prazo de vencimento</p></div>
+                <div><h3>Boletos em atraso</h3><p id="aberto-subtitulo">Há quanto tempo estão vencidos</p></div>
                 <div class="period-presets" id="aberto-tipo">
                   <button type="button" class="period-chip active" data-tipo="todos">Todos</button>
                   <button type="button" class="period-chip" data-tipo="receita">Honorários</button>
@@ -2970,17 +2970,19 @@
   receitaChartFilterDateDe.addEventListener("change", rerenderReceitaChart);
   receitaChartFilterDateAte.addEventListener("change", rerenderReceitaChart);
 
-  // ---------- Boletos em aberto por prazo ----------
-  // Substitui a antiga barra "pago x pendente" de todos os tempos, que só
-  // crescia no verde e não dizia o que fazer. Aqui só entra o que ainda não
-  // foi pago, agrupado pela distância do vencimento, com valor e quantidade.
+  // ---------- Boletos em atraso por tempo ----------
+  // Substitui a antiga barra "pago x pendente" de todos os tempos. Mostra só
+  // o que não existe em outro lugar: há quanto tempo os vencidos estão em
+  // atraso (valor e quantidade por faixa), separando honorários de impostos,
+  // e a taxa de pagamento em dia. Vencendo em breve já está no card
+  // Financeiro, total em aberto na aba Financeiro e clientes com pendência
+  // na Atenção do dia.
   let abertoTipo = "todos";
   const FAIXAS_ABERTO = [
-    { id: "v30", label: "Vencidos há mais de 30 dias", min: -Infinity, max: -31, atraso: true },
-    { id: "v1", label: "Vencidos há até 30 dias", min: -30, max: -1, atraso: true },
-    { id: "p7", label: "Vencem em até 7 dias", min: 0, max: 7 },
-    { id: "p30", label: "Vencem em 8 a 30 dias", min: 8, max: 30 },
-    { id: "pmais", label: "Vencem depois de 30 dias", min: 31, max: Infinity }
+    { id: "a7", label: "Até 7 dias", min: -7, max: -1, atraso: true },
+    { id: "a30", label: "8 a 30 dias", min: -30, max: -8, atraso: true },
+    { id: "a60", label: "31 a 60 dias", min: -60, max: -31, atraso: true },
+    { id: "amais", label: "Mais de 60 dias", min: -Infinity, max: -61, atraso: true }
   ];
   function boletosEmAbertoPorPrazo(tipo) {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -3014,16 +3016,12 @@
     const rodape = document.getElementById("aberto-rodape");
     const totalValor = faixas.reduce((s, f) => s + f.valor, 0);
     const totalQtd = faixas.reduce((s, f) => s + f.count, 0);
-    const atrasoValor = faixas.filter(f => f.atraso).reduce((s, f) => s + f.valor, 0);
-    const clientesAtraso = new Set(); faixas.filter(f => f.atraso).forEach(f => f.clientes.forEach(c => clientesAtraso.add(c)));
     lista.innerHTML = "";
     if (totalQtd === 0) {
       totalEl.innerHTML = "";
-      lista.innerHTML = '<p class="attention-empty" style="margin:0;">Nenhum boleto em aberto.</p>';
+      lista.innerHTML = '<p class="attention-empty" style="margin:0;">Nenhum boleto em atraso.</p>';
     } else {
-      totalEl.innerHTML = `
-        <div><span class="aberto-total-rotulo">Total em aberto</span><strong>${escapeHtml(formatBRL(totalValor))}</strong><span class="aberto-total-sub">${totalQtd} boleto${totalQtd === 1 ? "" : "s"}</span></div>
-        <div><span class="aberto-total-rotulo">Em atraso</span><strong class="${atrasoValor > 0 ? "aberto-atraso" : ""}">${escapeHtml(formatBRL(atrasoValor))}</strong><span class="aberto-total-sub">${clientesAtraso.size} cliente${clientesAtraso.size === 1 ? "" : "s"}</span></div>`;
+      totalEl.innerHTML = `<strong class="aberto-atraso">${escapeHtml(formatBRL(totalValor))}</strong><span class="aberto-total-sub">em ${totalQtd} boleto${totalQtd === 1 ? "" : "s"} vencido${totalQtd === 1 ? "" : "s"}</span>`;
       const maior = Math.max(...faixas.map(f => f.valor), 1);
       faixas.forEach(f => {
         const linha = document.createElement("div");

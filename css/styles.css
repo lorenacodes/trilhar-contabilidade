@@ -4615,12 +4615,10 @@ body.modo-ver-como #convite-instalacao { display: none !important; }
 }
 
 /* Boletos em aberto por prazo (Visão geral) */
-.aberto-total { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
-.aberto-total > div { display: flex; flex-direction: column; gap: 2px; background: var(--bg-surface-elevated); border-radius: var(--radius-md); padding: 10px 14px; }
-.aberto-total-rotulo { font-size: 11px; color: var(--text-secondary); }
-.aberto-total strong { font-size: 18px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.aberto-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 18px; }
+.aberto-total strong { font-size: 24px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .aberto-total strong.aberto-atraso { color: var(--semantic-danger); }
-.aberto-total-sub { font-size: 11px; color: var(--text-secondary); }
+.aberto-total-sub { font-size: 12.5px; color: var(--text-secondary); }
 .aberto-faixas { display: flex; flex-direction: column; gap: 12px; }
 .aberto-faixa-topo { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--text-primary); margin-bottom: 5px; }
 .aberto-faixa-valor { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }

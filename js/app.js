@@ -375,6 +375,66 @@ async function mostrarConviteInstalacao() {
   document.body.appendChild(el);
 }
 
+/* ---------- Opção "Instalar app" no menu Conta (cliente e admin) ----------
+   O convite automático depende do Chrome do Android liberar a instalação;
+   no iPhone, no computador ou quando o Chrome demora, ele não aparece. Este
+   item fica sempre no menu Conta enquanto o app não estiver instalado:
+   instala na hora quando o navegador permite e, quando não, mostra o passo
+   a passo do aparelho. Qualquer elemento com [data-instalar-app] funciona. */
+function instrucoesInstalacao() {
+  const ua = navigator.userAgent;
+  const ehIOS = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (ehIOS) return "No iPhone ou iPad, abra o portal no Safari, toque no botão Compartilhar (o quadrado com uma seta para cima) e depois em “Adicionar à Tela de Início”.";
+  if (aparelhoEhAndroid()) return "Toque em ⋮ no canto de cima do Chrome e depois em “Instalar app” (em alguns celulares aparece “Adicionar à tela inicial”).";
+  return "No computador, use o Chrome ou o Edge: clique no ícone de instalar no fim da barra de endereço (um monitor com uma seta) ou abra o menu ⋮ e escolha “Instalar Trilhar”.";
+}
+function abrirAvisoInstalacao(texto) {
+  let ov = document.getElementById("modal-instalar-app");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.className = "modal-overlay";
+    ov.id = "modal-instalar-app";
+    ov.innerHTML = `<div class="modal" role="dialog" aria-labelledby="instalar-app-titulo">
+      <h3 id="instalar-app-titulo" style="margin:0 0 8px;">Instalar o app da Trilhar</h3>
+      <p class="instalar-app-texto" style="margin:0 0 20px; color:var(--text-secondary); line-height:1.5;"></p>
+      <div style="display:flex; justify-content:flex-end;"><button type="button" class="btn btn-primary instalar-app-ok">Entendi</button></div>
+    </div>`;
+    ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("open"); });
+    ov.querySelector(".instalar-app-ok").addEventListener("click", () => ov.classList.remove("open"));
+    document.body.appendChild(ov);
+  }
+  ov.querySelector(".instalar-app-texto").textContent = texto;
+  ov.classList.add("open");
+}
+async function instalarApp() {
+  if (_eventoInstalacao) {
+    _eventoInstalacao.prompt();
+    try { await _eventoInstalacao.userChoice; } catch (_) {}
+    _eventoInstalacao = null;
+    return;
+  }
+  abrirAvisoInstalacao(instrucoesInstalacao());
+}
+async function prepararItemInstalarApp() {
+  const itens = document.querySelectorAll("[data-instalar-app]");
+  if (!itens.length) return;
+  const instalado = await appInstaladoNoAparelho();
+  itens.forEach((el) => {
+    el.innerHTML = ICONS.download + " Instalar app";
+    el.style.display = instalado ? "none" : "";
+  });
+}
+window.prepararItemInstalarApp = prepararItemInstalarApp;
+window.addEventListener("DOMContentLoaded", prepararItemInstalarApp);
+window.addEventListener("appinstalled", () => document.querySelectorAll("[data-instalar-app]").forEach((el) => { el.style.display = "none"; }));
+document.addEventListener("click", (e) => {
+  const el = e.target.closest && e.target.closest("[data-instalar-app]");
+  if (!el) return;
+  e.stopPropagation();
+  document.querySelectorAll(".dropdown-panel.open").forEach((p) => p.classList.remove("open"));
+  instalarApp();
+});
+
 /* Contador vermelho de comunicados ainda não lidos ao lado do item do menu.
    Melhor esforço: se a consulta falhar, o menu só fica sem contador. */
 async function atualizarBadgeComunicados() {
@@ -450,6 +510,7 @@ function renderNav(paginaAtiva, cliente) {
           <div class="dropdown-header">Conta</div>
           <div class="dropdown-item" id="sidebar-perfil-item">${ICONS.user} Meu perfil</div>
           <div class="dropdown-item" data-theme-toggle></div>
+          <div class="dropdown-item" data-instalar-app style="display:none;"></div>
           <div class="dropdown-divider"></div>
           <div class="dropdown-item" id="sidebar-logout-item">${ICONS.logout} Sair</div>
         </div>
@@ -465,6 +526,7 @@ function renderNav(paginaAtiva, cliente) {
   atualizarBadgeComunicados();
   iniciarConviteInstalacao();
   if (window.atualizarRotulosTema) window.atualizarRotulosTema();
+  prepararItemInstalarApp();
   document.getElementById("sidebar-user-chip").addEventListener("click", () => toggleDropdown("user-panel"));
   document.getElementById("sidebar-perfil-item").addEventListener("click", () => window.location.href = "perfil");
   document.getElementById("sidebar-logout-item").addEventListener("click", () => logoutCliente());

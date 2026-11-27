@@ -406,3 +406,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus-ring)
 .due-item.urgent .due-item-badge, .due-item.urgent .due-item-date { background: var(--semantic-warning-bg); color: var(--semantic-warning); }
 .alert-info { background: var(--bg-surface-elevated); border-color: var(--border-default); }
 .alert-info .alert-title { color: var(--text-primary); }
+
+/* Cartões empilhados não encostam uns nos outros: um respiro pequeno entre
+   itens de lista (pendências do cliente, alertas, vencimentos), mesmo
+   quando o contêiner não define espaçamento. */
+:not(.attention-list) > .attention-item + .attention-item { margin-top: 8px; }

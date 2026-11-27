@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="img/logo-glyph-dark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=156">
+<link rel="stylesheet" href="css/styles.css?v=157">
 <link rel="stylesheet" href="css/tema-moderno.css?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 </head>
@@ -115,7 +115,7 @@
     <div class="page-header page-header-flex" id="admin-page-header">
       <div>
         <h1 class="page-title" id="page-title">Visão geral</h1>
-        <p class="page-subtitle" id="page-subtitle-global">Como estão os clientes, os documentos e o financeiro do escritório.</p>
+        <p class="page-subtitle" id="page-subtitle-global" style="display:none;"></p>
       </div>
       <div style="display:flex; gap:10px;" id="admin-header-actions">
         <button class="btn btn-secondary" onclick="openCliente()" id="btn-novo-cliente"></button>
@@ -301,7 +301,6 @@
           </div>
 
           <div id="clientes-subtab-pendencias-financeiro" style="display:none;">
-            <p class="page-subtitle" style="margin:0 0 16px;">Boletos e impostos não pagos, de todos os clientes.</p>
             <div class="docs-toolbar">
               <div class="docs-search">
                 <span id="pendencias-fin-search-icon"></span>
@@ -337,7 +336,6 @@
           </div>
 
           <div id="clientes-subtab-pendencias-documentos" style="display:none;">
-            <p class="page-subtitle" style="margin:0 0 16px;">Documentos obrigatórios ainda não enviados, de todos os clientes.</p>
             <div class="docs-toolbar">
               <div class="docs-search">
                 <span id="pendencias-doc-search-icon"></span>
@@ -704,7 +702,6 @@
         <div id="tab-comunicados" style="display:none;">
           <div class="table-card" style="padding:var(--space-6); margin-bottom:16px;">
             <h3 style="margin:0 0 4px;">Novo comunicado</h3>
-            <p class="hint" style="margin:0 0 14px;">Aparece no portal de todos os clientes de uma vez, sem precisar enviar cliente por cliente.</p>
             <div class="field">
               <label class="required">Título</label>
               <input type="text" id="com-titulo" maxlength="150" placeholder="Ex.: Nova regra do MEI a partir de janeiro">
@@ -732,8 +729,12 @@
 
         <!-- Aba: Administradores -->
         <div id="tab-administradores" style="display:none;">
-          <div class="table-toolbar page-header-flex" style="padding:0; margin-bottom:16px; border-bottom:none;">
-            <p class="page-subtitle" style="margin:0;">Quem tem acesso ao painel administrativo.</p>
+          <div class="status-chip-row" id="administradores-subtabs" style="margin-bottom:16px;">
+            <button type="button" class="period-chip active" data-subtab="equipe">Administradores</button>
+            <button type="button" class="period-chip" data-subtab="acessos">Acessos</button>
+          </div>
+          <div id="administradores-subtab-equipe">
+          <div class="table-toolbar page-header-flex" style="padding:0; margin-bottom:16px; border-bottom:none; justify-content:flex-end;">
             <button class="btn btn-secondary" id="btn-novo-administrador"></button>
           </div>
           <div class="table-card">
@@ -745,11 +746,34 @@
             </table>
             <p class="hint" id="administradores-no-results" style="display:none; padding:20px; margin:0; text-align:center;">Nenhum administrador encontrado.</p>
           </div>
+          </div>
+          <!-- Subaba Acessos: quando cada cliente abriu o portal (no máximo um
+               registro a cada 30 minutos, gravado por registrar_acesso em
+               js/app.js) e se usa o app instalado. -->
+          <div id="administradores-subtab-acessos" style="display:none;">
+            <div class="acessos-filtros">
+              <select class="select-like" id="acessos-filtro-cliente" aria-label="Cliente"><option value="">Todos os clientes</option></select>
+              <div class="status-chip-row" id="acessos-periodo" style="margin:0;">
+                <button type="button" class="period-chip" data-dias="7">7 dias</button>
+                <button type="button" class="period-chip active" data-dias="30">30 dias</button>
+              </div>
+            </div>
+            <h3 class="acessos-titulo">Resumo por cliente</h3>
+            <div class="table-card">
+              <table class="table-clients table-acessos">
+                <thead><tr><th>Cliente</th><th>Último acesso</th><th>Acessos no período</th><th>Usa o app instalado</th></tr></thead>
+                <tbody id="acessos-tbody"><tr><td colspan="4">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+            <h3 class="acessos-titulo">Atividade dos clientes</h3>
+            <div class="table-card">
+              <ul class="acessos-atividade" id="acessos-atividade"><li class="hint">Carregando...</li></ul>
+            </div>
+          </div>
         </div>
 
         <!-- Aba: Configurações -->
         <div id="tab-configuracoes" style="display:none;">
-          <p class="page-subtitle" style="margin:0 0 var(--space-5);">Preferências gerais de funcionamento do painel.</p>
 
           <div class="status-chip-row" id="config-subtabs" style="margin-bottom:20px;">
             <button type="button" class="period-chip active" data-subtab="categorias">Categorias</button>
@@ -761,7 +785,7 @@
                dentro do módulo Clientes › Documentos. -->
           <div id="config-subtab-categorias">
             <div class="table-toolbar page-header-flex" style="padding:0; margin:0 0 16px; border-bottom:none;">
-              <p class="page-subtitle" style="margin:0;">Categorias de documento disponíveis para todos os clientes. Crie quantas precisar.</p>
+              <span></span>
               <button class="btn btn-secondary" id="btn-nova-categoria"></button>
             </div>
             <div class="filter-bar-row" style="margin:0 0 16px;">
@@ -6766,12 +6790,108 @@
   // marca aba que já tem seu próprio subtítulo dentro do conteúdo (geralmente
   // ao lado de um botão de ação, tipo "Nova categoria") — nesses casos o
   // subtítulo global só duplicaria a mesma informação.
+  // ---------- Administradores: subabas (Administradores / Acessos) ----------
+  function switchAdministradoresSubTab(name) {
+    document.querySelectorAll("#administradores-subtabs .period-chip").forEach(c => c.classList.toggle("active", c.dataset.subtab === name));
+    document.getElementById("administradores-subtab-equipe").style.display = name === "equipe" ? "block" : "none";
+    document.getElementById("administradores-subtab-acessos").style.display = name === "acessos" ? "block" : "none";
+    if (name === "acessos") carregarAcessos();
+  }
+  document.querySelectorAll("#administradores-subtabs .period-chip").forEach(c => c.addEventListener("click", () => switchAdministradoresSubTab(c.dataset.subtab)));
+
+  // Acessos = o que cada cliente fez no portal: quando abriu (e em que
+  // página, se o registro tiver), documentos que enviou, pagamentos que
+  // avisou, chamados que abriu e pedidos de alteração de dados. Só leitura
+  // de dados que o sistema já grava; nada novo é registrado aqui.
+  const NOME_PAGINA_PORTAL = { dashboard: "Início", boletos: "Boletos", documentos: "Documentos", chamados: "Chamados", comunicados: "Comunicados", perfil: "Perfil" };
+  let ACESSOS_CACHE = null;
+  let ACESSOS_DIAS = 30;
+
+  async function carregarAcessos() {
+    const tbody = document.getElementById("acessos-tbody");
+    const lista = document.getElementById("acessos-atividade");
+    // A coluna "pagina" pode não existir em todo banco: tenta com ela e,
+    // se der erro, busca sem.
+    let res = await sb.from("acessos").select("user_id, created_at, app_instalado, pagina").order("created_at", { ascending: false }).limit(5000);
+    if (res.error) res = await sb.from("acessos").select("user_id, created_at, app_instalado").order("created_at", { ascending: false }).limit(5000);
+    const [{ data: clientes, error: e1 }, { data: solicitacoes }] = await Promise.all([
+      sb.from("clientes").select("id, users(id, nome, status)"),
+      sb.from("solicitacoes_alteracao").select("id, cliente_id, mensagem, created_at").order("created_at", { ascending: false }).limit(500)
+    ]);
+    if (e1 || res.error) {
+      tbody.innerHTML = '<tr><td colspan="4">Não foi possível carregar os acessos. Tente de novo.</td></tr>';
+      lista.innerHTML = '<li class="hint">Não foi possível carregar a atividade. Tente de novo.</li>';
+      return;
+    }
+    ACESSOS_CACHE = { acessos: res.data || [], clientes: (clientes || []).filter(c => c.users), solicitacoes: solicitacoes || [] };
+    const sel = document.getElementById("acessos-filtro-cliente");
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Todos os clientes</option>' + ACESSOS_CACHE.clientes
+      .slice().sort((a, b) => a.users.nome.localeCompare(b.users.nome))
+      .map(c => `<option value="${c.id}">${escapeHtml(c.users.nome)}</option>`).join("");
+    sel.value = atual;
+    renderAcessos();
+  }
+
+  function renderAcessos() {
+    if (!ACESSOS_CACHE) return;
+    const tbody = document.getElementById("acessos-tbody");
+    const lista = document.getElementById("acessos-atividade");
+    const filtroCliente = document.getElementById("acessos-filtro-cliente").value;
+    const desde = new Date(Date.now() - ACESSOS_DIAS * 86400000).toISOString();
+    const clientes = ACESSOS_CACHE.clientes.filter(c => !filtroCliente || c.id === filtroCliente);
+    const clientePorUser = new Map(ACESSOS_CACHE.clientes.map(c => [c.users.id, c]));
+    const nomeCliente = new Map(ACESSOS_CACHE.clientes.map(c => [c.id, c.users.nome]));
+
+    // Resumo por cliente
+    const porUsuario = new Map();
+    ACESSOS_CACHE.acessos.forEach(a => {
+      const r = porUsuario.get(a.user_id) || { ultimo: a.created_at, total: 0, app: false };
+      if (a.created_at >= desde) r.total++;
+      if (a.app_instalado) r.app = true;
+      porUsuario.set(a.user_id, r);
+    });
+    const linhas = clientes.map(c => ({ nome: c.users.nome, r: porUsuario.get(c.users.id) }))
+      .sort((a, b) => (b.r ? b.r.ultimo : "").localeCompare(a.r ? a.r.ultimo : ""));
+    tbody.innerHTML = linhas.length ? linhas.map(l => {
+      const ultimo = l.r ? new Date(l.r.ultimo).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Sem registro ainda";
+      return `<tr><td data-label="Cliente">${escapeHtml(l.nome)}</td><td data-label="Último acesso">${escapeHtml(ultimo)}</td><td data-label="Acessos no período">${l.r ? l.r.total : 0}</td><td data-label="Usa o app">${l.r ? (l.r.app ? "Sim" : "Não") : "Sem registro"}</td></tr>`;
+    }).join("") : '<tr><td colspan="4">Nenhum cliente cadastrado.</td></tr>';
+
+    // Linha do tempo de atividade
+    const eventos = [];
+    ACESSOS_CACHE.acessos.forEach(a => {
+      const c = clientePorUser.get(a.user_id);
+      if (!c || a.created_at < desde) return;
+      const pagina = a.pagina && NOME_PAGINA_PORTAL[a.pagina] ? " (" + NOME_PAGINA_PORTAL[a.pagina] + ")" : "";
+      eventos.push({ quando: a.created_at, clienteId: c.id, texto: "Entrou no portal" + pagina + (a.app_instalado ? " pelo app" : "") });
+    });
+    DOCUMENTOS.forEach(d => {
+      if (!d.criadoPorNome && !d.data_vencimento && d.created_at >= desde) eventos.push({ quando: d.created_at, clienteId: d.cliente_id, texto: "Enviou documento: " + d.categoriaNome + " (" + d.nome + ")" });
+      if (d.pagamentoInformadoEm && d.pagamentoInformadoEm >= desde) eventos.push({ quando: d.pagamentoInformadoEm, clienteId: d.cliente_id, texto: "Avisou pagamento: " + d.categoriaNome + (d.data_vencimento ? ", vencimento " + formatDataBR(d.data_vencimento) : "") });
+    });
+    CHAMADOS.forEach(ch => { if (ch.created_at >= desde) eventos.push({ quando: ch.created_at, clienteId: ch.cliente_id, texto: "Abriu chamado: " + ch.assunto }); });
+    ACESSOS_CACHE.solicitacoes.forEach(sa => { if (sa.created_at >= desde) eventos.push({ quando: sa.created_at, clienteId: sa.cliente_id, texto: "Pediu alteração de dados" }); });
+    const visiveis = eventos.filter(e => nomeCliente.has(e.clienteId) && (!filtroCliente || e.clienteId === filtroCliente))
+      .sort((a, b) => b.quando.localeCompare(a.quando)).slice(0, 300);
+    lista.innerHTML = visiveis.length ? visiveis.map(e => {
+      const quando = new Date(e.quando).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      return `<li class="acessos-evento"><span class="acessos-evento-quando">${escapeHtml(quando)}</span><span class="acessos-evento-cliente">${escapeHtml(nomeCliente.get(e.clienteId))}</span><span class="acessos-evento-texto">${escapeHtml(e.texto)}</span></li>`;
+    }).join("") : '<li class="hint">Nenhuma atividade de cliente neste período.</li>';
+  }
+  document.getElementById("acessos-filtro-cliente").addEventListener("change", renderAcessos);
+  document.querySelectorAll("#acessos-periodo .period-chip").forEach(c => c.addEventListener("click", () => {
+    document.querySelectorAll("#acessos-periodo .period-chip").forEach(x => x.classList.toggle("active", x === c));
+    ACESSOS_DIAS = parseInt(c.dataset.dias, 10);
+    renderAcessos();
+  }));
+
   const TITULOS_ABA = {
-    "visao-geral": { title: "Visão geral", subtitle: "Como estão os clientes, os documentos e o financeiro do escritório." },
-    "clientes": { title: "Clientes", subtitle: "Cadastro, pendências, documentos e financeiro de cada cliente." },
+    "visao-geral": { title: "Visão geral", subtitle: null },
+    "clientes": { title: "Clientes", subtitle: null },
     "financeiro": { title: "Financeiro", subtitle: null },
-    "chamados": { title: "Chamados", subtitle: "Problemas e dúvidas abertos pelos clientes. Responda informando em quantos dias resolve." },
-    "comunicados": { title: "Comunicados", subtitle: "Avisos para todos os clientes de uma vez, como mudanças de lei e prazos." },
+    "chamados": { title: "Chamados", subtitle: null },
+    "comunicados": { title: "Comunicados", subtitle: null },
     "administradores": { title: "Administradores", subtitle: null },
     "configuracoes": { title: "Configurações", subtitle: null }
   };
@@ -6808,6 +6928,7 @@
     // item de menu de primeiro nível deveria sempre levar pro conteúdo
     // principal daquela área, não deixar "preso" numa subaba de config.
     if (name === "clientes") switchClientesSubTab("lista");
+    if (name === "administradores") switchAdministradoresSubTab("equipe");
   }
 
   // ---------- Clientes: subabas (Clientes / Pendências / Documentos) ----------

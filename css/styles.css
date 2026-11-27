@@ -4599,12 +4599,14 @@ table.table-clients .last-doc strong { color: var(--text-primary); }
 .ver-como-faixa .btn { flex-shrink: 0; white-space: nowrap; }
 body.modo-ver-como { padding-bottom: 88px; }
 /* Ações que gravariam algo ficam escondidas (e são bloqueadas de qualquer jeito) */
+/* Botões de ação do cliente continuam no lugar (a tela fica igual à dele),
+   mas desativados: o admin vê que a opção existe e não consegue usar. */
 body.modo-ver-como .cat-attach-btn,
-body.modo-ver-como .cat-attach-input,
 body.modo-ver-como .boleto-avisar-btn,
 body.modo-ver-como #btn-novo-chamado,
 body.modo-ver-como #btn-abrir-solicitar-alteracao,
-body.modo-ver-como #btn-abrir-trocar-senha,
+body.modo-ver-como #btn-abrir-trocar-senha { opacity: 0.45 !important; pointer-events: none !important; cursor: not-allowed !important; }
+body.modo-ver-como .cat-attach-input,
 body.modo-ver-como #sidebar-logout-item,
 body.modo-ver-como [data-instalar-app],
 body.modo-ver-como .drive-row-delete,

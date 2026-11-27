@@ -437,11 +437,13 @@ document.addEventListener("click", (e) => {
 
 /* Contador vermelho de comunicados ainda não lidos ao lado do item do menu.
    Melhor esforço: se a consulta falhar, o menu só fica sem contador. */
-async function atualizarBadgeComunicados() {
+async function atualizarBadgeComunicados(clienteId) {
   try {
+    let consultaLidos = sb.from("comunicados_lidos").select("comunicado_id");
+    if (clienteId) consultaLidos = consultaLidos.eq("cliente_id", clienteId);
     const [{ data: coms }, { data: lidos }] = await Promise.all([
       sb.from("comunicados").select("id"),
-      sb.from("comunicados_lidos").select("comunicado_id")
+      consultaLidos
     ]);
     const lidosSet = new Set((lidos || []).map((l) => l.comunicado_id));
     const naoLidos = (coms || []).filter((c) => !lidosSet.has(c.id)).length;
@@ -523,8 +525,8 @@ function renderNav(paginaAtiva, cliente) {
     document.getElementById("sidebar-user-nome").textContent = cliente.nome;
     document.getElementById("sidebar-avatar").textContent = cliente.nome.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
   }
-  atualizarBadgeComunicados();
-  iniciarConviteInstalacao();
+  atualizarBadgeComunicados(cliente && cliente.id);
+  if (!window.MODO_VER_COMO) iniciarConviteInstalacao();
   if (window.atualizarRotulosTema) window.atualizarRotulosTema();
   prepararItemInstalarApp();
   document.getElementById("sidebar-user-chip").addEventListener("click", () => toggleDropdown("user-panel"));

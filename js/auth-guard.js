@@ -74,6 +74,14 @@ async function guardCliente() {
     window.location.replace("/?erro=sem_permissao");
     return null;
   }
+  // "Ver como cliente": um administrador abre o portal de um cliente
+  // específico só para visualizar (botão no detalhe do cliente no admin).
+  // Quem garante que só administrador lê os dados de outro cliente é o
+  // banco (RLS); aqui só não redireciona o admin e bloqueia gravações.
+  if (usuario.tipo === "administrador") {
+    const verComoId = idVerComoSolicitado();
+    if (verComoId) return carregarClienteParaVisualizacao(verComoId);
+  }
   if (usuario.tipo !== "cliente") {
     // Sessão válida, só não é dessa área — manda pro próprio espaço dele
     // em vez de deslogar (ele continua um usuário legítimo do sistema).
@@ -198,4 +206,157 @@ async function logoutCliente(redirectTo) {
 async function logoutAdministrador(redirectTo) {
   await sb.auth.signOut();
   window.location.href = redirectTo || "admin-login";
+}
+
+
+/* ---------- Ver como cliente (somente leitura) ----------
+   O admin abre dashboard?ver_como=<id do cliente>. O id fica guardado na
+   sessão desta aba para os links do menu do cliente continuarem no mesmo
+   modo. Tudo que grava (inserir, alterar, excluir, enviar arquivo, RPCs
+   como registrar acesso ou avisar pagamento) é bloqueado no próprio
+   cliente Supabase desta página, e os botões de ação ficam escondidos.
+   Nada é feito em nome do cliente. */
+const CHAVE_VER_COMO = "trilhar-ver-como";
+function idVerComoSolicitado() {
+  const daUrl = new URLSearchParams(location.search).get("ver_como");
+  if (daUrl) { try { sessionStorage.setItem(CHAVE_VER_COMO, daUrl); } catch (_) {} return daUrl; }
+  try { return sessionStorage.getItem(CHAVE_VER_COMO); } catch (_) { return null; }
+}
+function sairVerComoCliente() {
+  try { sessionStorage.removeItem(CHAVE_VER_COMO); } catch (_) {}
+  window.location.href = "admin";
+}
+async function carregarClienteParaVisualizacao(clienteId) {
+  const { data: cliente, error } = await sb
+    .from("clientes")
+    .select("id, tipo_pessoa, nome, sobrenome, razao_social, nome_fantasia, cpf, cnpj, telefone, created_at, users(id, nome, email)")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (error) return mostrarFalhaDeConexao();
+  if (!cliente) { sairVerComoCliente(); return null; }
+  const nome = (cliente.users && cliente.users.nome) || cliente.razao_social || cliente.nome || "Cliente";
+  ativarModoVisualizacao(nome);
+  return {
+    id: cliente.id,
+    userId: cliente.users && cliente.users.id,
+    nome,
+    email: cliente.users && cliente.users.email,
+    tipoPessoa: cliente.tipo_pessoa,
+    nomeProprio: cliente.nome,
+    sobrenome: cliente.sobrenome,
+    razaoSocial: cliente.razao_social,
+    nomeFantasia: cliente.nome_fantasia,
+    cpf: cliente.cpf,
+    cnpj: cliente.cnpj,
+    telefone: cliente.telefone,
+    created_at: cliente.created_at,
+    modoVisualizacao: true
+  };
+}
+function ativarModoVisualizacao(nome) {
+  if (window.MODO_VER_COMO) return;
+  window.MODO_VER_COMO = { nome };
+  const aviso = () => { if (typeof showToast === "function") showToast("Modo visualização: nenhuma alteração é feita no portal do cliente."); };
+  const erroBloqueio = { message: "Modo visualização (somente leitura)" };
+  // Encadeável (.eq().select()...) e "aguardável", sempre devolvendo erro.
+  const bloqueado = () => {
+    aviso();
+    const p = new Proxy(function () {}, {
+      get(_, prop) {
+        if (prop === "then") return (res, rej) => Promise.resolve({ data: null, error: erroBloqueio }).then(res, rej);
+        return () => p;
+      }
+    });
+    return p;
+  };
+  // Envolve cada consulta numa camada que troca os métodos de gravação pelo
+  // bloqueio (em vez de reescrever o objeto da biblioteca, que nem sempre
+  // aceita propriedades novas). Leitura (select, eq, order...) passa direto.
+  const METODOS_DE_GRAVACAO = ["insert", "update", "upsert", "delete"];
+  const fromOriginal = sb.from.bind(sb);
+
+  // Mesmas limitações de leitura que o banco aplica a um cliente de verdade
+  // (RLS "documentos_cliente_ve_os_seus" e "categorias_leitura_cliente"):
+  // como o administrador enxerga tudo, aqui o próprio portal aplica o
+  // mesmo filtro, para mostrar exatamente o que o cliente vê.
+  //  - categorias: só as ativas;
+  //  - documentos: só visivel_cliente = true e de categoria ativa.
+  let idsCategoriasAtivas = null;
+  const categoriasAtivas = () => idsCategoriasAtivas || (idsCategoriasAtivas =
+    fromOriginal("categorias").select("id").eq("ativa", true).then(({ data }) => new Set((data || []).map((c) => c.id))));
+  // Repassa a cadeia (.eq().order()...) mantendo a camada de filtro, e
+  // filtra as linhas na hora de entregar o resultado.
+  const filtrarResultado = (builder, filtro) => {
+    const proxy = new Proxy(builder, {
+      get(alvo, prop) {
+        if (prop === "then") {
+          return (res, rej) => alvo.then(async (r) => {
+            if (r && !r.error && r.data) r.data = await filtro(r.data);
+            return r;
+          }).then(res, rej);
+        }
+        const v = Reflect.get(alvo, prop);
+        if (typeof v !== "function") return v;
+        return (...args) => { const out = v.apply(alvo, args); return out === alvo ? proxy : (out && typeof out.then === "function" ? filtrarResultado(out, filtro) : out); };
+      }
+    });
+    return proxy;
+  };
+  const filtroDocumentos = async (data) => {
+    const ativas = await categoriasAtivas();
+    const ok = (d) => d.visivel_cliente !== false && (!d.categoria_id || ativas.has(d.categoria_id));
+    return Array.isArray(data) ? data.filter(ok) : (ok(data) ? data : null);
+  };
+
+  sb.from = (tabela) => {
+    const q = fromOriginal(tabela);
+    return new Proxy(q, {
+      get(alvo, prop) {
+        if (METODOS_DE_GRAVACAO.includes(prop)) return bloqueado;
+        if (prop === "select" && tabela === "categorias") {
+          return (...args) => alvo.select(...args).eq("ativa", true);
+        }
+        if (prop === "select" && tabela === "documentos") {
+          return (colunas, opcoes) => {
+            const cols = (colunas || "*") + (colunas && colunas !== "*" ? ", visivel_cliente, categoria_id" : "");
+            return filtrarResultado(alvo.select(cols, opcoes).eq("visivel_cliente", true), filtroDocumentos);
+          };
+        }
+        const v = Reflect.get(alvo, prop);
+        return typeof v === "function" ? v.bind(alvo) : v;
+      }
+    });
+  };
+  sb.rpc = async () => ({ data: null, error: erroBloqueio });
+  const storageFromOriginal = sb.storage.from.bind(sb.storage);
+  const negarArquivo = async () => { aviso(); return { data: null, error: erroBloqueio }; };
+  sb.storage.from = (bucket) => {
+    const b = storageFromOriginal(bucket);
+    return new Proxy(b, {
+      get(alvo, prop) {
+        if (["upload", "update", "remove", "move", "copy"].includes(prop)) return negarArquivo;
+        const v = Reflect.get(alvo, prop);
+        return typeof v === "function" ? v.bind(alvo) : v;
+      }
+    });
+  };
+  const montarFaixa = () => {
+    document.body.classList.add("modo-ver-como");
+    if (document.getElementById("ver-como-faixa")) return;
+    const faixa = document.createElement("div");
+    faixa.id = "ver-como-faixa";
+    faixa.className = "ver-como-faixa";
+    faixa.setAttribute("role", "status");
+    const texto = document.createElement("span");
+    texto.innerHTML = "Vendo como <strong></strong> · somente leitura";
+    texto.querySelector("strong").textContent = nome;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-primary";
+    btn.textContent = "Voltar ao painel";
+    btn.addEventListener("click", sairVerComoCliente);
+    faixa.append(texto, btn);
+    document.body.appendChild(faixa);
+  };
+  if (document.body) montarFaixa(); else window.addEventListener("DOMContentLoaded", montarFaixa);
 }

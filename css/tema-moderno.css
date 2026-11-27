@@ -1,0 +1,381 @@
+/* ==========================================================================
+   Tema moderno (2026-11), a partir da entrega do Claude Design "v2".
+   Carregado DEPOIS de styles.css em todas as páginas: só sobrescreve
+   aparência (cor, fonte, borda, sombra, selos). Estrutura, layout e regras
+   de celular continuam em styles.css. Para voltar ao visual anterior, basta
+   tirar o <link> deste arquivo e trocar a fonte de volta para Inter.
+
+   Linha geral do Claude Design:
+   - Fonte Plus Jakarta Sans (títulos 700, interface 400-600), números
+     tabulares em todo valor.
+   - Fundo "papel quente", superfícies brancas planas, bordas finas, quase
+     sem sombra e sem degradê.
+   - Sem os ícones decorativos em círculo colorido dos cartões de número.
+   - Azul-marinho como acento (menu lateral claro), dourado mais sóbrio.
+   - Selos de status num formato só, com contraste AA nos dois temas.
+   ========================================================================== */
+
+/* ---------- Tokens ---------- */
+:root,
+[data-theme="light"] {
+  --font-heading: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-body: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+
+  --bg-canvas: #F4F3EF;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F8F7F4;
+  --text-primary: #141B2D;
+  --text-secondary: #596075;
+  --text-inverse: #FFFFFF;
+  --border-default: #E1DED7;
+  --border-hover: #CFCBC1;
+  --border-strong: #B3AFA4;
+
+  --brand-navy: #17244A;
+  --brand-navy-hover: #0F1836;
+  --brand-navy-active: #0A1126;
+  --sidebar-bg: #FBFAF8;
+  --sidebar-bg-top: #FBFAF8;
+  --sidebar-text: #141B2D;
+  --sidebar-text-muted: #596075;
+  --sidebar-accent: #17244A;
+  --brand-gold: #86651A;
+  --brand-gold-soft: #B8923A;
+
+  --semantic-success: #1F6B45;
+  --semantic-success-bg: #E6F1EA;
+  --semantic-warning: #8A4B0B;
+  --semantic-warning-bg: #F9EBD7;
+  --semantic-danger: #A32A22;
+  --semantic-danger-bg: #F8E4E1;
+  --semantic-neutral: #4B5163;
+  --semantic-neutral-bg: #EAE8E2;
+
+  --action-primary: var(--brand-navy);
+  --action-primary-hover: var(--brand-navy-hover);
+  --action-primary-active: var(--brand-navy-active);
+  --focus-ring: #3F58C9;
+
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 2px rgba(20, 27, 45, 0.06);
+  --shadow-md: 0 6px 20px rgba(20, 27, 45, 0.10);
+  --shadow-lg: 0 16px 40px rgba(20, 27, 45, 0.16);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+}
+
+[data-theme="dark"] {
+  --bg-canvas: #0F1219;
+  --bg-surface: #161A24;
+  --bg-surface-elevated: #1D2230;
+  --text-primary: #ECE9E1;
+  --text-secondary: #A4A8B8;
+  --text-inverse: #14110A;
+  --border-default: #272C3A;
+  --border-hover: #373D50;
+  --border-strong: #4A5169;
+
+  --brand-navy: #8E9CF0;
+  --brand-navy-hover: #A5B0F5;
+  --brand-navy-active: #7886E0;
+  --sidebar-bg: #0B0E14;
+  --sidebar-bg-top: #0B0E14;
+  --sidebar-text: #ECE9E1;
+  --sidebar-text-muted: #9A9FB2;
+  --sidebar-accent: #D2B063;
+  --brand-gold: #D2B063;
+  --brand-gold-soft: #E3C98A;
+
+  --semantic-success: #66CFA0;
+  --semantic-success-bg: #12301F;
+  --semantic-warning: #EDB26E;
+  --semantic-warning-bg: #33220F;
+  --semantic-danger: #FF9298;
+  --semantic-danger-bg: #3A171A;
+  --semantic-neutral: #B9BED0;
+  --semantic-neutral-bg: #262B3B;
+
+  --action-primary: var(--brand-gold);
+  --action-primary-hover: var(--brand-gold-soft);
+  --action-primary-active: #BB9B52;
+  --focus-ring: #A5B0F5;
+
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Fonte e números ---------- */
+body { font-family: var(--font-body); font-feature-settings: "kern", "liga"; -webkit-font-smoothing: antialiased; }
+.page-title, h1, h2, h3, .stat-value, .client-hero-total-value, .group-metric-value { font-family: var(--font-heading); }
+.page-title { font-weight: 700; letter-spacing: -0.02em; }
+.stat-value, .group-metric-value, .client-hero-total-value { font-weight: 700; letter-spacing: -0.02em; }
+.stat-value, .group-metric-value, .client-hero-total-value, .boleto-row-valor, .boleto-row-vencimento,
+td, .due-item, .date-group-header, .attention-item, input {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---------- Superfícies planas: mesmo cartão em todo o app ---------- */
+.stat-card, .side-card, .group-card, .chart-card, .table-card, .atencao-dia, .cat-group,
+.client-portal .stat-card, .client-portal .side-card, .client-portal .table-card,
+:root:not([data-theme="dark"]) .client-portal .stat-card,
+:root:not([data-theme="dark"]) .client-portal .side-card,
+:root:not([data-theme="dark"]) .client-portal .table-card {
+  background: var(--bg-surface);
+  background-image: none;
+  border: 1px solid var(--border-default);
+  box-shadow: none;
+}
+.stat-card:hover, .client-portal .stat-card:hover { box-shadow: none; transform: none; border-color: var(--border-strong); }
+.stat-card.attention.danger { border-color: var(--semantic-danger); }
+.stat-card.attention.danger .stat-value { color: var(--semantic-danger); }
+.stat-card.attention { border-color: var(--semantic-warning); }
+
+/* Ícones que só enfeitavam somem; o número é destacado pela tipografia */
+.stat-icon-chip, .group-head-icon, .atencao-dia-item-icon, .atencao-dia-icon { display: none !important; }
+.stat-top:empty, .stat-top:has(> .stat-icon-chip:only-child) { display: none; }
+.stat-card.attention.danger::after, .stat-card .notif-dot { display: none; }
+
+/* Tendência e legendas como texto simples, sem pílula */
+.stat-trend, .stat-insight, .group-metric-trend {
+  background: none !important; padding: 0 !important; border-radius: 0 !important;
+  font-size: var(--text-xs); font-weight: var(--font-medium); color: var(--text-secondary);
+}
+.stat-trend.trend-up, .group-metric-trend.trend-up { color: var(--semantic-success); }
+.stat-trend.trend-down, .group-metric-trend.trend-down { color: var(--semantic-danger); }
+
+.group-head { background: none; border-bottom: 1px solid var(--border-default); }
+
+/* ---------- Cartão "Resumo de hoje" do cliente: claro, sem degradê ---------- */
+.client-hero {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-shadow: none;
+  color: var(--text-primary);
+}
+.client-hero::after { display: none; }
+.client-hero-eyebrow { color: var(--brand-gold); }
+.client-hero .page-title { color: var(--text-primary); }
+.client-hero .page-subtitle { color: var(--text-secondary); }
+.client-hero-footer { border-top-color: var(--border-default); }
+.client-hero-total-label { color: var(--text-secondary); }
+.client-hero-total-value { color: var(--text-primary); }
+.client-hero-total-value .stat-value-decimals { color: var(--text-secondary); }
+.client-hero-updated { color: var(--text-secondary); }
+.client-hero-updated strong { color: var(--text-primary); }
+
+/* ---------- Botões ---------- */
+.btn { font-weight: 600; letter-spacing: 0.01em; border-radius: var(--radius-sm); box-shadow: none; }
+.btn:hover:not(:disabled) { transform: none; box-shadow: none; }
+.btn-primary { background: var(--action-primary); color: #fff; border-color: transparent; }
+[data-theme="dark"] .btn-primary { color: var(--text-inverse); }
+.btn-primary:hover:not(:disabled) { background: var(--action-primary-hover); }
+.btn-primary:active:not(:disabled) { background: var(--action-primary-active); }
+.btn-secondary { background: var(--bg-surface); border: 1px solid var(--border-strong); color: var(--text-primary); }
+.btn-secondary:hover:not(:disabled) { background: var(--bg-surface-elevated); border-color: var(--text-secondary); }
+.btn-ghost { background: transparent; color: var(--brand-navy); }
+.btn-ghost:hover:not(:disabled) { background: var(--bg-surface-elevated); }
+.btn-danger { background: transparent; border: 1px solid var(--semantic-danger); color: var(--semantic-danger); }
+.btn-danger:hover:not(:disabled) { background: var(--semantic-danger-bg); }
+.btn:disabled { opacity: 1; background: var(--semantic-neutral-bg); border-color: var(--border-default); color: var(--text-secondary); cursor: not-allowed; }
+
+/* Botões só de ícone: sem círculo cinza, fundo só no hover */
+.icon-btn { background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); }
+.icon-btn:hover { background: var(--bg-surface-elevated); border-color: var(--border-default); color: var(--text-primary); }
+/* No celular as ações do boleto têm nome: ficam como botão de contorno */
+@media (max-width: 640px) {
+  .boleto-row-actions .icon-btn { border-color: var(--border-strong); background: var(--bg-surface); border-radius: var(--radius-sm); }
+}
+
+/* ---------- Selos de status: um formato só ---------- */
+.badge, .status-badge, .due-tag, .due-item-badge {
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+}
+.badge.ok, .status-badge.ok, .due-tag.ok { background: var(--semantic-success-bg); color: var(--semantic-success); }
+.badge.warning, .status-badge.warning, .due-tag.warning, .due-item-badge.warning { background: var(--semantic-warning-bg); color: var(--semantic-warning); }
+.badge.danger, .status-badge.danger, .due-tag.danger, .due-item-badge.danger { background: var(--semantic-danger-bg); color: var(--semantic-danger); }
+.badge.neutral, .status-badge.neutral, .due-tag.neutral, .due-item-badge.neutral { background: var(--semantic-neutral-bg); color: var(--semantic-neutral); }
+
+/* Contadores ("4 boletos") como texto, não pílula */
+.date-group-count { background: none; padding: 0; font-weight: 500; color: var(--text-secondary); }
+
+/* Chips de filtro: retangulares; o ativo é contornado, não um bloco azul */
+.period-chip, .cat-pill-btn, .docs-filtro-chip {
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+.period-chip:hover, .cat-pill-btn:hover, .docs-filtro-chip:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.period-chip.active, .docs-filtro-chip.active, .tipo-pessoa-option.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--text-primary);
+}
+
+/* ---------- Listas, alertas, documentos ---------- */
+.date-group-header, .date-group-row.ano .date-group-header, .date-group-row.cliente .date-group-header,
+.date-group-row.mes .date-group-header { background: none; }
+.date-group-header.year { font-family: var(--font-heading); font-weight: 700; }
+
+.attention-item, .client-portal .attention-item { background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: none; }
+.attention-item.danger, .client-portal .attention-item.danger { background: var(--bg-surface); border-color: var(--semantic-danger); }
+.attention-item.warning, .client-portal .attention-item.warning { background: var(--bg-surface); border-color: var(--semantic-warning); }
+.attention-item:hover, .attention-item.danger:hover { background: var(--bg-surface-elevated); }
+
+.atencao-dia { background: var(--bg-surface); background-image: none; border: 1px solid var(--semantic-danger); box-shadow: none; }
+.atencao-dia-item { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
+.atencao-dia-item:hover { border-color: var(--text-primary); transform: none; }
+
+.cat-group.pending { border-style: solid; opacity: 1; }
+.cat-group.sent { border-color: var(--semantic-success); background: var(--bg-surface); }
+.cat-attach-btn { background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text-primary); }
+
+.boleto-row-icon { background: var(--bg-surface-elevated); color: var(--text-secondary); }
+.client-portal .boleto-row-icon { background: var(--bg-surface-elevated); color: var(--text-secondary); }
+
+/* ---------- Menu lateral claro, com o azul como acento ---------- */
+.admin-sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-default);
+  box-shadow: none;
+}
+.admin-nav-item { color: var(--sidebar-text-muted); font-weight: 500; }
+.admin-nav-item:hover { background: var(--bg-surface-elevated); color: var(--sidebar-text); }
+.admin-nav-item.active {
+  background: var(--bg-surface-elevated);
+  color: var(--sidebar-text);
+  font-weight: 600;
+  box-shadow: none; /* sem borda/barra lateral no item ativo (pedido da Lorena) */
+}
+.admin-sidebar .brand-name, .admin-sidebar .brand-sub, .admin-sidebar-brand-text,
+.admin-sidebar .user-chip, .admin-sidebar .user-chip small, .admin-sidebar .admin-sidebar-user-text span { color: var(--sidebar-text); }
+.admin-sidebar .brand-sub, .admin-sidebar .user-chip small, .admin-nav-section-label { color: var(--sidebar-text-muted); }
+.admin-sidebar-header, .admin-sidebar-footer { border-color: var(--border-default); }
+.admin-nav-toggle { color: var(--sidebar-text-muted); }
+.admin-mobile-menu-btn { background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: none; }
+
+/* ---------- Camadas e avisos ---------- */
+.modal-overlay { background: rgba(10, 14, 28, 0.55); backdrop-filter: none; }
+.modal, .side-panel { background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: var(--shadow-lg); }
+.toast { border-radius: var(--radius-sm); }
+
+/* ---------- Formulários ---------- */
+input, select, textarea, .select-like { border-color: var(--border-strong); box-shadow: none; }
+input:hover, select:hover, textarea:hover { border-color: var(--text-secondary); }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus-ring); outline-offset: 0; border-color: var(--focus-ring); }
+.tag-optional { background: none; padding: 0; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-secondary); }
+
+/* ---------- Vazio: sem ilustração grande ---------- */
+.empty-state > svg, .empty-state > .icon { display: none; }
+
+/* Logo no menu lateral: agora o menu é claro, então volta o T azul-marinho
+   (styles.css troca pelo T branco porque o menu era sempre escuro). No tema
+   escuro o menu continua escuro e usa o T branco. */
+:root:not([data-theme="dark"]) .admin-sidebar-header img[src$="logo-glyph.png"] {
+  content: url("../img/logo-glyph.png");
+}
+[data-theme="dark"] .admin-sidebar-header img[src$="logo-glyph.png"] {
+  content: url("../img/logo-glyph-dark.png");
+}
+
+/* Cartões de destaque do admin (Receita prevista, Clientes com pendências)
+   e indicadores: sem fundo tingido/degradê nem ícone ao lado do rótulo */
+.stat-card-hero, .stat-card-hero.tint-navy, .stat-card-hero.tint-warning, .stat-card-hero.tint-danger, .stat-card-hero.tint-success,
+#tab-visao-geral .stat-card, #tab-visao-geral .stat-card-hero, #tab-visao-geral .stat-card-hero.tint-warning, #tab-visao-geral .stat-card-hero.tint-navy {
+  background: var(--bg-surface);
+  background-image: none;
+}
+.stat-card-hero::before, .stat-card-hero::after { display: none; }
+.group-metric-label .icon, .group-metric-label > span:empty { display: none; }
+.stat-card-hero .stat-label { font-size: var(--text-2xs); letter-spacing: var(--tracking-wide); }
+
+/* ---------- Telas de acesso (login, esqueci/redefinir senha, primeiro
+   acesso): mesmo visual do app, em vez do fundo escuro com brilhos e do
+   cartão de vidro. Seguem o tema claro/escuro pelos tokens. ---------- */
+.auth-atmosphere { background: var(--bg-canvas); }
+.auth-atmosphere::before, .auth-atmosphere::after { display: none; }
+.auth-glass-card {
+  background: var(--bg-surface);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+.auth-glass-logo .brand-name { color: var(--text-primary); font-family: var(--font-heading); }
+.auth-glass-logo .brand-sub { color: var(--brand-gold); }
+:root:not([data-theme="dark"]) .auth-glass-logo img[src$="logo-glyph-dark.png"] { content: url("../img/logo-glyph.png"); }
+.auth-glass-card .field label { color: var(--text-primary); }
+.auth-glass-card .field input { background: var(--bg-surface); border-color: var(--border-strong); color: var(--text-primary); }
+.auth-glass-card .field input::placeholder { color: var(--text-secondary); }
+.auth-glass-card .field input:focus { border-color: var(--focus-ring); box-shadow: none; outline: 2px solid var(--focus-ring); outline-offset: 0; }
+.auth-glass-card .field input:-webkit-autofill,
+.auth-glass-card .field input:-webkit-autofill:hover,
+.auth-glass-card .field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-surface-elevated) inset;
+  box-shadow: 0 0 0 1000px var(--bg-surface-elevated) inset;
+}
+.auth-glass-card .password-toggle-btn { color: var(--text-secondary); }
+.auth-glass-card .password-toggle-btn:hover { color: var(--text-primary); background: var(--bg-surface-elevated); }
+.auth-glass-card .btn-primary { background: var(--action-primary); color: #fff; }
+[data-theme="dark"] .auth-glass-card .btn-primary { color: var(--text-inverse); }
+.auth-glass-card .btn-primary:hover:not(:disabled) { background: var(--action-primary-hover); }
+.auth-glass-card .btn-secondary, .auth-glass-card .btn-google { background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-strong); }
+.auth-glass-card .btn-secondary:hover:not(:disabled), .auth-glass-card .btn-google:hover:not(:disabled) { background: var(--bg-surface-elevated); border-color: var(--text-secondary); }
+.auth-glass-card .login-footnote, .auth-glass-card .hint, .auth-type-caption, .auth-glass-card .senha-criterio { color: var(--text-secondary); }
+.auth-glass-card .login-footnote a, #voltar-link { color: var(--brand-navy); }
+.auth-glass-card .field-error, .auth-glass-card .senha-forca-label.danger { color: var(--semantic-danger); }
+.auth-glass-card .senha-forca-bar-seg { background: var(--semantic-neutral-bg); }
+.auth-glass-card .senha-forca-bar-seg.on.danger { background: var(--semantic-danger); }
+.auth-glass-card .senha-forca-bar-seg.on.warning { background: var(--semantic-warning); }
+.auth-glass-card .senha-forca-bar-seg.on.ok, .auth-glass-card .senha-criterio.ok, .auth-glass-card .senha-criterio.ok .icon { background-color: transparent; }
+.auth-glass-card .senha-forca-bar-seg.on.ok { background: var(--semantic-success); }
+.auth-glass-card .senha-forca-label.warning { color: var(--semantic-warning); }
+.auth-glass-card .senha-forca-label.ok, .auth-glass-card .senha-criterio.ok, .auth-glass-card .senha-criterio.ok .icon { color: var(--semantic-success); }
+.auth-glass-card .senha-criterio .icon { color: var(--text-secondary); }
+.auth-glass-card .auth-guard-spinner { border-color: var(--border-default); border-top-color: var(--brand-navy); }
+.auth-type-toggle { background: var(--bg-surface-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
+.auth-type-option { color: var(--text-secondary); border-radius: 4px; }
+.auth-type-option:hover:not(.active) { color: var(--text-primary); }
+.auth-type-option.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-primary); }
+.auth-divider { color: var(--text-secondary); }
+.auth-divider::before, .auth-divider::after { background: var(--border-default); }
+
+/* ---------- Boletos sem o ícone de cartão repetido em toda linha ---------- */
+.boleto-row-icon { display: none; }
+.boleto-row { grid-template-columns: 1fr 110px 100px 100px auto; grid-template-areas: "main valor vencimento status actions"; }
+@media (max-width: 640px) {
+  .boleto-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "main status" "valor vencimento" "actions actions";
+  }
+}
+
+/* Documentos: o selo ("Pendente", "Aprovado") já diz o estado, o círculo
+   de status em cima do nome só repetia */
+.cat-status-icon { display: none; }
+
+/* Nenhuma borda/barra lateral colorida em cartão, aviso ou título
+   (pedido da Lorena): o destaque vem da borda inteira fina ou do texto. */
+.stat-card.attention { border-left: 1px solid var(--semantic-warning); }
+.stat-card.attention.danger { border-left-color: var(--semantic-danger); }
+.toast { border-left: 1px solid var(--border-default); }
+.detalhe-secao-titulo { border-left: none; padding-left: 0; }
+.admin-nav-item.active { box-shadow: none; }
+
+/* Tema escuro: chip ativo também contornado (styles.css pintava de dourado) */
+[data-theme="dark"] .period-chip.active, [data-theme="dark"] .docs-filtro-chip.active {
+  background: var(--bg-surface); color: var(--text-primary); border-color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-primary);
+}

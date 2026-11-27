@@ -1732,6 +1732,10 @@
     hideAuthOverlay();
     carregarDados();
     iniciarRealtimeSync();
+    // Convite "Instale o app da Trilhar" também para administradores (pedido
+    // da Lorena). Mesmas regras das telas do cliente, em js/app.js: só
+    // Android, só se o app não estiver instalado no aparelho.
+    iniciarConviteInstalacao();
   });
 
   document.getElementById("btn-novo-cliente").innerHTML = ICONS.user + " Novo cliente";

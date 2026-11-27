@@ -4586,3 +4586,30 @@ table.table-clients .last-doc strong { color: var(--text-primary); }
   .acessos-evento-quando { grid-column: 2; grid-row: 1; font-size: var(--text-xs); }
   .acessos-evento-texto { grid-column: 1 / -1; color: var(--text-secondary); }
 }
+
+/* ---------- Ver como cliente (admin visualizando o portal de um cliente) ---------- */
+.ver-como-faixa {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 1000; display: flex; align-items: center; gap: 16px;
+  max-width: calc(100vw - 24px); padding: 10px 10px 10px 18px;
+  background: var(--text-primary); color: var(--bg-surface);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg); font-size: var(--text-sm);
+}
+.ver-como-faixa strong { font-weight: 700; }
+.ver-como-faixa .btn { flex-shrink: 0; white-space: nowrap; }
+body.modo-ver-como { padding-bottom: 88px; }
+/* Ações que gravariam algo ficam escondidas (e são bloqueadas de qualquer jeito) */
+body.modo-ver-como .cat-attach-btn,
+body.modo-ver-como .cat-attach-input,
+body.modo-ver-como .boleto-avisar-btn,
+body.modo-ver-como #btn-novo-chamado,
+body.modo-ver-como #btn-abrir-solicitar-alteracao,
+body.modo-ver-como #btn-abrir-trocar-senha,
+body.modo-ver-como #sidebar-logout-item,
+body.modo-ver-como [data-instalar-app],
+body.modo-ver-como .drive-row-delete,
+body.modo-ver-como #convite-instalacao { display: none !important; }
+@media (max-width: 640px) {
+  .ver-como-faixa { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; text-align: center; }
+  body.modo-ver-como { padding-bottom: 130px; }
+}

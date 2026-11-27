@@ -244,8 +244,9 @@ const NAV_ITEMS = [
 
    Convite "Instale o app da Trilhar" (pedido da Lorena: o site tem que
    perceber sozinho se o app não está instalado e, nesse caso, avisar):
-   - Só no Android e só nas telas do cliente (renderNav). Nunca no login,
-     no admin, no iPhone ou em navegador embutido (WhatsApp, Instagram...).
+   - Só no Android, nas telas do cliente (renderNav) e no painel do
+     administrador (admin.html). Nunca no login, no iPhone ou em navegador
+     embutido (WhatsApp, Instagram...).
    - Não aparece se o app já está instalado: confere se a página está aberta
      como app (display-mode standalone) e pergunta ao Chrome se o app está
      instalado no aparelho (getInstalledRelatedApps + related_applications

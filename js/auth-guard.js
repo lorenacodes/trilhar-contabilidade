@@ -163,7 +163,7 @@ async function guardAdministrador() {
   return {
     id: administrador.id,
     userId: usuario.id,
-    nome: usuario.nome,
+    nome: limparNomeAdmin(usuario.nome),
     email: usuario.email,
     nivel: administrador.nivel,
     avatarUrl: usuario.avatar_url
@@ -359,4 +359,10 @@ function ativarModoVisualizacao(nome) {
     document.body.appendChild(faixa);
   };
   if (document.body) montarFaixa(); else window.addEventListener("DOMContentLoaded", montarFaixa);
+}
+
+// Alguns cadastros de administrador vieram com " (Cliente)" grudado no nome
+// (ex.: "Trilhar Contabilidade (Cliente)"). No painel o nome aparece sem isso.
+function limparNomeAdmin(nome) {
+  return String(nome || "").replace(/\s*\(\s*cliente\s*\)\s*$/i, "").trim() || nome;
 }
